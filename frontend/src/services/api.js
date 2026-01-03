@@ -50,7 +50,6 @@ api.interceptors.response.use(
 export const empresasService = {
   getAll: (params = {}) => api.get('/empresas', { params }),
   getById: (id) => api.get(`/empresas/${id}`),
-  lookupCnpj: (cnpj) => api.post('/empresas/lookup-cnpj', { cnpj }),
   create: (data) => api.post('/empresas', data),
   update: (id, data) => api.put(`/empresas/${id}`, data),
   delete: (id) => api.delete(`/empresas/${id}`),
@@ -162,7 +161,6 @@ export const checklistsService = {
   getAll: (params = {}) => api.get('/checklists', { params }),
   getById: (id) => api.get(`/checklists/${id}`),
   getCategories: () => api.get('/checklists/categories'),
-  createChecklist: (data) => api.post('/checklists', data),
   createInspection: (checklistId, data) => api.post(`/checklists/${checklistId}/inspection`, data),
   getInspections: (params = {}) => api.get('/checklists/inspections', { params }),
   getInspectionById: (id) => api.get(`/checklists/inspections/${id}`),

@@ -11,10 +11,8 @@ coverage/
 !.env.example
 backend/.env
 backend/.env.*
-!backend/.env.example
 frontend/.env
 frontend/.env.*
-!frontend/.env.example
 
 # Logs
 *.log
@@ -27,3 +25,4 @@ yarn-error.log*
 Thumbs.db
 .idea/
 .vscode/
+

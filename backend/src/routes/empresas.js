@@ -1,22 +1,10 @@
 const express = require('express');
 const { empresas } = require('../data/mockData');
-const { addAuditLog } = require('../data/auditLog');
-const { lookupCnpj } = require('../services/conectaGov');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
 
 const toLower = (value = '') => String(value).toLowerCase();
-const digitsOnly = (value = '') => String(value).replace(/\D/g, '');
-
-const getRequestIp = (req) => {
-  const forwarded = req.headers?.['x-forwarded-for'];
-  if (typeof forwarded === 'string' && forwarded.trim() !== '') {
-    return forwarded.split(',')[0].trim();
-  }
-
-  return req.ip || '';
-};
 
 // GET /api/empresas - Listar todas as empresas
 router.get('/', (req, res) => {
@@ -52,79 +40,6 @@ router.get('/', (req, res) => {
     });
   } catch (error) {
     return sendError(res, { message: 'Erro ao buscar empresas', meta: { details: error.message } }, 500);
-  }
-});
-
-// POST /api/empresas/lookup-cnpj - Buscar dados oficiais de CNPJ via Conecta GOV
-router.post('/lookup-cnpj', async (req, res) => {
-  try {
-    const cnpj = digitsOnly(req.body?.cnpj || '');
-
-    if (cnpj.length !== 14) {
-      return sendError(res, { message: 'CNPJ inválido', meta: { code: 'CNPJ_INVALID' } }, 400);
-    }
-
-    const data = await lookupCnpj(cnpj);
-
-    if (!data) {
-      addAuditLog({
-        entityType: 'empresa',
-        entityId: 0,
-        action: 'cnpj_lookup_not_found',
-        field: 'cnpj',
-        oldValue: null,
-        newValue: cnpj,
-        userId: req.user?.id,
-        userName: req.user?.nome,
-        ipAddress: getRequestIp(req),
-        userAgent: req.headers?.['user-agent']
-      });
-
-      return sendError(res, { message: 'Empresa não encontrada', meta: { code: 'CNPJ_NOT_FOUND' } }, 404);
-    }
-
-    addAuditLog({
-      entityType: 'empresa',
-      entityId: 0,
-      action: 'cnpj_lookup',
-      field: 'cnpj',
-      oldValue: null,
-      newValue: cnpj,
-      userId: req.user?.id,
-      userName: req.user?.nome,
-      ipAddress: getRequestIp(req),
-      userAgent: req.headers?.['user-agent']
-    });
-
-    return sendSuccess(res, { data, message: 'Dados obtidos com sucesso' });
-  } catch (error) {
-    addAuditLog({
-      entityType: 'empresa',
-      entityId: 0,
-      action: 'cnpj_lookup_failed',
-      field: 'cnpj',
-      oldValue: null,
-      newValue: digitsOnly(req.body?.cnpj || ''),
-      userId: req.user?.id,
-      userName: req.user?.nome,
-      ipAddress: getRequestIp(req),
-      userAgent: req.headers?.['user-agent']
-    });
-
-    const statusCode = error?.statusCode || 500;
-    const code = error?.code || 'CNPJ_LOOKUP_FAILED';
-
-    const messageByCode = {
-      CONECTA_NOT_CONFIGURED: 'Integração Conecta GOV não configurada',
-      CONECTA_AUTH_FAILED: 'Falha de autenticação na API oficial',
-      CONECTA_AUTH_INVALID_RESPONSE: 'Falha de autenticação na API oficial',
-      CONECTA_API_ERROR: 'Instabilidade na API oficial',
-      CONECTA_API_INVALID_RESPONSE: 'Instabilidade na API oficial'
-    };
-
-    const message = messageByCode[code] || error?.message || 'Erro ao consultar CNPJ';
-
-    return sendError(res, { message, meta: { code } }, statusCode);
   }
 });
 
@@ -207,3 +122,4 @@ router.delete('/:id(\\d+)', (req, res) => {
 });
 
 module.exports = router;
+

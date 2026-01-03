@@ -6,7 +6,6 @@ require('dotenv').config();
 
 const { config } = require('./src/config');
 const { authenticateToken } = require('./src/middleware/auth');
-const { bootstrapDatabase } = require('./src/db/bootstrap');
 const { sendSuccess, sendError } = require('./src/utils/response');
 
 const app = express();
@@ -90,17 +89,7 @@ app.use((err, req, res, next) => {
   return sendError(res, { message: 'Erro interno', meta: { details: err.message } }, 500);
 });
 
-const start = async () => {
-  try {
-    await bootstrapDatabase();
+app.listen(config.port, () => {
+  console.log(`Servidor rodando na porta ${config.port}`);
+});
 
-    app.listen(config.port, () => {
-      console.log(`Servidor rodando na porta ${config.port}`);
-    });
-  } catch (error) {
-    console.error('Falha ao iniciar o servidor:', error);
-    process.exit(1);
-  }
-};
-
-start();

@@ -2,7 +2,6 @@ const express = require('express');
 const {
   inspectionChecklists,
   inspections,
-  createChecklist,
   createInspection,
   getInspectionsByEmpresa,
   getInspectionsByInspector,
@@ -39,26 +38,6 @@ router.get('/categories', (req, res) => {
     return sendSuccess(res, { data: categories, meta: { total: categories.length } });
   } catch (error) {
     return sendError(res, { message: 'Erro ao buscar categorias', meta: { details: error.message } }, 500);
-  }
-});
-
-// POST /api/checklists - Criar checklist
-router.post('/', (req, res) => {
-  try {
-    const result = createChecklist(req.body);
-    const statusCode = result.created ? 201 : 200;
-
-    return sendSuccess(
-      res,
-      {
-        data: result.checklist,
-        message: result.created ? 'Checklist criado com sucesso' : 'Checklist já existe'
-      },
-      statusCode
-    );
-  } catch (error) {
-    const statusCode = error?.statusCode || 500;
-    return sendError(res, { message: 'Erro ao criar checklist', meta: { details: error.message } }, statusCode);
   }
 });
 
@@ -171,7 +150,7 @@ router.put('/inspections/:id(\\d+)', (req, res) => {
     };
 
     if (req.body.items) {
-      const scoreData = calculateScore(req.body.items, updatedInspection.checklistId);
+      const scoreData = calculateScore(req.body.items);
       updatedInspection.score = scoreData.score;
       updatedInspection.maxScore = scoreData.maxScore;
     }
@@ -201,3 +180,4 @@ router.get('/:id(\\d+)', (req, res) => {
 });
 
 module.exports = router;
+

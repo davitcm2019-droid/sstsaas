@@ -7,7 +7,6 @@ import {
   Clock,
   FileText
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { empresasService, tarefasService, alertasService, eventosService, incidentsService } from '../services/api';
 
 const Dashboard = () => {
@@ -224,9 +223,9 @@ const Dashboard = () => {
           {quickActions.map((action) => {
             const Icon = action.icon;
             return (
-              <Link
+              <a
                 key={action.name}
-                to={action.href}
+                href={action.href}
                 className="card hover:shadow-md transition-shadow duration-200"
               >
                 <div className="flex items-center">
@@ -242,7 +241,7 @@ const Dashboard = () => {
                     </p>
                   </div>
                 </div>
-              </Link>
+              </a>
             );
           })}
         </div>
