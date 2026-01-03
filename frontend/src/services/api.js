@@ -161,6 +161,7 @@ export const checklistsService = {
   getAll: (params = {}) => api.get('/checklists', { params }),
   getById: (id) => api.get(`/checklists/${id}`),
   getCategories: () => api.get('/checklists/categories'),
+  createChecklist: (data) => api.post('/checklists', data),
   createInspection: (checklistId, data) => api.post(`/checklists/${checklistId}/inspection`, data),
   getInspections: (params = {}) => api.get('/checklists/inspections', { params }),
   getInspectionById: (id) => api.get(`/checklists/inspections/${id}`),

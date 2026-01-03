@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { checklistsService } from '../services/api';
 import ChecklistModal from '../components/ChecklistModal';
+import CreateChecklistModal from '../components/CreateChecklistModal';
 
 const Checklists = () => {
   const [checklists, setChecklists] = useState([]);
@@ -25,6 +26,7 @@ const Checklists = () => {
   });
   const [selectedChecklist, setSelectedChecklist] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -96,7 +98,7 @@ const Checklists = () => {
             Gerencie checklists e realize inspeções de segurança
           </p>
         </div>
-        <button className="btn-primary flex items-center">
+        <button className="btn-primary flex items-center" onClick={() => setCreateModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Checklist
         </button>
@@ -278,6 +280,12 @@ const Checklists = () => {
         checklistId={selectedChecklist?.id}
         empresaId={1} // Mock empresa ID
         empresaNome="Indústria Metalúrgica ABC Ltda" // Mock empresa nome
+      />
+
+      <CreateChecklistModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onCreated={loadData}
       />
     </div>
   );
