@@ -2,6 +2,27 @@ const { config } = require('../config');
 
 const sanitizeDigits = (value = '') => String(value).replace(/\D/g, '');
 
+const isValidCnpjDigits = (cnpj) => {
+  const digits = sanitizeDigits(cnpj);
+  if (digits.length !== 14) return false;
+
+  if (/^(\d)\1{13}$/.test(digits)) return false;
+
+  const nums = digits.split('').map((d) => Number(d));
+
+  const calcDigit = (weights) => {
+    const sum = weights.reduce((acc, weight, idx) => acc + nums[idx] * weight, 0);
+    const mod = sum % 11;
+    return mod < 2 ? 0 : 11 - mod;
+  };
+
+  const d1 = calcDigit([5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  if (d1 !== nums[12]) return false;
+
+  const d2 = calcDigit([6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return d2 === nums[13];
+};
+
 const ensureConfigured = () => {
   const required = [
     ['CONECTA_GOV_TOKEN_URL', config.conectaGov?.tokenUrl],
@@ -194,7 +215,7 @@ const lookupCnpj = async (cnpj) => {
   ensureConfigured();
 
   const digits = sanitizeDigits(cnpj);
-  if (digits.length !== 14) {
+  if (!isValidCnpjDigits(digits)) {
     const err = new Error('CNPJ inválido');
     err.code = 'CNPJ_INVALID';
     err.statusCode = 400;
@@ -258,4 +279,3 @@ const lookupCnpj = async (cnpj) => {
 module.exports = {
   lookupCnpj
 };
-
