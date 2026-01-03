@@ -4,51 +4,42 @@ const { hashPassword } = require('../middleware/auth');
 
 const normalizeEmail = (email = '') => String(email).trim().toLowerCase();
 
-const demoUsers = [
-  {
-    nome: 'Administrador Sistema',
-    email: 'admin@sst.com.br',
-    perfil: 'administrador',
-    envKey: 'DEMO_ADMIN_PASSWORD'
-  },
-  {
-    nome: 'João Silva',
-    email: 'joao.silva@sst.com.br',
-    perfil: 'tecnico_seguranca',
-    envKey: 'DEMO_TECH_1_PASSWORD'
-  },
-  {
-    nome: 'Maria Santos',
-    email: 'maria.santos@sst.com.br',
-    perfil: 'tecnico_seguranca',
-    envKey: 'DEMO_TECH_2_PASSWORD'
-  },
-  {
-    nome: 'Carlos Oliveira',
-    email: 'carlos.oliveira@sst.com.br',
-    perfil: 'visualizador',
-    envKey: 'DEMO_VIEWER_PASSWORD'
+const getInitialAdminSpec = () => {
+  const email = process.env.INITIAL_ADMIN_EMAIL;
+  const password = process.env.INITIAL_ADMIN_PASSWORD;
+  const nome = process.env.INITIAL_ADMIN_NAME;
+
+  const hasEmail = typeof email === 'string' && email.trim() !== '';
+  const hasPassword = typeof password === 'string' && password.trim() !== '';
+
+  if (!hasEmail && !hasPassword) return null;
+
+  if (!hasEmail || !hasPassword) {
+    throw new Error('To bootstrap an admin user set INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD');
   }
-];
 
-const upsertDemoUser = async (client, spec) => {
-  const password = process.env[spec.envKey];
-  if (typeof password !== 'string' || password.trim() === '') return;
+  return {
+    nome: typeof nome === 'string' && nome.trim() ? nome.trim() : 'Administrador',
+    email: normalizeEmail(email),
+    password
+  };
+};
 
-  const senhaHash = await hashPassword(password);
+const upsertInitialAdmin = async (client, adminSpec) => {
+  const senhaHash = await hashPassword(adminSpec.password);
 
   await client.query(
     `
       INSERT INTO users (nome, email, senha_hash, perfil, status, data_cadastro)
-      VALUES ($1, $2, $3, $4, 'ativo', CURRENT_DATE)
+      VALUES ($1, $2, $3, 'administrador', 'ativo', CURRENT_DATE)
       ON CONFLICT (email) DO UPDATE
         SET nome = EXCLUDED.nome,
             senha_hash = EXCLUDED.senha_hash,
-            perfil = EXCLUDED.perfil,
+            perfil = 'administrador',
             status = 'ativo',
             updated_at = NOW()
     `,
-    [spec.nome, normalizeEmail(spec.email), senhaHash, spec.perfil]
+    [adminSpec.nome, adminSpec.email, senhaHash]
   );
 };
 
@@ -59,13 +50,16 @@ const bootstrapDatabase = async () => {
 
   await migrate();
 
+  const initialAdmin = getInitialAdminSpec();
+  if (!initialAdmin) {
+    return { skipped: false, adminSeeded: false };
+  }
+
   await withClient(async (client) => {
-    for (const spec of demoUsers) {
-      await upsertDemoUser(client, spec);
-    }
+    await upsertInitialAdmin(client, initialAdmin);
   });
 
-  return { skipped: false };
+  return { skipped: false, adminSeeded: true };
 };
 
 module.exports = {
