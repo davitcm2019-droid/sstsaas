@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import logo from '../assets/sst-saas.png';
+import logo from '../assets/sst-saas.jpg';
 
 const Register = () => {
   const [formData, setFormData] = useState({
