@@ -1,10 +1,96 @@
 const express = require('express');
 const { empresas } = require('../data/mockData');
+const { addAuditLog } = require('../data/auditLog');
+const { lookupCnpjOnCnpja, mapCnpjaOfficeToEmpresaDTO } = require('../services/cnpja');
+const { isValidCnpj, sanitizeCnpj } = require('../utils/cnpj');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
 
 const toLower = (value = '') => String(value).toLowerCase();
+
+// POST /api/empresas/lookup-cnpj - Consultar CNPJ via CNPJA (Open)
+router.post('/lookup-cnpj', async (req, res) => {
+  const rawCnpj = req.body?.cnpj;
+  const cnpjDigits = sanitizeCnpj(rawCnpj);
+
+  if (!cnpjDigits) {
+    return sendError(res, { message: 'CNPJ é obrigatório', meta: { code: 'CNPJ_REQUIRED' } }, 400);
+  }
+
+  if (!isValidCnpj(cnpjDigits)) {
+    addAuditLog({
+      entityType: 'empresa',
+      entityId: null,
+      action: 'cnpj_lookup',
+      field: 'cnpj',
+      oldValue: null,
+      newValue: cnpjDigits,
+      userId: req.user?.id ?? null,
+      userName: req.user?.nome ?? null,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      success: false,
+      error: 'CNPJ inválido'
+    });
+
+    return sendError(res, { message: 'CNPJ inválido', meta: { code: 'CNPJ_INVALID' } }, 400);
+  }
+
+  try {
+    const office = await lookupCnpjOnCnpja(cnpjDigits);
+    const empresaDTO = mapCnpjaOfficeToEmpresaDTO(office);
+
+    addAuditLog({
+      entityType: 'empresa',
+      entityId: null,
+      action: 'cnpj_lookup',
+      field: 'cnpj',
+      oldValue: null,
+      newValue: `${cnpjDigits}${empresaDTO?.nome ? ` (${empresaDTO.nome})` : ''}`,
+      userId: req.user?.id ?? null,
+      userName: req.user?.nome ?? null,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      success: true
+    });
+
+    return sendSuccess(res, { data: empresaDTO });
+  } catch (error) {
+    const statusCode =
+      typeof error?.status === 'number' && error.status >= 400 && error.status < 600 ? error.status : 500;
+
+    addAuditLog({
+      entityType: 'empresa',
+      entityId: null,
+      action: 'cnpj_lookup',
+      field: 'cnpj',
+      oldValue: null,
+      newValue: cnpjDigits,
+      userId: req.user?.id ?? null,
+      userName: req.user?.nome ?? null,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      success: false,
+      statusCode,
+      error: error?.message
+    });
+
+    if (statusCode === 404) {
+      return sendError(res, { message: 'Empresa não encontrada', meta: { code: 'CNPJ_NOT_FOUND' } }, 404);
+    }
+
+    if (statusCode === 504) {
+      return sendError(res, { message: 'Tempo limite ao consultar CNPJ', meta: { code: 'CNPJ_TIMEOUT' } }, 504);
+    }
+
+    return sendError(
+      res,
+      { message: 'Falha ao consultar CNPJ', meta: { code: 'CNPJ_LOOKUP_FAILED', details: error?.message } },
+      502
+    );
+  }
+});
 
 // GET /api/empresas - Listar todas as empresas
 router.get('/', (req, res) => {

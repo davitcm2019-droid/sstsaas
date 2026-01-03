@@ -50,11 +50,19 @@ const config = {
   },
   security: {
     bcryptSaltRounds: parseOptionalInt('BCRYPT_SALT_ROUNDS', 10)
+  },
+  cnpja: {
+    apiUrl: parseOptionalString('CNPJA_API_URL', 'https://api.cnpja.com/office'),
+    timeoutMs: parseOptionalInt('CNPJA_TIMEOUT_MS', 8000)
   }
 };
 
 if (config.port <= 0) {
   throw new Error('PORT must be a positive integer');
+}
+
+if (config.cnpja.timeoutMs <= 0) {
+  throw new Error('CNPJA_TIMEOUT_MS must be a positive integer');
 }
 
 if (isProduction && config.cors.origins.includes('*')) {

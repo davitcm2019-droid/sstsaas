@@ -62,6 +62,11 @@ Cada banco no Render tem:
 
 - `DATABASE_URL` (o Blueprint configura automaticamente via `fromDatabase`)
 
+### Backend (consulta CNPJ - CNPJA Open)
+
+- `CNPJA_API_URL` (padrão: `https://api.cnpja.com/office`)
+- `CNPJA_TIMEOUT_MS` (padrão: `8000`)
+
 ### Frontend (build-time)
 
 - `VITE_API_URL` (URL base do backend **sem** `/api`, ex.: `https://sst-saas-backend.onrender.com`)
