@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Shield, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import logo from '../assets/sst-saas.png';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -69,9 +70,13 @@ const Register = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <div className="mx-auto h-12 w-12 flex items-center justify-center bg-primary-100 rounded-full">
-            <Shield className="h-8 w-8 text-primary-600" />
-          </div>
+          <img
+            src={logo}
+            alt="SST SaaS"
+            className="mx-auto w-40 sm:w-44 md:w-52 h-auto object-contain"
+            loading="eager"
+            decoding="async"
+          />
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Crie sua conta</h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Ou{' '}
@@ -201,4 +206,3 @@ const Register = () => {
 };
 
 export default Register;
-
