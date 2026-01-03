@@ -1,7 +1,7 @@
 const express = require('express');
-const { usuarios } = require('../data/mockData');
 const { authorize, hashPassword } = require('../middleware/auth');
 const { toUserDTO } = require('../dtos/user');
+const userRepository = require('../repositories/userRepository');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
@@ -10,46 +10,35 @@ router.use(authorize('administrador'));
 
 const normalizeEmail = (email = '') => String(email).trim().toLowerCase();
 
-// GET /api/usuarios - Listar todos os usuários
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { perfil, status } = req.query;
-    let filteredUsuarios = [...usuarios];
-
-    if (perfil) {
-      filteredUsuarios = filteredUsuarios.filter((usuario) => usuario.perfil === perfil);
-    }
-
-    if (status) {
-      filteredUsuarios = filteredUsuarios.filter((usuario) => usuario.status === status);
-    }
+    const users = await userRepository.list({ perfil, status });
 
     return sendSuccess(res, {
-      data: filteredUsuarios.map(toUserDTO),
-      meta: { total: filteredUsuarios.length }
+      data: users.map(toUserDTO),
+      meta: { total: users.length }
     });
   } catch (error) {
     return sendError(res, { message: 'Erro ao buscar usuários', meta: { details: error.message } }, 500);
   }
 });
 
-// GET /api/usuarios/:id - Buscar usuário por ID
-router.get('/:id', (req, res) => {
+router.get('/:id(\\d+)', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const usuario = usuarios.find((usr) => usr.id === id);
+    const user = await userRepository.findById(id);
 
-    if (!usuario) {
+    if (!user) {
       return sendError(res, { message: 'Usuário não encontrado' }, 404);
     }
 
-    return sendSuccess(res, { data: toUserDTO(usuario) });
+    return sendSuccess(res, { data: toUserDTO(user) });
   } catch (error) {
     return sendError(res, { message: 'Erro ao buscar usuário', meta: { details: error.message } }, 500);
   }
 });
 
-// POST /api/usuarios - Criar novo usuário
 router.post('/', async (req, res) => {
   try {
     const { nome, email, senha } = req.body;
@@ -59,36 +48,32 @@ router.post('/', async (req, res) => {
     }
 
     const normalizedEmail = normalizeEmail(email);
-    const existingUser = usuarios.find((usr) => normalizeEmail(usr.email) === normalizedEmail);
+    const existingUser = await userRepository.findByEmail(normalizedEmail);
     if (existingUser) {
       return sendError(res, { message: 'Email já cadastrado' }, 400);
     }
 
-    const novoUsuario = {
-      id: usuarios.length ? Math.max(...usuarios.map((usr) => usr.id)) + 1 : 1,
-      ...req.body,
+    const createdUser = await userRepository.create({
+      nome,
       email: normalizedEmail,
-      senha: await hashPassword(senha),
-      dataCadastro: new Date().toISOString().split('T')[0],
+      senhaHash: await hashPassword(senha),
       status: req.body?.status || 'ativo',
       perfil: req.body?.perfil || 'visualizador'
-    };
+    });
 
-    usuarios.push(novoUsuario);
-
-    return sendSuccess(res, { data: toUserDTO(novoUsuario), message: 'Usuário criado com sucesso' }, 201);
+    return sendSuccess(res, { data: toUserDTO(createdUser), message: 'Usuário criado com sucesso' }, 201);
   } catch (error) {
-    return sendError(res, { message: 'Erro ao criar usuário', meta: { details: error.message } }, 500);
+    const statusCode = error?.statusCode || 500;
+    return sendError(res, { message: 'Erro ao criar usuário', meta: { details: error.message } }, statusCode);
   }
 });
 
-// PUT /api/usuarios/:id - Atualizar usuário
-router.put('/:id', async (req, res) => {
+router.put('/:id(\\d+)', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const usuarioIndex = usuarios.findIndex((usr) => usr.id === id);
+    const currentUser = await userRepository.findById(id);
 
-    if (usuarioIndex === -1) {
+    if (!currentUser) {
       return sendError(res, { message: 'Usuário não encontrado' }, 404);
     }
 
@@ -96,39 +81,37 @@ router.put('/:id', async (req, res) => {
 
     if (payload.email) {
       payload.email = normalizeEmail(payload.email);
-      const emailOwner = usuarios.find((usr) => normalizeEmail(usr.email) === payload.email);
+      const emailOwner = await userRepository.findByEmail(payload.email);
       if (emailOwner && emailOwner.id !== id) {
         return sendError(res, { message: 'Email já cadastrado' }, 400);
       }
     }
 
     if (payload.senha) {
-      payload.senha = await hashPassword(payload.senha);
+      payload.senhaHash = await hashPassword(payload.senha);
+      delete payload.senha;
     }
 
-    usuarios[usuarioIndex] = {
-      ...usuarios[usuarioIndex],
-      ...payload,
-      id
-    };
-
-    return sendSuccess(res, { data: toUserDTO(usuarios[usuarioIndex]), message: 'Usuário atualizado com sucesso' });
-  } catch (error) {
-    return sendError(res, { message: 'Erro ao atualizar usuário', meta: { details: error.message } }, 500);
-  }
-});
-
-// DELETE /api/usuarios/:id - Deletar usuário
-router.delete('/:id', (req, res) => {
-  try {
-    const id = parseInt(req.params.id, 10);
-    const usuarioIndex = usuarios.findIndex((usr) => usr.id === id);
-
-    if (usuarioIndex === -1) {
+    const updatedUser = await userRepository.update(id, payload);
+    if (!updatedUser) {
       return sendError(res, { message: 'Usuário não encontrado' }, 404);
     }
 
-    usuarios.splice(usuarioIndex, 1);
+    return sendSuccess(res, { data: toUserDTO(updatedUser), message: 'Usuário atualizado com sucesso' });
+  } catch (error) {
+    const statusCode = error?.statusCode || 500;
+    return sendError(res, { message: 'Erro ao atualizar usuário', meta: { details: error.message } }, statusCode);
+  }
+});
+
+router.delete('/:id(\\d+)', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const removed = await userRepository.remove(id);
+
+    if (!removed) {
+      return sendError(res, { message: 'Usuário não encontrado' }, 404);
+    }
 
     return sendSuccess(res, { data: null, message: 'Usuário deletado com sucesso' });
   } catch (error) {

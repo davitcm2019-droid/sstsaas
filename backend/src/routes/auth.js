@@ -1,9 +1,9 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { config } = require('../config');
-const { usuarios } = require('../data/mockData');
 const { authenticateToken, generateToken, verifyPassword, hashPassword } = require('../middleware/auth');
 const { toUserDTO } = require('../dtos/user');
+const userRepository = require('../repositories/userRepository');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
@@ -24,22 +24,18 @@ router.post('/register', async (req, res) => {
     }
 
     const normalizedEmail = normalizeEmail(email);
-    const existingUser = usuarios.find((user) => normalizeEmail(user.email) === normalizedEmail);
+    const existingUser = await userRepository.findByEmail(normalizedEmail);
     if (existingUser) {
       return sendError(res, { message: 'Email já cadastrado' }, 400);
     }
 
-    const newUser = {
-      id: usuarios.length + 1,
+    const newUser = await userRepository.create({
       nome,
       email: normalizedEmail,
-      senha: await hashPassword(senha),
+      senhaHash: await hashPassword(senha),
       perfil: 'visualizador',
-      status: 'ativo',
-      dataCadastro: new Date().toISOString().split('T')[0]
-    };
-
-    usuarios.push(newUser);
+      status: 'ativo'
+    });
 
     const token = generateToken(newUser);
 
@@ -69,7 +65,7 @@ router.post('/login', async (req, res) => {
     }
 
     const normalizedEmail = normalizeEmail(email);
-    const user = usuarios.find((candidate) => normalizeEmail(candidate.email) === normalizedEmail);
+    const user = await userRepository.findByEmail(normalizedEmail);
     if (!user) {
       return sendError(res, { message: 'Credenciais inválidas' }, 401);
     }
@@ -106,9 +102,9 @@ router.post('/logout', authenticateToken, (req, res) => {
 });
 
 // GET /api/auth/me - Obter dados do usuário logado
-router.get('/me', authenticateToken, (req, res) => {
+router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const user = usuarios.find((candidate) => candidate.id === req.user.id);
+    const user = await userRepository.findById(req.user.id);
     if (!user) {
       return sendError(res, { message: 'Usuário não encontrado' }, 404);
     }
@@ -120,7 +116,7 @@ router.get('/me', authenticateToken, (req, res) => {
 });
 
 // POST /api/auth/refresh - Renovar token
-router.post('/refresh', (req, res) => {
+router.post('/refresh', async (req, res) => {
   try {
     const { token } = req.body;
 
@@ -129,7 +125,7 @@ router.post('/refresh', (req, res) => {
     }
 
     const decoded = jwt.verify(token, config.jwt.secret);
-    const user = usuarios.find((candidate) => candidate.id === decoded.id);
+    const user = await userRepository.findById(decoded.id);
     if (!user) {
       return sendError(res, { message: 'Usuário não encontrado' }, 404);
     }

@@ -28,6 +28,19 @@ const parseOptionalInt = (name, fallback) => {
   return parsed;
 };
 
+const parseOptionalBool = (name, fallback) => {
+  const raw = process.env[name];
+  if (typeof raw !== 'string' || raw.trim() === '') {
+    return fallback;
+  }
+
+  const normalized = raw.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) return false;
+
+  throw new Error(`Invalid boolean environment variable: ${name}`);
+};
+
 const parseCorsOrigins = (rawOrigins) =>
   rawOrigins
     .split(',')
@@ -47,6 +60,10 @@ const config = {
   },
   cors: {
     origins: parseCorsOrigins(parseRequiredString('CORS_ORIGIN'))
+  },
+  db: {
+    url: parseOptionalString('DATABASE_URL', ''),
+    ssl: parseOptionalBool('DATABASE_SSL', isProduction)
   },
   security: {
     bcryptSaltRounds: parseOptionalInt('BCRYPT_SALT_ROUNDS', 10)
