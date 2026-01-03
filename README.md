@@ -65,10 +65,10 @@ Todas as respostas seguem o formato:
 
 ## Deploy (Render)
 
-- Blueprint: `render.yaml`
 - Guia: `DEPLOY_RENDER.md`
+- Blueprint (opcional): `render.yaml`
 
 ## Notas
 
-- Persistência atual é mock (em memória). Ao reiniciar o backend, os dados são perdidos.
-- O `render.yaml` já provisiona um Render Postgres e injeta `DATABASE_URL` no backend, mas a integração com banco ainda não foi implementada.
+- Persistência ainda é majoritariamente mock (em memória). Ao reiniciar o backend, os dados são perdidos.
+- Quando `DATABASE_URL` está configurado, o backend já usa Postgres para **usuários/autenticação** e aplica migrations automaticamente ao iniciar.

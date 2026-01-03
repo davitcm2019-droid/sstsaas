@@ -1,82 +1,71 @@
-# Deploy no Render — SST SaaS
+# Deploy no Render — SST SaaS (sem Blueprint)
 
-Este repositório inclui um Blueprint (`render.yaml`) para criar **3 recursos** no Render:
+Este guia é para criar os recursos manualmente no Render (plano free).
 
-- **Backend**: Web Service (Node/Express)
-- **Frontend**: Static Site (Vite/React)
-- **Banco**: Render Postgres (`sst-saas-db`)
+## 1) Backend (Web Service)
 
-## 1) Blueprint (recomendado)
+Render → **New + → Web Service**
 
-1. Suba o repositório no GitHub.
-2. No Render: **New + → Blueprint** e selecione o repositório.
-3. O Render vai criar os recursos conforme `render.yaml`.
+- Repository: `davitcm2019-droid/sstsaas` (branch `main`)
+- Root Directory: `backend`
+- Build Command: `npm ci`
+- Start Command: `npm start`
+- Health Check Path: `/api/health` (se o campo existir)
 
-### O que o `render.yaml` faz
+### Environment Variables (Backend)
 
-- Backend (`sst-saas-backend`)
-  - `rootDir: backend`
-  - `buildCommand: npm ci`
-  - `startCommand: npm start`
-  - `healthCheckPath: /api/health`
-  - `JWT_SECRET` é gerado automaticamente (`generateValue: true`)
-  - `CORS_ORIGIN` deve apontar para a URL do frontend
-  - `DATABASE_URL` é injetado a partir do Postgres (`fromDatabase.connectionString`)
-- Frontend (`sst-saas-frontend`)
-  - `rootDir: frontend`
-  - build: `npm ci && npm run build`
-  - publish: `dist`
-  - **rewrite** `/* → /index.html` (necessário para React Router)
-- Postgres (`sst-saas-db`)
-  - `plan: free`
-  - `ipAllowList: []` (bloqueia acesso externo; mantém acesso interno para serviços no Render na mesma região)
+Obrigatórias:
+- `JWT_SECRET` (gere uma chave forte)
+- `CORS_ORIGIN` (URL do frontend, ex.: `https://<SEU-FRONTEND>.onrender.com`)
 
-## 2) Banco de dados no Render (como configurar corretamente)
+Banco (PostgreSQL):
+- `DATABASE_URL` (use a **Internal Database URL** do Postgres no Render)
+- `DATABASE_SSL` (opcional; padrão em produção é `true`)
 
-### Estado atual do projeto (importante)
+Opcional (para habilitar login do admin demo no banco):
+- `DEMO_ADMIN_PASSWORD` (senha do `admin@sst.com.br`)
 
-- A persistência no backend ainda é **mock/em memória** (os dados não persistem após restart).
-- O Postgres no Render é **pré-configuração** para a Fase 15 (PostgreSQL + migrations). Até implementar essa fase, o backend **não usa** `DATABASE_URL`.
+## 2) Frontend (Static Site)
 
-### URLs do Render Postgres
+Render → **New + → Static Site**
 
-Cada banco no Render tem:
+Opção recomendada (com Root Directory):
+- Root Directory: `frontend`
+- Build Command: `npm ci && npm run build`
+- Publish Directory: `dist`
 
-- **Internal Database URL**: para conexões a partir de serviços do Render na **mesma região** (recomendado).
-- **External Database URL**: para conectar de fora (psql/local/pgAdmin/etc).
+### Environment Variables (Frontend)
 
-### Recomendação de segurança
+- `VITE_API_URL` = `https://<SEU-BACKEND>.onrender.com` (sem `/api`)
 
-- Use sempre o **Internal Database URL** no backend do Render.
-- Mantenha `ipAllowList: []` para evitar acesso externo.
-- Se você precisar acessar externamente para debug, libere apenas seu IP no allow list (CIDR) e use a **External Database URL**.
+### Redirects/Rewrites (SPA)
 
-## 3) Variáveis de ambiente (Render Dashboard)
+Crie um **rewrite**:
+- Source: `/*`
+- Destination: `/index.html`
 
-### Backend (obrigatórias)
+Isso é necessário para funcionar refresh em rotas do React Router (ex.: `/login`, `/dashboard`).
 
-- `JWT_SECRET` (o Blueprint gera automaticamente)
-- `CORS_ORIGIN` (ex.: `https://sst-saas-frontend.onrender.com`)
+## 3) Banco de dados (Render Postgres)
 
-### Backend (preparação para banco)
+Render → **New + → PostgreSQL**
 
-- `DATABASE_URL` (o Blueprint configura automaticamente via `fromDatabase`)
+Recomendado:
+- Use a **mesma região** do backend (para usar o Internal URL).
+- Em **Networking / IP allow list**, mantenha restrito (idealmente sem acesso externo).
 
-### Frontend (build-time)
+### Qual URL usar no `DATABASE_URL`?
 
-- `VITE_API_URL` (URL base do backend **sem** `/api`, ex.: `https://sst-saas-backend.onrender.com`)
+- Backend no Render: use a **Internal Database URL** (menor latência e não depende do allow list).
+- Acesso local (psql/pgAdmin): use a **External Database URL** e libere seu IP no allow list.
 
-## 4) Deploy manual (sem Blueprint)
+## Observações importantes do projeto
 
-Se preferir criar recursos manualmente:
-
-1) Crie o Postgres: **New + → PostgreSQL**  
-2) Pegue a **Internal Database URL** do banco no dashboard  
-3) No backend, adicione `DATABASE_URL` com essa URL  
-4) (Opcional) Restrinja acessos externos no banco (Networking / IP allow list)
+- Quando `DATABASE_URL` está configurado, o backend aplica migrations automaticamente ao iniciar.
+- Nesta fase, o banco está sendo usado para **autenticação/usuários**. Os demais módulos ainda usam dados mock/em memória.
 
 ## Troubleshooting
 
-- Backend caiu com `Missing required environment variable: JWT_SECRET`: defina `JWT_SECRET` no serviço.
+- “Publish directory does not exist”: confirme se o Publish Directory está relativo ao Root Directory (ex.: Root=`frontend` → Publish=`dist`).
+- Backend caiu com `Missing required environment variable: JWT_SECRET`: faltou setar `JWT_SECRET`.
 - CORS bloqueando: ajuste `CORS_ORIGIN` para a URL real do frontend (sem barra no final).
-- Frontend 404 ao dar refresh em rotas (`/login`, `/dashboard`): falta o rewrite `/* → /index.html` no static site.
