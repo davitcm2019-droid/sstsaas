@@ -1,0 +1,54 @@
+{
+  "nr": "NR-07",
+  "title": "Programa de Controle Médico de Saúde Ocupacional (PCMSO)",
+  "version": {
+    "portaria": "Portaria MTP nº 567",
+    "date": "2022-03-10"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR07-Q-001",
+      "question": "O PCMSO está alinhado ao PGR e vigente?"
+    },
+    {
+      "id": "NR07-Q-002",
+      "question": "O PCMSO descreve agravos, exames, critérios e condutas?"
+    },
+    {
+      "id": "NR07-Q-003",
+      "question": "Os exames obrigatórios (admissional, periódico, retorno, mudança de risco, demissional) são realizados?"
+    },
+    {
+      "id": "NR07-Q-004",
+      "question": "Os ASOs contêm informações mínimas exigidas e assinaturas?"
+    },
+    {
+      "id": "NR07-Q-005",
+      "question": "Exames complementares seguem riscos identificados (anexos específicos)?"
+    },
+    {
+      "id": "NR07-Q-006",
+      "question": "Existe relatório analítico anual emitido pelo médico responsável?"
+    },
+    {
+      "id": "NR07-Q-007",
+      "question": "Há prontuários médicos com confidencialidade e guarda adequada?"
+    },
+    {
+      "id": "NR07-Q-008",
+      "question": "Resultados de saúde retroalimentam o PGR?"
+    },
+    {
+      "id": "NR07-Q-009",
+      "question": "Há controle de aptidão e restrições por função/risco?"
+    },
+    {
+      "id": "NR07-Q-010",
+      "question": "Comunicações legais (ex.: agravos) são emitidas quando aplicável?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-07-atualizada-2022-1.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

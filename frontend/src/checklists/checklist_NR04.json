@@ -1,0 +1,74 @@
+{
+  "nr": "NR-04",
+  "title": "Serviços Especializados em Engenharia de Segurança e em Medicina do Trabalho (SESMT)",
+  "version": {
+    "portaria": "Portaria MTP nº 422",
+    "date": "2023-06-09"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR04-Q-001",
+      "question": "O SESMT está dimensionado conforme CNAE, grau de risco e número de empregados?"
+    },
+    {
+      "id": "NR04-Q-002",
+      "question": "Há comprovação de habilitação/registro profissional dos integrantes do SESMT?"
+    },
+    {
+      "id": "NR04-Q-003",
+      "question": "O SESMT está formalmente constituído (ato interno ou contrato)?"
+    },
+    {
+      "id": "NR04-Q-004",
+      "question": "O SESMT participa da elaboração e revisão do PGR?"
+    },
+    {
+      "id": "NR04-Q-005",
+      "question": "O SESMT acompanha o Plano de Ação do PGR e seus indicadores?"
+    },
+    {
+      "id": "NR04-Q-006",
+      "question": "São realizadas inspeções periódicas com relatórios e planos de correção?"
+    },
+    {
+      "id": "NR04-Q-007",
+      "question": "O SESMT acompanha investigações de acidentes/incidentes?"
+    },
+    {
+      "id": "NR04-Q-008",
+      "question": "Há integração documentada com PCMSO e CIPA?"
+    },
+    {
+      "id": "NR04-Q-009",
+      "question": "Existem registros mensais das atividades do SESMT?"
+    },
+    {
+      "id": "NR04-Q-010",
+      "question": "A infraestrutura do SESMT é adequada (local, equipamentos, sistemas)?"
+    },
+    {
+      "id": "NR04-Q-011",
+      "question": "Há evidência de atualização do dimensionamento quando varia o quadro de empregados?"
+    },
+    {
+      "id": "NR04-Q-012",
+      "question": "O SESMT promove treinamentos e campanhas de prevenção?"
+    },
+    {
+      "id": "NR04-Q-013",
+      "question": "Em caso de SESMT externo, há contrato com escopo e periodicidade?"
+    },
+    {
+      "id": "NR04-Q-014",
+      "question": "Há comunicação formal de recomendações do SESMT e retorno da direção?"
+    },
+    {
+      "id": "NR04-Q-015",
+      "question": "Indicadores de SST são monitorados (freq./gravidade, afastamentos etc.)?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-04-atualizada-2023.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

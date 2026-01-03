@@ -1,0 +1,54 @@
+{
+  "nr": "NR-22",
+  "title": "Segurança e Saúde Ocupacional na Mineração",
+  "version": {
+    "portaria": "Portaria MTP nº 2.219",
+    "date": "2024-07-30"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR22-Q-001",
+      "question": "Existe PGR específico para mineração e atualizado?"
+    },
+    {
+      "id": "NR22-Q-002",
+      "question": "Há plano de emergência para mina subterrânea e a céu aberto?"
+    },
+    {
+      "id": "NR22-Q-003",
+      "question": "As vias de acesso e ventilação estão mantidas e inspecionadas?"
+    },
+    {
+      "id": "NR22-Q-004",
+      "question": "Os sistemas de monitoramento de gases e poeiras estão operacionais?"
+    },
+    {
+      "id": "NR22-Q-005",
+      "question": "Trabalhadores receberam treinamento específico sobre riscos da mineração?"
+    },
+    {
+      "id": "NR22-Q-006",
+      "question": "As frentes de lavra e galerias possuem sinalização e suporte adequados?"
+    },
+    {
+      "id": "NR22-Q-007",
+      "question": "Equipamentos de transporte e perfuração têm manutenção e inspeção registradas?"
+    },
+    {
+      "id": "NR22-Q-008",
+      "question": "Há controle e inventário de explosivos utilizados na mineração?"
+    },
+    {
+      "id": "NR22-Q-009",
+      "question": "O plano de resgate e primeiros socorros está implementado e testado?"
+    },
+    {
+      "id": "NR22-Q-010",
+      "question": "O PCMSO está integrado ao PGR da mineração?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-22-atualizada-2024-iii.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

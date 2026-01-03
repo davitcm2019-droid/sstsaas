@@ -1,0 +1,54 @@
+{
+  "nr": "NR-16",
+  "title": "Atividades e Operações Perigosas",
+  "version": {
+    "portaria": "Portaria MTP nº 3.214",
+    "date": "2025-01-10"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR16-Q-001",
+      "question": "Há levantamento atualizado das áreas e atividades com periculosidade?"
+    },
+    {
+      "id": "NR16-Q-002",
+      "question": "Os laudos técnicos foram emitidos por profissionais habilitados com ART?"
+    },
+    {
+      "id": "NR16-Q-003",
+      "question": "Os trabalhadores expostos foram identificados nominalmente?"
+    },
+    {
+      "id": "NR16-Q-004",
+      "question": "Os adicionais de periculosidade estão aplicados conforme laudo?"
+    },
+    {
+      "id": "NR16-Q-005",
+      "question": "As áreas de risco estão sinalizadas e isoladas?"
+    },
+    {
+      "id": "NR16-Q-006",
+      "question": "As fontes de energia inflamável, explosiva ou elétrica estão controladas?"
+    },
+    {
+      "id": "NR16-Q-007",
+      "question": "Os equipamentos possuem certificação de segurança para atmosferas explosivas?"
+    },
+    {
+      "id": "NR16-Q-008",
+      "question": "Há registros de inspeções e manutenção preventiva dos sistemas elétricos e tanques?"
+    },
+    {
+      "id": "NR16-Q-009",
+      "question": "Os trabalhadores receberam treinamento sobre riscos e condutas seguras?"
+    },
+    {
+      "id": "NR16-Q-010",
+      "question": "Procedimentos de emergência estão estabelecidos e divulgados?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-16-atualizada-2025-1.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

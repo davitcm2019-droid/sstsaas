@@ -1,0 +1,54 @@
+{
+  "nr": "NR-15",
+  "title": "Atividades e Operações Insalubres",
+  "version": {
+    "portaria": "Portaria MTP nº 1.857",
+    "date": "2022-06-10"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR15-Q-001",
+      "question": "As avaliações ambientais foram realizadas para todos os agentes previstos?"
+    },
+    {
+      "id": "NR15-Q-002",
+      "question": "Os métodos de medição seguem as NHOs aplicáveis?"
+    },
+    {
+      "id": "NR15-Q-003",
+      "question": "Os limites de tolerância e exposições estão devidamente documentados?"
+    },
+    {
+      "id": "NR15-Q-004",
+      "question": "Os relatórios técnicos indicam medidas de controle e periodicidade de reavaliação?"
+    },
+    {
+      "id": "NR15-Q-005",
+      "question": "Os resultados das avaliações são comunicados aos trabalhadores?"
+    },
+    {
+      "id": "NR15-Q-006",
+      "question": "Há correlação entre agentes insalubres e medidas do PGR?"
+    },
+    {
+      "id": "NR15-Q-007",
+      "question": "A eliminação/redução da insalubridade foi priorizada conforme hierarquia de controle?"
+    },
+    {
+      "id": "NR15-Q-008",
+      "question": "Os adicionais de insalubridade estão corretamente aplicados conforme laudo?"
+    },
+    {
+      "id": "NR15-Q-009",
+      "question": "Os EPIs utilizados possuem CA e comprovação de eficiência?"
+    },
+    {
+      "id": "NR15-Q-010",
+      "question": "Os laudos e registros de avaliação possuem assinatura de profissional habilitado?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-15-atualizada-2022.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

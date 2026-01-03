@@ -1,0 +1,54 @@
+{
+  "nr": "NR-19",
+  "title": "Explosivos",
+  "version": {
+    "portaria": "Portaria MTP nº 1.864",
+    "date": "2023-08-24"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR19-Q-001",
+      "question": "Há controle e registro da aquisição, armazenamento e uso de explosivos?"
+    },
+    {
+      "id": "NR19-Q-002",
+      "question": "Os paióis possuem projeto aprovado e afastamentos conforme a NR‑19?"
+    },
+    {
+      "id": "NR19-Q-003",
+      "question": "As áreas de armazenamento estão sinalizadas e possuem ventilação adequada?"
+    },
+    {
+      "id": "NR19-Q-004",
+      "question": "Os trabalhadores possuem capacitação específica para manuseio de explosivos?"
+    },
+    {
+      "id": "NR19-Q-005",
+      "question": "Há controle de acesso restrito às áreas de explosivos?"
+    },
+    {
+      "id": "NR19-Q-006",
+      "question": "Os equipamentos e ferramentas utilizados são anti-faísca e adequados?"
+    },
+    {
+      "id": "NR19-Q-007",
+      "question": "Há plano de emergência e evacuação específico para explosivos?"
+    },
+    {
+      "id": "NR19-Q-008",
+      "question": "Os resíduos e sobras de explosivos são descartados conforme normas técnicas?"
+    },
+    {
+      "id": "NR19-Q-009",
+      "question": "Os transportes de explosivos seguem as regras do Exército e da NR‑19?"
+    },
+    {
+      "id": "NR19-Q-010",
+      "question": "As inspeções de segurança são realizadas periodicamente e documentadas?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-19-atualizada-2023.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

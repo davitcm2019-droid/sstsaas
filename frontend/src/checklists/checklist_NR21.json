@@ -1,0 +1,54 @@
+{
+  "nr": "NR-21",
+  "title": "Trabalho a Céu Aberto",
+  "version": {
+    "portaria": "Portaria GM nº 3.214",
+    "date": "1978-06-08"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR21-Q-001",
+      "question": "Os trabalhadores têm acesso a abrigos adequados contra intempéries?"
+    },
+    {
+      "id": "NR21-Q-002",
+      "question": "Há fornecimento de água potável e instalações sanitárias?"
+    },
+    {
+      "id": "NR21-Q-003",
+      "question": "Os riscos ambientais (sol, calor, frio, chuva, vento) são avaliados?"
+    },
+    {
+      "id": "NR21-Q-004",
+      "question": "Há fornecimento de EPI/EPC adequados às condições de trabalho?"
+    },
+    {
+      "id": "NR21-Q-005",
+      "question": "As jornadas são adaptadas às condições climáticas extremas?"
+    },
+    {
+      "id": "NR21-Q-006",
+      "question": "Existe supervisão e acompanhamento médico dos trabalhadores expostos?"
+    },
+    {
+      "id": "NR21-Q-007",
+      "question": "Os locais de trabalho estão livres de risco de queda ou soterramento?"
+    },
+    {
+      "id": "NR21-Q-008",
+      "question": "Há plano de contingência para condições climáticas adversas?"
+    },
+    {
+      "id": "NR21-Q-009",
+      "question": "Os trabalhadores recebem pausas para descanso conforme exigido?"
+    },
+    {
+      "id": "NR21-Q-010",
+      "question": "O PGR contempla os riscos de trabalho a céu aberto?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-21.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

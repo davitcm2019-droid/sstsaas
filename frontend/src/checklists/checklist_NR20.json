@@ -1,0 +1,54 @@
+{
+  "nr": "NR-20",
+  "title": "Segurança e Saúde no Trabalho com Inflamáveis e Combustíveis",
+  "version": {
+    "portaria": "Portaria MTE nº 1.364",
+    "date": "2025-01-10"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR20-Q-001",
+      "question": "Há classificação da instalação conforme classe de risco da NR‑20?"
+    },
+    {
+      "id": "NR20-Q-002",
+      "question": "O PPR de inflamáveis está atualizado e assinado por responsável técnico?"
+    },
+    {
+      "id": "NR20-Q-003",
+      "question": "Os tanques e recipientes possuem identificação e sinalização adequadas?"
+    },
+    {
+      "id": "NR20-Q-004",
+      "question": "Há plano de inspeção e manutenção de tanques, válvulas e linhas?"
+    },
+    {
+      "id": "NR20-Q-005",
+      "question": "Os trabalhadores receberam treinamento compatível com a classe da instalação?"
+    },
+    {
+      "id": "NR20-Q-006",
+      "question": "Há controle de acesso e plano de emergência específico?"
+    },
+    {
+      "id": "NR20-Q-007",
+      "question": "Sistemas de ventilação e detecção de vazamentos estão operacionais?"
+    },
+    {
+      "id": "NR20-Q-008",
+      "question": "Existem procedimentos para controle de fontes de ignição?"
+    },
+    {
+      "id": "NR20-Q-009",
+      "question": "Há documentação de calibração de detectores e instrumentos de medição?"
+    },
+    {
+      "id": "NR20-Q-010",
+      "question": "As áreas classificadas estão mapeadas e sinalizadas?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-20-atualizada-2025.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

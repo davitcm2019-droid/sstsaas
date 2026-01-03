@@ -1,0 +1,54 @@
+{
+  "nr": "NR-33",
+  "title": "Segurança e Saúde nos Trabalhos em Espaços Confinados",
+  "version": {
+    "portaria": "Portaria MTP nº 1.864",
+    "date": "2022-12-02"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR33-Q-001",
+      "question": "Existe inventário de espaços confinados atualizado?"
+    },
+    {
+      "id": "NR33-Q-002",
+      "question": "Os trabalhadores possuem capacitação específica e válida?"
+    },
+    {
+      "id": "NR33-Q-003",
+      "question": "Há procedimentos formais de entrada e autorização de trabalho?"
+    },
+    {
+      "id": "NR33-Q-004",
+      "question": "Os equipamentos de detecção de gases estão calibrados e disponíveis?"
+    },
+    {
+      "id": "NR33-Q-005",
+      "question": "Os EPIs e EPCs são adequados às atividades e riscos?"
+    },
+    {
+      "id": "NR33-Q-006",
+      "question": "Há supervisão permanente durante as entradas?"
+    },
+    {
+      "id": "NR33-Q-007",
+      "question": "Os planos de resgate e salvamento estão disponíveis e testados?"
+    },
+    {
+      "id": "NR33-Q-008",
+      "question": "As comunicações entre equipe interna e externa estão asseguradas?"
+    },
+    {
+      "id": "NR33-Q-009",
+      "question": "Há controle documental das permissões de entrada (PETs)?"
+    },
+    {
+      "id": "NR33-Q-010",
+      "question": "Os exames médicos contemplam aptidão para trabalho em espaço confinado?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-33-atualizada-2022-_retificada.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "nr": "NR-38",
+  "title": "Segurança e Saúde no Trabalho nas Atividades de Limpeza Urbana e Manejo de Resíduos Sólidos",
+  "version": {
+    "portaria": "Portaria MTP nº 1.847",
+    "date": "2025-01-01"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR38-Q-001",
+      "question": "Existe PGR específico para atividades de limpeza urbana?"
+    },
+    {
+      "id": "NR38-Q-002",
+      "question": "Os trabalhadores receberam treinamento sobre riscos e uso de EPIs?"
+    },
+    {
+      "id": "NR38-Q-003",
+      "question": "Os veículos de coleta possuem cabine e compartimento conforme norma?"
+    },
+    {
+      "id": "NR38-Q-004",
+      "question": "Há procedimentos para manuseio e descarte de resíduos perigosos?"
+    },
+    {
+      "id": "NR38-Q-005",
+      "question": "Os coletores possuem EPIs adequados e higienizados?"
+    },
+    {
+      "id": "NR38-Q-006",
+      "question": "As áreas de transbordo e triagem possuem sinalização e isolamento?"
+    },
+    {
+      "id": "NR38-Q-007",
+      "question": "Há instalações sanitárias e áreas de descanso nos pontos de apoio?"
+    },
+    {
+      "id": "NR38-Q-008",
+      "question": "Os equipamentos de compactação possuem dispositivos de segurança?"
+    },
+    {
+      "id": "NR38-Q-009",
+      "question": "Há registro de vacinação dos trabalhadores contra doenças ocupacionais?"
+    },
+    {
+      "id": "NR38-Q-010",
+      "question": "Os planos de emergência abrangem acidentes com resíduos e veículos?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-38-atualizada-2025-3.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

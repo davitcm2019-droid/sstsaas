@@ -1,0 +1,19 @@
+{
+  "name": "sst-saas",
+  "version": "1.0.0",
+  "description": "Plataforma de Gestão de Segurança do Trabalho",
+  "main": "server.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start"
+  },
+  "keywords": ["sst", "segurança", "trabalho", "saas"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

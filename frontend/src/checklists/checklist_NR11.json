@@ -1,0 +1,54 @@
+{
+  "nr": "NR-11",
+  "title": "Transporte, Movimentação, Armazenagem e Manuseio de Materiais",
+  "version": {
+    "portaria": "Portaria MTb nº 505",
+    "date": "2016-04-29"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR11-Q-001",
+      "question": "Os equipamentos de transporte e movimentação exibem capacidade nominal visível?"
+    },
+    {
+      "id": "NR11-Q-002",
+      "question": "Os operadores possuem capacitação específica e registros válidos?"
+    },
+    {
+      "id": "NR11-Q-003",
+      "question": "Os equipamentos de içamento possuem inspeções periódicas e ART de instalação?"
+    },
+    {
+      "id": "NR11-Q-004",
+      "question": "As áreas de circulação estão sinalizadas e desobstruídas?"
+    },
+    {
+      "id": "NR11-Q-005",
+      "question": "As empilhadeiras possuem dispositivos de segurança e manutenção atualizada?"
+    },
+    {
+      "id": "NR11-Q-006",
+      "question": "Há plano de manutenção preventiva dos equipamentos de transporte?"
+    },
+    {
+      "id": "NR11-Q-007",
+      "question": "Dispositivos de travamento e engate estão funcionando adequadamente?"
+    },
+    {
+      "id": "NR11-Q-008",
+      "question": "Os equipamentos de movimentação são operados conforme o manual do fabricante?"
+    },
+    {
+      "id": "NR11-Q-009",
+      "question": "Existe registro de inspeção anual dos equipamentos de içamento?"
+    },
+    {
+      "id": "NR11-Q-010",
+      "question": "A movimentação de chapas e materiais pesados segue o Anexo I da NR‑11?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-11-atualizada-2016.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

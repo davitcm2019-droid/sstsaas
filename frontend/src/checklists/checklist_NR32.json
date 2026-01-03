@@ -1,0 +1,54 @@
+{
+  "nr": "NR-32",
+  "title": "Segurança e Saúde no Trabalho em Serviços de Saúde",
+  "version": {
+    "portaria": "Portaria MTP nº 1.864",
+    "date": "2023-08-24"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR32-Q-001",
+      "question": "Existe PGR ou PCMSO específico para unidades de saúde?"
+    },
+    {
+      "id": "NR32-Q-002",
+      "question": "Há controle e registro de acidentes com material biológico?"
+    },
+    {
+      "id": "NR32-Q-003",
+      "question": "Os trabalhadores receberam treinamento sobre biossegurança?"
+    },
+    {
+      "id": "NR32-Q-004",
+      "question": "Há segregação e descarte correto de resíduos de serviços de saúde?"
+    },
+    {
+      "id": "NR32-Q-005",
+      "question": "Os EPIs são fornecidos e substituídos conforme necessidade?"
+    },
+    {
+      "id": "NR32-Q-006",
+      "question": "Há vacinação obrigatória e registro de imunização dos trabalhadores?"
+    },
+    {
+      "id": "NR32-Q-007",
+      "question": "As áreas críticas possuem barreiras físicas e sinalização de risco biológico?"
+    },
+    {
+      "id": "NR32-Q-008",
+      "question": "Há plano de contingência para emergências biológicas e químicas?"
+    },
+    {
+      "id": "NR32-Q-009",
+      "question": "Os equipamentos de proteção coletiva (cabines, exaustores) estão operacionais?"
+    },
+    {
+      "id": "NR32-Q-010",
+      "question": "Há procedimentos para transporte seguro de amostras e resíduos?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-32-atualizada-2023-1.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

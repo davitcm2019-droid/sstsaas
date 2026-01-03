@@ -1,0 +1,54 @@
+{
+  "nr": "NR-09",
+  "title": "Exposições Ocupacionais a Agentes Físicos, Químicos e Biológicos",
+  "version": {
+    "portaria": "Portaria MTP nº 426",
+    "date": "2021-10-07"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR09-Q-001",
+      "question": "As exposições ocupacionais a F/Q/B estão identificadas por fonte, tarefa e setor?"
+    },
+    {
+      "id": "NR09-Q-002",
+      "question": "A abrangência da avaliação decorre das características da exposição?"
+    },
+    {
+      "id": "NR09-Q-003",
+      "question": "Há avaliações quantitativas quando necessárias (métodos reconhecidos, ex.: NHO)?"
+    },
+    {
+      "id": "NR09-Q-004",
+      "question": "Os instrumentos possuem calibração rastreável?"
+    },
+    {
+      "id": "NR09-Q-005",
+      "question": "Limites de exposição/índices de ação são considerados nos laudos?"
+    },
+    {
+      "id": "NR09-Q-006",
+      "question": "Planos de controle seguem hierarquia das medidas?"
+    },
+    {
+      "id": "NR09-Q-007",
+      "question": "Monitoramento de exposição é reavaliado após mudanças/processo?"
+    },
+    {
+      "id": "NR09-Q-008",
+      "question": "Resultados e recomendações integram o PGR?"
+    },
+    {
+      "id": "NR09-Q-009",
+      "question": "Trabalhadores foram informados dos resultados e medidas?"
+    },
+    {
+      "id": "NR09-Q-010",
+      "question": "Há registros e guarda dos relatórios e planilhas de campo?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-09-atualizada-2021.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

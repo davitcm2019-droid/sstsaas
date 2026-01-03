@@ -1,0 +1,54 @@
+{
+  "nr": "NR-24",
+  "title": "Condições Sanitárias e de Conforto nos Locais de Trabalho",
+  "version": {
+    "portaria": "Portaria MTP nº 1.857",
+    "date": "2022-06-10"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR24-Q-001",
+      "question": "Existem instalações sanitárias adequadas e separadas por sexo?"
+    },
+    {
+      "id": "NR24-Q-002",
+      "question": "As condições de limpeza e conservação são mantidas regularmente?"
+    },
+    {
+      "id": "NR24-Q-003",
+      "question": "Há fornecimento de água potável em quantidade suficiente?"
+    },
+    {
+      "id": "NR24-Q-004",
+      "question": "Os vestiários possuem armários individuais e ventilação adequada?"
+    },
+    {
+      "id": "NR24-Q-005",
+      "question": "Há locais apropriados para refeições e descanso?"
+    },
+    {
+      "id": "NR24-Q-006",
+      "question": "As áreas de vivência atendem às exigências de conforto térmico e acústico?"
+    },
+    {
+      "id": "NR24-Q-007",
+      "question": "Há iluminação e ventilação adequadas nos sanitários e refeitórios?"
+    },
+    {
+      "id": "NR24-Q-008",
+      "question": "Existem recipientes para descarte de resíduos sanitários e alimentares?"
+    },
+    {
+      "id": "NR24-Q-009",
+      "question": "Há higienização regular dos bebedouros e reservatórios de água?"
+    },
+    {
+      "id": "NR24-Q-010",
+      "question": "As instalações elétricas e hidráulicas estão em boas condições?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-24-atualizada-2022.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "nr": "NR-08",
+  "title": "Edificações",
+  "version": {
+    "portaria": "Portaria MTP nº 2.188",
+    "date": "2022-07-28"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR08-Q-001",
+      "question": "Os pisos estão isentos de saliências/depressões que prejudiquem a circulação?"
+    },
+    {
+      "id": "NR08-Q-002",
+      "question": "Aberturas em pisos/paredes estão devidamente protegidas?"
+    },
+    {
+      "id": "NR08-Q-003",
+      "question": "Escadas e rampas suportam as cargas previstas (projeto/ART)?"
+    },
+    {
+      "id": "NR08-Q-004",
+      "question": "Há sistemas/material antiderrapante onde houver risco de escorregamento?"
+    },
+    {
+      "id": "NR08-Q-005",
+      "question": "Circulações e rotas de fuga estão desobstruídas e sinalizadas?"
+    },
+    {
+      "id": "NR08-Q-006",
+      "question": "Há iluminação e ventilação adequadas aos ambientes?"
+    },
+    {
+      "id": "NR08-Q-007",
+      "question": "Áreas molhadas possuem acabamentos adequados e drenagem?"
+    },
+    {
+      "id": "NR08-Q-008",
+      "question": "Existe manutenção predial preventiva e registros de inspeção?"
+    },
+    {
+      "id": "NR08-Q-009",
+      "question": "Acessibilidade está em conformidade com normas técnicas aplicáveis?"
+    },
+    {
+      "id": "NR08-Q-010",
+      "question": "Guarda-corpos/corrimãos atendem dimensões e fixação previstas?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-08-atualizada-2022.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

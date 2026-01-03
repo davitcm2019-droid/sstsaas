@@ -1,0 +1,54 @@
+{
+  "nr": "NR-14",
+  "title": "Forjas",
+  "version": {
+    "portaria": "Portaria MTP nº 1.857",
+    "date": "2022-06-10"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR14-Q-001",
+      "question": "As forjas possuem enclausuramento e ventilação adequada?"
+    },
+    {
+      "id": "NR14-Q-002",
+      "question": "Os trabalhadores utilizam EPI/EPC adequados ao tipo de forjamento?"
+    },
+    {
+      "id": "NR14-Q-003",
+      "question": "Há barreiras térmicas e proteção contra respingos de metal?"
+    },
+    {
+      "id": "NR14-Q-004",
+      "question": "A manipulação de peças quentes ocorre com ferramentas específicas?"
+    },
+    {
+      "id": "NR14-Q-005",
+      "question": "Há controle de temperatura e inspeção de integridade dos fornos?"
+    },
+    {
+      "id": "NR14-Q-006",
+      "question": "Existe sinalização de áreas quentes e restritas?"
+    },
+    {
+      "id": "NR14-Q-007",
+      "question": "Os equipamentos de resfriamento e ventilação estão operacionais?"
+    },
+    {
+      "id": "NR14-Q-008",
+      "question": "Procedimentos de emergência para queimaduras e incêndios estão disponíveis?"
+    },
+    {
+      "id": "NR14-Q-009",
+      "question": "Os trabalhadores receberam treinamento sobre riscos térmicos?"
+    },
+    {
+      "id": "NR14-Q-010",
+      "question": "Há plano de manutenção preventiva e inspeção periódica dos sistemas térmicos?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-14-atualizada-2022.pdf",
+    "generated_at": "2025-10-26"
+  }
+}
