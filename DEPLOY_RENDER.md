@@ -27,6 +27,14 @@ Opcional (bootstrap de admin no banco):
 - `INITIAL_ADMIN_PASSWORD`
 - `INITIAL_ADMIN_NAME`
 
+Conecta GOV (opcional - consulta oficial de CNPJ):
+- `CONECTA_GOV_TOKEN_URL`
+- `CONECTA_GOV_CNPJ_URL`
+- `CONECTA_GOV_CLIENT_ID`
+- `CONECTA_GOV_CLIENT_SECRET`
+- `CONECTA_GOV_SCOPE` (opcional)
+- `CONECTA_GOV_TIMEOUT_MS` (opcional; padrão `10000`)
+
 ## 2) Frontend (Static Site)
 
 Render → **New +** → **Static Site**

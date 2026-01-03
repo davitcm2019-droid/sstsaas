@@ -50,6 +50,7 @@ api.interceptors.response.use(
 export const empresasService = {
   getAll: (params = {}) => api.get('/empresas', { params }),
   getById: (id) => api.get(`/empresas/${id}`),
+  lookupCnpj: (cnpj) => api.post('/empresas/lookup-cnpj', { cnpj }),
   create: (data) => api.post('/empresas', data),
   update: (id, data) => api.put(`/empresas/${id}`, data),
   delete: (id) => api.delete(`/empresas/${id}`),

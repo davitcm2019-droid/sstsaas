@@ -65,6 +65,14 @@ const config = {
     url: parseOptionalString('DATABASE_URL', ''),
     ssl: parseOptionalBool('DATABASE_SSL', isProduction)
   },
+  conectaGov: {
+    tokenUrl: parseOptionalString('CONECTA_GOV_TOKEN_URL', ''),
+    cnpjUrl: parseOptionalString('CONECTA_GOV_CNPJ_URL', ''),
+    clientId: parseOptionalString('CONECTA_GOV_CLIENT_ID', ''),
+    clientSecret: parseOptionalString('CONECTA_GOV_CLIENT_SECRET', ''),
+    scope: parseOptionalString('CONECTA_GOV_SCOPE', ''),
+    timeoutMs: parseOptionalInt('CONECTA_GOV_TIMEOUT_MS', 10000)
+  },
   security: {
     bcryptSaltRounds: parseOptionalInt('BCRYPT_SALT_ROUNDS', 10)
   }
