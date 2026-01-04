@@ -69,7 +69,7 @@ const config = {
     timeoutMs: parseOptionalInt('CNPJA_TIMEOUT_MS', 8000),
     apiKey: parseOptionalString('CNPJA_API_KEY', ''),
     apiKeyHeader: parseOptionalString('CNPJA_API_KEY_HEADER', 'Authorization'),
-    apiKeyPrefix: parseOptionalStringAllowEmpty('CNPJA_API_KEY_PREFIX', 'Bearer'),
+    apiKeyPrefix: parseOptionalStringAllowEmpty('CNPJA_API_KEY_PREFIX', ''),
     userAgent: parseOptionalString('CNPJA_USER_AGENT', 'SST-SaaS/1.0'),
     cacheTtlSeconds: parseOptionalInt('CNPJA_CACHE_TTL_SECONDS', 86400)
   }

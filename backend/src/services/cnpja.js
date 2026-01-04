@@ -115,9 +115,10 @@ const lookupCnpjOnCnpja = async (cnpjDigits) => {
 
 const mapCnpjaOfficeToEmpresaDTO = (office) => {
   const companyName = normalizeString(office?.company?.name);
-  const taxId = sanitizeCnpj(office?.tax_id);
-  const mainActivityCode = normalizeCnae(office?.main_activity?.code);
-  const mainActivityText = normalizeString(office?.main_activity?.text);
+  const taxId = sanitizeCnpj(office?.taxId || office?.tax_id);
+  const mainActivity = office?.mainActivity || office?.main_activity;
+  const mainActivityCode = normalizeCnae(mainActivity?.code);
+  const mainActivityText = normalizeString(mainActivity?.text);
 
   const street = normalizeString(office?.address?.street);
   const number = normalizeString(office?.address?.number);
@@ -132,7 +133,9 @@ const mapCnpjaOfficeToEmpresaDTO = (office) => {
 
   const telefone = normalizePhone(office?.phones?.[0]?.number);
   const email = normalizeString(office?.emails?.[0]?.address);
-  const responsavel = normalizeString(office?.partners?.[0]?.name);
+  const responsavel = normalizeString(
+    office?.company?.members?.[0]?.person?.name || office?.partners?.[0]?.name
+  );
 
   return {
     nome: companyName,

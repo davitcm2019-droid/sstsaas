@@ -70,7 +70,7 @@ Cada banco no Render tem:
 - `CNPJA_USER_AGENT` (padrão: `SST-SaaS/1.0`)
 - `CNPJA_API_KEY` (se a CNPJA exigir autenticação)
 - `CNPJA_API_KEY_HEADER` (default: `Authorization`)
-- `CNPJA_API_KEY_PREFIX` (default: `Bearer`)
+- `CNPJA_API_KEY_PREFIX` (default: vazio; exemplo: `Bearer`)
 
 ### Frontend (build-time)
 
