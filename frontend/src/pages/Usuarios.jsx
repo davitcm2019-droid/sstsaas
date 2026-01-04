@@ -12,6 +12,8 @@ import {
   UserX
 } from 'lucide-react';
 import { usuariosService } from '../services/api';
+import FormModal from '../components/FormModal';
+import UsuarioForm from '../components/forms/UsuarioForm';
 
 const Usuarios = () => {
   const [usuarios, setUsuarios] = useState([]);
@@ -21,6 +23,8 @@ const Usuarios = () => {
     perfil: '',
     status: ''
   });
+  const [showModal, setShowModal] = useState(false);
+  const [selectedUsuario, setSelectedUsuario] = useState(null);
 
   useEffect(() => {
     loadUsuarios();
@@ -117,6 +121,21 @@ const Usuarios = () => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  const handleCreate = () => {
+    setSelectedUsuario(null);
+    setShowModal(true);
+  };
+
+  const handleEdit = (usuario) => {
+    setSelectedUsuario(usuario);
+    setShowModal(true);
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
+    setSelectedUsuario(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -135,7 +154,7 @@ const Usuarios = () => {
             Gerencie os usuários e permissões do sistema
           </p>
         </div>
-        <button className="btn-primary flex items-center">
+        <button onClick={handleCreate} className="btn-primary flex items-center">
           <Plus className="h-4 w-4 mr-2" />
           Novo Usuário
         </button>
@@ -215,7 +234,10 @@ const Usuarios = () => {
             </div>
 
             <div className="flex space-x-2">
-              <button className="flex-1 btn-secondary flex items-center justify-center">
+              <button
+                className="flex-1 btn-secondary flex items-center justify-center"
+                onClick={() => handleEdit(usuario)}
+              >
                 <Edit className="h-4 w-4 mr-2" />
                 Editar
               </button>
@@ -316,6 +338,23 @@ const Usuarios = () => {
           </div>
         </div>
       </div>
+
+      <FormModal
+        isOpen={showModal}
+        onClose={handleModalClose}
+        title={selectedUsuario ? 'Editar Usuário' : 'Novo Usuário'}
+        showFooter={false}
+        asForm={false}
+      >
+        <UsuarioForm
+          usuario={selectedUsuario}
+          onSave={() => {
+            loadUsuarios();
+            handleModalClose();
+          }}
+          onCancel={handleModalClose}
+        />
+      </FormModal>
     </div>
   );
 };

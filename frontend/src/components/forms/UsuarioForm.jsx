@@ -1,36 +1,111 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usuariosService } from '../../services/api';
 
+const DEFAULT_FORM = {
+  nome: '',
+  email: '',
+  senha: '',
+  perfil: 'visualizador',
+  status: 'ativo',
+  telefone: '',
+  cargo: '',
+  empresaId: ''
+};
+
+const perfilFromAcessos = ({ canChecklists, canUsers }) => {
+  if (canUsers) return 'administrador';
+  if (canChecklists) return 'tecnico_seguranca';
+  return 'visualizador';
+};
+
+const acessosFromPerfil = (perfil) => {
+  if (perfil === 'administrador') return { canChecklists: true, canUsers: true };
+  if (perfil === 'tecnico_seguranca') return { canChecklists: true, canUsers: false };
+  return { canChecklists: false, canUsers: false };
+};
+
 const UsuarioForm = ({ usuario, onSave, onCancel }) => {
-  const [formData, setFormData] = useState({
-    nome: '',
-    email: '',
-    senha: '',
-    perfil: 'visualizador',
-    status: 'ativo',
-    telefone: '',
-    cargo: '',
-    empresaId: ''
-  });
+  const [formData, setFormData] = useState({ ...DEFAULT_FORM });
+  const [canChecklists, setCanChecklists] = useState(false);
+  const [canUsers, setCanUsers] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (usuario) {
-      setFormData({
+      const merged = {
+        ...DEFAULT_FORM,
         ...usuario,
         senha: '' // Não mostrar senha existente
-      });
+      };
+      const acessos = acessosFromPerfil(merged.perfil);
+      setFormData(merged);
+      setCanChecklists(acessos.canChecklists);
+      setCanUsers(acessos.canUsers);
+      return;
     }
+    setFormData({ ...DEFAULT_FORM });
+    setCanChecklists(false);
+    setCanUsers(false);
   }, [usuario]);
+
+  const acessosPreview = useMemo(() => {
+    return [
+      { id: 'dashboard', label: 'Dashboard', required: true },
+      { id: 'empresas', label: 'Empresas', required: true },
+      { id: 'sst', label: 'Dashboard SST', required: true },
+      { id: 'tarefas', label: 'Tarefas', required: true },
+      { id: 'cipa', label: 'CIPA', required: true },
+      { id: 'treinamentos', label: 'Treinamentos', required: true },
+      { id: 'acoes', label: 'Ações', required: true },
+      { id: 'agenda', label: 'Agenda', required: true },
+      { id: 'incidentes', label: 'Incidentes', required: true },
+      { id: 'documentos', label: 'Documentos', required: true },
+      { id: 'relatorios', label: 'Relatórios', required: true },
+      {
+        id: 'checklists',
+        label: 'Checklists e inspeções',
+        required: false,
+        enabled: canChecklists
+      },
+      {
+        id: 'usuarios',
+        label: 'Gestão de usuários',
+        required: false,
+        enabled: canUsers
+      }
+    ];
+  }, [canChecklists, canUsers]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    if (name === 'perfil') {
+      const acessos = acessosFromPerfil(value);
+      setCanChecklists(acessos.canChecklists);
+      setCanUsers(acessos.canUsers);
+    }
+
+    setFormData((prev) => ({
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleToggleChecklists = (nextValue) => {
+    if (!nextValue && canUsers) return;
+
+    const perfil = perfilFromAcessos({ canChecklists: nextValue, canUsers });
+    setCanChecklists(nextValue);
+    setFormData((prev) => ({ ...prev, perfil }));
+  };
+
+  const handleToggleUsers = (nextValue) => {
+    const nextChecklists = nextValue ? true : canChecklists;
+    const perfil = perfilFromAcessos({ canChecklists: nextChecklists, canUsers: nextValue });
+    setCanUsers(nextValue);
+    setCanChecklists(nextChecklists);
+    setFormData((prev) => ({ ...prev, perfil }));
   };
 
   const handleSubmit = async (e) => {
@@ -109,7 +184,7 @@ const UsuarioForm = ({ usuario, onSave, onCancel }) => {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Perfil *
+            Cargo (perfil) *
           </label>
           <select
             name="perfil"
@@ -188,6 +263,66 @@ const UsuarioForm = ({ usuario, onSave, onCancel }) => {
           {error}
         </div>
       )}
+
+      <div className="rounded-lg border border-gray-200 p-4 space-y-3">
+        <div>
+          <h4 className="text-sm font-medium text-gray-900">Acessos</h4>
+          <p className="text-xs text-gray-500">
+            O sistema usa perfis. Ajustar os acessos abaixo atualiza automaticamente o cargo (perfil).
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-start gap-3">
+            <input type="checkbox" checked readOnly className="mt-1" />
+            <div className="text-sm">
+              <div className="font-medium text-gray-900">Acesso básico (sempre)</div>
+              <div className="text-gray-600">
+                {acessosPreview
+                  .filter((item) => item.required)
+                  .map((item) => item.label)
+                  .join(' • ')}
+              </div>
+            </div>
+          </div>
+
+          <label className={`flex items-start gap-3 ${canUsers ? 'opacity-60' : ''}`}>
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={canChecklists}
+              disabled={canUsers}
+              onChange={(e) => handleToggleChecklists(e.target.checked)}
+            />
+            <div className="text-sm">
+              <div className="font-medium text-gray-900">Checklists e inspeções</div>
+              <div className="text-gray-600">Acessar Checklists e iniciar inspeções por NR/CNAE.</div>
+            </div>
+          </label>
+
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={canUsers}
+              onChange={(e) => handleToggleUsers(e.target.checked)}
+            />
+            <div className="text-sm">
+              <div className="font-medium text-gray-900">Gestão de usuários</div>
+              <div className="text-gray-600">Acessar tela de Usuários e gerenciar permissões.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2 pt-2">
+        <button type="button" onClick={onCancel} className="btn-secondary" disabled={loading}>
+          Cancelar
+        </button>
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? 'Salvando...' : 'Salvar'}
+        </button>
+      </div>
     </form>
   );
 };
