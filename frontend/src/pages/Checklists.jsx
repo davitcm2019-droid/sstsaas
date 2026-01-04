@@ -1,19 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  ClipboardCheck, 
-  Search, 
-  Filter, 
-  Plus, 
-  Eye, 
-  Play,
-  CheckCircle,
-  Clock,
-  Building2,
-  User
-} from 'lucide-react';
+import { ClipboardCheck, Search, Plus, Eye, Play, Clock, Building2, User } from 'lucide-react';
 import { checklistsService, empresasService } from '../services/api';
 import ChecklistModal from '../components/ChecklistModal';
+import FormModal from '../components/FormModal';
 
 const Checklists = () => {
   const [checklists, setChecklists] = useState([]);
@@ -25,10 +15,22 @@ const Checklists = () => {
     active: ''
   });
   const [categories, setCategories] = useState([]);
+
   const [selectedChecklist, setSelectedChecklist] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [inspectionModalOpen, setInspectionModalOpen] = useState(false);
+
   const [empresas, setEmpresas] = useState([]);
   const [selectedEmpresaId, setSelectedEmpresaId] = useState('');
+
+  const [previewChecklist, setPreviewChecklist] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const [newChecklistOpen, setNewChecklistOpen] = useState(false);
+  const [newChecklistEmpresaId, setNewChecklistEmpresaId] = useState('');
+  const [newChecklistTemplateId, setNewChecklistTemplateId] = useState('');
+  const [newChecklistTemplates, setNewChecklistTemplates] = useState([]);
+  const [newChecklistLoading, setNewChecklistLoading] = useState(false);
+  const [newChecklistError, setNewChecklistError] = useState(null);
 
   const selectedEmpresa = useMemo(() => {
     if (!selectedEmpresaId) return null;
@@ -36,24 +38,41 @@ const Checklists = () => {
     return empresas.find((empresa) => empresa.id === id) || null;
   }, [empresas, selectedEmpresaId]);
 
-  useEffect(() => {
-    loadData();
-  }, [filters.category, filters.active, selectedEmpresaId]);
+  const checklistNameById = useMemo(() => {
+    return new Map(checklists.map((checklist) => [checklist.id, checklist.name]));
+  }, [checklists]);
+
+  const visibleChecklists = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return checklists;
+
+    return checklists.filter((checklist) => {
+      const name = String(checklist.name || '').toLowerCase();
+      const description = String(checklist.description || '').toLowerCase();
+      const category = String(checklist.category || '').toLowerCase();
+      return name.includes(term) || description.includes(term) || category.includes(term);
+    });
+  }, [checklists, searchTerm]);
 
   useEffect(() => {
-    loadEmpresas();
+    void loadEmpresas();
   }, []);
 
   useEffect(() => {
-    loadCategories();
-  }, [selectedEmpresaId]);
+    void loadCategories();
+  }, [selectedEmpresa?.cnae]);
+
+  useEffect(() => {
+    void loadData();
+  }, [filters.category, filters.active, selectedEmpresa?.cnae]);
 
   const loadEmpresas = async () => {
     try {
       const response = await empresasService.getAll();
-      setEmpresas(response.data.data);
+      setEmpresas(response.data.data || []);
     } catch (error) {
       console.error('Erro ao carregar empresas:', error);
+      setEmpresas([]);
     }
   };
 
@@ -75,16 +94,19 @@ const Checklists = () => {
   const loadData = async () => {
     try {
       setLoading(true);
+
       const checklistParams = { ...filters };
       if (selectedEmpresa?.cnae) {
         checklistParams.cnae = selectedEmpresa.cnae;
       }
+
       const [checklistsRes, inspectionsRes] = await Promise.all([
         checklistsService.getAll(checklistParams),
         checklistsService.getInspections()
       ]);
-      setChecklists(checklistsRes.data.data);
-      setInspections(inspectionsRes.data.data);
+
+      setChecklists(checklistsRes.data.data || []);
+      setInspections(inspectionsRes.data.data || []);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -92,13 +114,101 @@ const Checklists = () => {
     }
   };
 
+  const loadChecklistTemplatesForEmpresa = async (empresaId) => {
+    const parsedId = parseInt(empresaId, 10);
+    const empresa = empresas.find((item) => item.id === parsedId) || null;
+
+    try {
+      setNewChecklistLoading(true);
+      setNewChecklistError(null);
+
+      const params = {};
+      if (empresa?.cnae) {
+        params.cnae = empresa.cnae;
+      }
+
+      const response = await checklistsService.getAll(params);
+      const templates = response.data.data || [];
+
+      setNewChecklistTemplates(templates);
+      setNewChecklistTemplateId((current) =>
+        current && templates.some((template) => String(template.id) === String(current)) ? current : ''
+      );
+    } catch (error) {
+      console.error('Erro ao carregar checklists:', error);
+      setNewChecklistTemplates([]);
+      setNewChecklistTemplateId('');
+      setNewChecklistError('Não foi possível carregar os checklists para esta empresa.');
+    } finally {
+      setNewChecklistLoading(false);
+    }
+  };
+
+  const openNewChecklistModal = (preferredTemplateId = '') => {
+    const initialEmpresaId = selectedEmpresaId || '';
+
+    setNewChecklistError(null);
+    setNewChecklistEmpresaId(initialEmpresaId);
+    setNewChecklistTemplateId(preferredTemplateId ? String(preferredTemplateId) : '');
+    setNewChecklistTemplates([]);
+    setNewChecklistOpen(true);
+
+    if (initialEmpresaId) {
+      void loadChecklistTemplatesForEmpresa(initialEmpresaId);
+    }
+  };
+
   const handleStartInspection = (checklist) => {
     if (!selectedEmpresa) {
-      window.alert('Selecione uma empresa para iniciar a inspeção.');
+      openNewChecklistModal(checklist?.id);
       return;
     }
+
     setSelectedChecklist(checklist);
-    setModalOpen(true);
+    setInspectionModalOpen(true);
+  };
+
+  const handlePreviewChecklist = (checklist) => {
+    setPreviewChecklist(checklist);
+    setPreviewOpen(true);
+  };
+
+  const closePreview = () => {
+    setPreviewOpen(false);
+    setPreviewChecklist(null);
+  };
+
+  const handleSubmitNewChecklist = (event) => {
+    event.preventDefault();
+
+    if (!newChecklistEmpresaId) {
+      setNewChecklistError('Selecione a empresa.');
+      return;
+    }
+
+    if (!newChecklistTemplateId) {
+      setNewChecklistError('Selecione o checklist (NR).');
+      return;
+    }
+
+    const template = newChecklistTemplates.find(
+      (item) => String(item.id) === String(newChecklistTemplateId)
+    );
+
+    if (!template) {
+      setNewChecklistError('Checklist selecionado não encontrado.');
+      return;
+    }
+
+    setSelectedEmpresaId(String(newChecklistEmpresaId));
+    setSelectedChecklist(template);
+    setNewChecklistOpen(false);
+    setInspectionModalOpen(true);
+  };
+
+  const getChecklistName = (checklistId) => {
+    const id = parseInt(checklistId, 10);
+    return checklistNameById.get(id) || `Checklist #${checklistId}`;
   };
 
   const getScoreColor = (percentage) => {
@@ -128,26 +238,6 @@ const Checklists = () => {
     });
   };
 
-  const checklistNameById = useMemo(() => {
-    return new Map(checklists.map((checklist) => [checklist.id, checklist.name]));
-  }, [checklists]);
-
-  const getChecklistName = (checklistId) => {
-    const id = parseInt(checklistId, 10);
-    return checklistNameById.get(id) || `Checklist #${checklistId}`;
-  };
-
-  const visibleChecklists = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return checklists;
-
-    return checklists.filter((checklist) => {
-      const name = String(checklist.name || '').toLowerCase();
-      const description = String(checklist.description || '').toLowerCase();
-      return name.includes(term) || description.includes(term);
-    });
-  }, [checklists, searchTerm]);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -162,11 +252,9 @@ const Checklists = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Checklists de Inspeção</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Gerencie checklists e realize inspeções de segurança
-          </p>
+          <p className="mt-1 text-sm text-gray-500">Gerencie checklists e realize inspeções de segurança</p>
         </div>
-        <button className="btn-primary flex items-center">
+        <button className="btn-primary flex items-center" onClick={() => openNewChecklistModal()}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Checklist
         </button>
@@ -180,7 +268,7 @@ const Checklists = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar por nome ou descrição..."
+                placeholder="Buscar por nome, NR ou descrição..."
                 className="input-field pl-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -200,10 +288,11 @@ const Checklists = () => {
                 </option>
               ))}
             </select>
+
             <select
               className="input-field"
               value={filters.category}
-              onChange={(e) => setFilters({...filters, category: e.target.value})}
+              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
             >
               <option value="">Todas as NRs</option>
               {categories.map((category) => (
@@ -212,10 +301,11 @@ const Checklists = () => {
                 </option>
               ))}
             </select>
+
             <select
               className="input-field"
               value={filters.active}
-              onChange={(e) => setFilters({...filters, active: e.target.value})}
+              onChange={(e) => setFilters({ ...filters, active: e.target.value })}
             >
               <option value="">Todos os status</option>
               <option value="true">Ativo</option>
@@ -231,9 +321,9 @@ const Checklists = () => {
           <div className="card col-span-full text-center py-10">
             <ClipboardCheck className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum checklist encontrado</h3>
-            <p className="mt-1 text-sm text-gray-500">Ajuste os filtros ou crie um checklist.</p>
+            <p className="mt-1 text-sm text-gray-500">Ajuste os filtros ou selecione uma empresa.</p>
             <p className="mt-3 text-sm text-gray-500">
-              Para iniciar uma inspeção, é necessário ter uma empresa cadastrada em{' '}
+              Para iniciar uma inspeção, cadastre uma empresa em{' '}
               <Link className="text-primary-600 hover:underline" to="/empresas">
                 Empresas
               </Link>
@@ -242,50 +332,49 @@ const Checklists = () => {
           </div>
         ) : (
           visibleChecklists.map((checklist) => (
-          <div key={checklist.id} className="card hover:shadow-md transition-shadow duration-200">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-primary-100 rounded-lg">
-                  <ClipboardCheck className="h-6 w-6 text-primary-600" />
+            <div key={checklist.id} className="card hover:shadow-md transition-shadow duration-200">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center">
+                  <div className="p-2 bg-primary-100 rounded-lg">
+                    <ClipboardCheck className="h-6 w-6 text-primary-600" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-lg font-medium text-gray-900">{checklist.name}</h3>
+                    <p className="text-sm text-gray-500">{checklist.category}</p>
+                  </div>
                 </div>
-                <div className="ml-3">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    {checklist.name}
-                  </h3>
-                  <p className="text-sm text-gray-500">{checklist.category}</p>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    checklist.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {checklist.active ? 'Ativo' : 'Inativo'}
+                </span>
+              </div>
+
+              <div className="space-y-2 mb-4">
+                <p className="text-sm text-gray-600">{checklist.description}</p>
+                <div className="flex items-center text-sm text-gray-500">
+                  <span className="font-medium">Itens:</span>
+                  <span className="ml-1">{checklist.items?.length ?? 0}</span>
+                  <span className="mx-2">•</span>
+                  <span>Versão {checklist.version}</span>
                 </div>
               </div>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                checklist.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-              }`}>
-                {checklist.active ? 'Ativo' : 'Inativo'}
-              </span>
-            </div>
 
-            <div className="space-y-2 mb-4">
-              <p className="text-sm text-gray-600">{checklist.description}</p>
-              <div className="flex items-center text-sm text-gray-500">
-                <span className="font-medium">Itens:</span>
-                <span className="ml-1">{checklist.items?.length ?? 0}</span>
-                <span className="ml-2">•</span>
-                <span className="ml-2">Versão {checklist.version}</span>
-              </div>
-            </div>
-
-            <div className="flex space-x-2">
-                <button 
+              <div className="flex space-x-2">
+                <button
                   className="flex-1 btn-primary flex items-center justify-center"
                   onClick={() => handleStartInspection(checklist)}
-                  disabled={!selectedEmpresa}
                 >
-                <Play className="h-4 w-4 mr-2" />
-                Iniciar Inspeção
-              </button>
-              <button className="btn-secondary p-2">
-                <Eye className="h-4 w-4" />
-              </button>
+                  <Play className="h-4 w-4 mr-2" />
+                  Iniciar Inspeção
+                </button>
+                <button className="btn-secondary p-2" onClick={() => handlePreviewChecklist(checklist)}>
+                  <Eye className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          </div>
           ))
         )}
       </div>
@@ -301,9 +390,7 @@ const Checklists = () => {
                   <ClipboardCheck className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-900">
-                    {getChecklistName(inspection.checklistId)}
-                  </h4>
+                  <h4 className="text-sm font-medium text-gray-900">{getChecklistName(inspection.checklistId)}</h4>
                   <div className="flex items-center mt-1 text-sm text-gray-500">
                     <Building2 className="h-4 w-4 mr-1" />
                     {inspection.empresaNome}
@@ -317,9 +404,11 @@ const Checklists = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                <div className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(
-                  Math.round((inspection.score / inspection.maxScore) * 100)
-                )}`}>
+                <div
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(
+                    Math.round((inspection.score / inspection.maxScore) * 100)
+                  )}`}
+                >
                   {Math.round((inspection.score / inspection.maxScore) * 100)}%
                 </div>
                 {getStatusBadge(inspection.status)}
@@ -347,37 +436,139 @@ const Checklists = () => {
           </div>
           <div className="card text-center">
             <div className="text-2xl font-bold text-green-600">
-              {inspections.filter(i => i.status === 'completed').length}
+              {inspections.filter((inspection) => inspection.status === 'completed').length}
             </div>
             <div className="text-sm text-gray-500">Concluídas</div>
           </div>
           <div className="card text-center">
             <div className="text-2xl font-bold text-yellow-600">
-              {inspections.filter(i => i.status === 'in_progress').length}
+              {inspections.filter((inspection) => inspection.status === 'in_progress').length}
             </div>
             <div className="text-sm text-gray-500">Em Andamento</div>
           </div>
           <div className="card text-center">
             <div className="text-2xl font-bold text-blue-600">
               {Math.round(
-                inspections.reduce((sum, i) => sum + (i.score / i.maxScore) * 100, 0) / inspections.length
-              )}%
+                inspections.reduce((sum, inspection) => sum + (inspection.score / inspection.maxScore) * 100, 0) /
+                  inspections.length
+              )}
+              %
             </div>
             <div className="text-sm text-gray-500">Pontuação Média</div>
           </div>
         </div>
       )}
 
-      {/* Checklist Modal */}
+      {/* Inspection Modal */}
       <ChecklistModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        isOpen={inspectionModalOpen}
+        onClose={() => setInspectionModalOpen(false)}
         checklistId={selectedChecklist?.id}
         empresaId={selectedEmpresa?.id}
         empresaNome={selectedEmpresa?.nome}
       />
+
+      {/* Preview Modal */}
+      <FormModal isOpen={previewOpen} onClose={closePreview} title={previewChecklist?.name || 'Checklist'} showFooter={false} asForm={false}>
+        <div className="space-y-4">
+          <div className="text-sm text-gray-600 space-y-1">
+            <div>
+              <span className="font-medium">NR:</span> {previewChecklist?.category || '-'}
+            </div>
+            <div>
+              <span className="font-medium">Versão:</span> {previewChecklist?.version || '-'}
+            </div>
+            <div>
+              <span className="font-medium">Itens:</span> {previewChecklist?.items?.length ?? 0}
+            </div>
+          </div>
+
+          <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
+            {(previewChecklist?.items || []).map((item, index) => (
+              <div key={item.id} className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
+                <span className="font-medium">{index + 1}.</span> {item.question}
+              </div>
+            ))}
+            {(previewChecklist?.items || []).length === 0 && (
+              <div className="text-sm text-gray-500">Nenhuma pergunta encontrada.</div>
+            )}
+          </div>
+        </div>
+      </FormModal>
+
+      {/* New Checklist Modal */}
+      <FormModal
+        isOpen={newChecklistOpen}
+        onClose={() => setNewChecklistOpen(false)}
+        title="Novo Checklist"
+        onSubmit={handleSubmitNewChecklist}
+        submitText="Iniciar inspeção"
+        loading={newChecklistLoading}
+        error={newChecklistError}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Empresa *</label>
+            <select
+              className="input-field"
+              value={newChecklistEmpresaId}
+              onChange={(e) => {
+                const value = e.target.value;
+                setNewChecklistEmpresaId(value);
+                if (value) {
+                  void loadChecklistTemplatesForEmpresa(value);
+                } else {
+                  setNewChecklistTemplates([]);
+                  setNewChecklistTemplateId('');
+                }
+              }}
+            >
+              <option value="">Selecione a empresa</option>
+              {empresas.map((empresa) => (
+                <option key={empresa.id} value={empresa.id}>
+                  {empresa.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Checklist (NR) *</label>
+            <select
+              className="input-field"
+              value={newChecklistTemplateId}
+              onChange={(e) => setNewChecklistTemplateId(e.target.value)}
+              disabled={!newChecklistEmpresaId || newChecklistLoading}
+            >
+              <option value="">
+                {newChecklistEmpresaId ? 'Selecione o checklist' : 'Selecione a empresa primeiro'}
+              </option>
+              {newChecklistTemplates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.category} - {template.name}
+                </option>
+              ))}
+            </select>
+
+            {!newChecklistEmpresaId && (
+              <p className="mt-1 text-xs text-gray-500">
+                Cadastre uma empresa em{' '}
+                <Link
+                  className="text-primary-600 hover:underline"
+                  to="/empresas"
+                  onClick={() => setNewChecklistOpen(false)}
+                >
+                  Empresas
+                </Link>{' '}
+                para iniciar uma inspeção.
+              </p>
+            )}
+          </div>
+        </div>
+      </FormModal>
     </div>
   );
 };
 
 export default Checklists;
+
