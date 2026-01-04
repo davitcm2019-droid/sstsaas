@@ -47,13 +47,19 @@ const lookupCnpjOnCnpja = async (cnpjDigits) => {
   const baseUrl = config.cnpja.apiUrl.replace(/\/+$/, '');
   const url = `${baseUrl}/${normalizedCnpj}`;
 
+  const headers = { Accept: 'application/json' };
+  if (config.cnpja.apiKey) {
+    const prefix = config.cnpja.apiKeyPrefix ? `${config.cnpja.apiKeyPrefix} ` : '';
+    headers[config.cnpja.apiKeyHeader] = `${prefix}${config.cnpja.apiKey}`;
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), config.cnpja.timeoutMs);
 
   try {
     const response = await fetch(url, {
       method: 'GET',
-      headers: { Accept: 'application/json' },
+      headers,
       signal: controller.signal
     });
 
@@ -119,4 +125,3 @@ module.exports = {
   lookupCnpjOnCnpja,
   mapCnpjaOfficeToEmpresaDTO
 };
-

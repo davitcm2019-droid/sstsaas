@@ -53,7 +53,10 @@ const config = {
   },
   cnpja: {
     apiUrl: parseOptionalString('CNPJA_API_URL', 'https://api.cnpja.com/office'),
-    timeoutMs: parseOptionalInt('CNPJA_TIMEOUT_MS', 8000)
+    timeoutMs: parseOptionalInt('CNPJA_TIMEOUT_MS', 8000),
+    apiKey: parseOptionalString('CNPJA_API_KEY', ''),
+    apiKeyHeader: parseOptionalString('CNPJA_API_KEY_HEADER', 'Authorization'),
+    apiKeyPrefix: parseOptionalString('CNPJA_API_KEY_PREFIX', 'Bearer')
   }
 };
 
@@ -63,6 +66,10 @@ if (config.port <= 0) {
 
 if (config.cnpja.timeoutMs <= 0) {
   throw new Error('CNPJA_TIMEOUT_MS must be a positive integer');
+}
+
+if (config.cnpja.apiKey && !config.cnpja.apiKeyHeader) {
+  throw new Error('CNPJA_API_KEY_HEADER cannot be empty when CNPJA_API_KEY is set');
 }
 
 if (isProduction && config.cors.origins.includes('*')) {

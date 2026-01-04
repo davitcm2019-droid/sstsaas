@@ -1,6 +1,7 @@
 const express = require('express');
 const { empresas } = require('../data/mockData');
 const { addAuditLog } = require('../data/auditLog');
+const { config } = require('../config');
 const { lookupCnpjOnCnpja, mapCnpjaOfficeToEmpresaDTO } = require('../services/cnpja');
 const { isValidCnpj, sanitizeCnpj } = require('../utils/cnpj');
 const { sendSuccess, sendError } = require('../utils/response');
@@ -78,6 +79,20 @@ router.post('/lookup-cnpj', async (req, res) => {
 
     if (statusCode === 404) {
       return sendError(res, { message: 'Empresa não encontrada', meta: { code: 'CNPJ_NOT_FOUND' } }, 404);
+    }
+
+    if (statusCode === 401 || statusCode === 403) {
+      const missingKey = !config.cnpja.apiKey;
+      return sendError(
+        res,
+        {
+          message: missingKey
+            ? 'CNPJA_API_KEY não configurada (a CNPJA exige autenticação)'
+            : 'Falha de autenticação ao consultar a CNPJA',
+          meta: { code: missingKey ? 'CNPJA_MISSING_API_KEY' : 'CNPJA_AUTH_FAILED' }
+        },
+        missingKey ? 500 : 502
+      );
     }
 
     if (statusCode === 504) {
