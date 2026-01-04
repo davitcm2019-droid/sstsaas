@@ -1,162 +1,136 @@
-// Sistema de checklists e inspeções em memória (sem dados fictícios).
+const fs = require('fs');
+const path = require('path');
 
-const inspectionChecklists = [
-  {
-    id: 1,
-    name: 'Checklist de Segurança Geral',
-    description: 'Verificação geral de condições de segurança no ambiente de trabalho',
-    category: 'geral',
-    version: '1.0',
-    active: true,
-    items: [
-      {
-        id: 1,
-        question: 'Os extintores estão em localização adequada e sinalizados?',
-        type: 'boolean',
-        required: true,
-        weight: 10,
-        options: [
-          { value: true, label: 'Sim', score: 10 },
-          { value: false, label: 'Não', score: 0 }
-        ],
-        observations: 'Verificar se estão acessíveis e com sinalização visível'
-      },
-      {
-        id: 2,
-        question: 'As saídas de emergência estão desobstruídas?',
-        type: 'boolean',
-        required: true,
-        weight: 15,
-        options: [
-          { value: true, label: 'Sim', score: 15 },
-          { value: false, label: 'Não', score: 0 }
-        ],
-        observations: 'Verificar se não há obstáculos nas rotas de fuga'
-      },
-      {
-        id: 3,
-        question: 'A iluminação está adequada?',
-        type: 'scale',
-        required: true,
-        weight: 8,
-        options: [
-          { value: 1, label: 'Muito inadequada', score: 0 },
-          { value: 2, label: 'Inadequada', score: 2 },
-          { value: 3, label: 'Regular', score: 5 },
-          { value: 4, label: 'Adequada', score: 8 },
-          { value: 5, label: 'Muito adequada', score: 10 }
-        ],
-        observations: 'Verificar iluminação natural e artificial'
-      },
-      {
-        id: 4,
-        question: 'Os equipamentos de proteção coletiva estão funcionando?',
-        type: 'boolean',
-        required: true,
-        weight: 20,
-        options: [
-          { value: true, label: 'Sim', score: 20 },
-          { value: false, label: 'Não', score: 0 }
-        ],
-        observations: 'Verificar ventilação, exaustão, guardas de proteção'
-      }
-    ]
-  },
-  {
-    id: 2,
-    name: 'Checklist de EPIs',
-    description: 'Verificação do uso correto e disponibilidade de EPIs',
-    category: 'epi',
-    version: '1.0',
-    active: true,
-    items: [
-      {
-        id: 1,
-        question: 'Os trabalhadores estão usando os EPIs obrigatórios?',
-        type: 'boolean',
-        required: true,
-        weight: 25,
-        options: [
-          { value: true, label: 'Sim', score: 25 },
-          { value: false, label: 'Não', score: 0 }
-        ],
-        observations: 'Verificar se todos os trabalhadores estão usando os EPIs corretos'
-      },
-      {
-        id: 2,
-        question: 'Os EPIs estão em bom estado de conservação?',
-        type: 'boolean',
-        required: true,
-        weight: 15,
-        options: [
-          { value: true, label: 'Sim', score: 15 },
-          { value: false, label: 'Não', score: 0 }
-        ],
-        observations: 'Verificar integridade, limpeza e validade'
-      },
-      {
-        id: 3,
-        question: 'Os EPIs estão armazenados adequadamente?',
-        type: 'boolean',
-        required: true,
-        weight: 10,
-        options: [
-          { value: true, label: 'Sim', score: 10 },
-          { value: false, label: 'Não', score: 0 }
-        ],
-        observations: 'Verificar local limpo, seco e organizado'
-      }
-    ]
-  },
-  {
-    id: 3,
-    name: 'Checklist de Máquinas e Equipamentos',
-    description: 'Verificação de segurança em máquinas e equipamentos (NR-12)',
-    category: 'maquinas',
-    version: '1.0',
-    active: true,
-    items: [
-      {
-        id: 1,
-        question: 'As guardas de proteção estão instaladas e funcionando?',
-        type: 'boolean',
-        required: true,
-        weight: 30,
-        options: [
-          { value: true, label: 'Sim', score: 30 },
-          { value: false, label: 'Não', score: 0 }
-        ],
-        observations: 'Verificar se todas as partes móveis estão protegidas'
-      },
-      {
-        id: 2,
-        question: 'Os dispositivos de parada de emergência estão funcionando?',
-        type: 'boolean',
-        required: true,
-        weight: 25,
-        options: [
-          { value: true, label: 'Sim', score: 25 },
-          { value: false, label: 'Não', score: 0 }
-        ],
-        observations: 'Testar botões de parada de emergência'
-      },
-      {
-        id: 3,
-        question: 'Os trabalhadores foram treinados para operar as máquinas?',
-        type: 'boolean',
-        required: true,
-        weight: 20,
-        options: [
-          { value: true, label: 'Sim', score: 20 },
-          { value: false, label: 'Não', score: 0 }
-        ],
-        observations: 'Verificar certificados de treinamento'
-      }
-    ]
+const CHECKLISTS_DIR = path.join(__dirname, '../../../frontend/src/checklists');
+
+const safeReadJson = (filePath) => {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    const raw = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(raw);
+  } catch (error) {
+    return null;
   }
-];
+};
 
+const buildCnaeSectionMap = () => {
+  const map = new Map();
+
+  const cnaeData = safeReadJson(path.join(CHECKLISTS_DIR, 'listacnae.json'));
+  if (!cnaeData?.cnaes) return map;
+
+  cnaeData.cnaes.forEach((secao) => {
+    const secaoCodigo = secao.secao;
+    if (!secaoCodigo) return;
+
+    secao.divisoes?.forEach((divisao) => {
+      divisao.grupos?.forEach((grupo) => {
+        grupo.classes?.forEach((classe) => {
+          if (!classe?.codigo_classe) return;
+          map.set(String(classe.codigo_classe), String(secaoCodigo));
+        });
+      });
+    });
+  });
+
+  return map;
+};
+
+const buildNrByCnaeSectionMap = () => {
+  const map = new Map();
+
+  const mappingData = safeReadJson(path.join(CHECKLISTS_DIR, 'mapeamento_CNAE_NR.json'));
+  if (!Array.isArray(mappingData?.mapping)) return map;
+
+  mappingData.mapping.forEach((entry) => {
+    if (!entry?.cnae_secao || !Array.isArray(entry?.nrs_relacionadas)) return;
+    map.set(String(entry.cnae_secao), entry.nrs_relacionadas.map((nr) => String(nr)));
+  });
+
+  return map;
+};
+
+const cnaeSectionByCode = buildCnaeSectionMap();
+const nrCodesByCnaeSection = buildNrByCnaeSectionMap();
+
+const normalizeCnaeCode = (value) => {
+  if (!value) return '';
+  const raw = String(value).trim();
+  if (raw === '') return '';
+  return raw.split('/')[0];
+};
+
+const getCnaeSection = (cnae) => {
+  const normalized = normalizeCnaeCode(cnae);
+  if (!normalized) return null;
+  return cnaeSectionByCode.get(normalized) || null;
+};
+
+const getApplicableNrCodes = (cnae) => {
+  const secao = getCnaeSection(cnae);
+  if (!secao) return [];
+  return nrCodesByCnaeSection.get(secao) || [];
+};
+
+const buildInspectionChecklists = () => {
+  try {
+    if (!fs.existsSync(CHECKLISTS_DIR)) return [];
+
+    const files = fs
+      .readdirSync(CHECKLISTS_DIR)
+      .filter((file) => /^checklist_NR\d{2}\.json$/i.test(file))
+      .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+
+    const templates = [];
+    let nextId = 1;
+
+    files.forEach((file) => {
+      const data = safeReadJson(path.join(CHECKLISTS_DIR, file));
+      if (!data?.nr || !Array.isArray(data?.checklist_questions)) return;
+
+      const version = data.version?.date || data.metadata?.generated_at || '1.0';
+
+      templates.push({
+        id: nextId++,
+        nr: String(data.nr),
+        name: String(data.title || data.nr),
+        description: String(data.nr),
+        category: String(data.nr),
+        version: String(version),
+        active: true,
+        items: data.checklist_questions
+          .filter((question) => question?.id && question?.question)
+          .map((question) => ({
+            id: String(question.id),
+            question: String(question.question),
+            type: 'boolean',
+            required: true,
+            weight: 1,
+            options: [
+              { value: true, label: 'Sim', score: 1 },
+              { value: false, label: 'Não', score: 0 }
+            ],
+            observations: ''
+          }))
+      });
+    });
+
+    return templates;
+  } catch (error) {
+    return [];
+  }
+};
+
+const inspectionChecklists = buildInspectionChecklists();
+
+// Inspeções realizadas (em memória; sem persistência).
 const inspections = [];
+
+const getChecklistsForCnae = (cnae) => {
+  const applicableNrs = new Set(getApplicableNrCodes(cnae));
+  if (!applicableNrs.size) return [];
+  return inspectionChecklists.filter((checklist) => applicableNrs.has(checklist.nr));
+};
 
 const calculateScore = (items) => {
   let totalScore = 0;
@@ -211,8 +185,12 @@ const getInspectionsByInspector = (inspectorId) => {
 module.exports = {
   inspectionChecklists,
   inspections,
+  getApplicableNrCodes,
+  getCnaeSection,
+  getChecklistsForCnae,
   calculateScore,
   createInspection,
   getInspectionsByEmpresa,
   getInspectionsByInspector
 };
+

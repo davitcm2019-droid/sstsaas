@@ -24,6 +24,7 @@ const Checklists = () => {
     category: '',
     active: ''
   });
+  const [categories, setCategories] = useState([]);
   const [selectedChecklist, setSelectedChecklist] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [empresas, setEmpresas] = useState([]);
@@ -37,11 +38,15 @@ const Checklists = () => {
 
   useEffect(() => {
     loadData();
-  }, [filters.category, filters.active]);
+  }, [filters.category, filters.active, selectedEmpresaId]);
 
   useEffect(() => {
     loadEmpresas();
   }, []);
+
+  useEffect(() => {
+    loadCategories();
+  }, [selectedEmpresaId]);
 
   const loadEmpresas = async () => {
     try {
@@ -52,11 +57,30 @@ const Checklists = () => {
     }
   };
 
+  const loadCategories = async () => {
+    try {
+      const params = {};
+      if (selectedEmpresa?.cnae) {
+        params.cnae = selectedEmpresa.cnae;
+      }
+
+      const response = await checklistsService.getCategories(params);
+      setCategories(response.data.data || []);
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
+      setCategories([]);
+    }
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
+      const checklistParams = { ...filters };
+      if (selectedEmpresa?.cnae) {
+        checklistParams.cnae = selectedEmpresa.cnae;
+      }
       const [checklistsRes, inspectionsRes] = await Promise.all([
-        checklistsService.getAll(filters),
+        checklistsService.getAll(checklistParams),
         checklistsService.getInspections()
       ]);
       setChecklists(checklistsRes.data.data);
@@ -181,11 +205,12 @@ const Checklists = () => {
               value={filters.category}
               onChange={(e) => setFilters({...filters, category: e.target.value})}
             >
-              <option value="">Todas as categorias</option>
-              <option value="geral">Geral</option>
-              <option value="epi">EPI</option>
-              <option value="maquinas">Máquinas</option>
-              <option value="construcao">Construção</option>
+              <option value="">Todas as NRs</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
             </select>
             <select
               className="input-field"

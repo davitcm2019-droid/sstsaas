@@ -3,10 +3,12 @@ const {
   inspectionChecklists,
   inspections,
   createInspection,
+  getChecklistsForCnae,
   getInspectionsByEmpresa,
   getInspectionsByInspector,
   calculateScore
 } = require('../data/checklists');
+const { empresas } = require('../data/mockData');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
@@ -14,8 +16,28 @@ const router = express.Router();
 // GET /api/checklists - Listar checklists disponíveis
 router.get('/', (req, res) => {
   try {
-    const { category, active } = req.query;
+    const { category, active, cnae, empresaId } = req.query;
     let filteredChecklists = [...inspectionChecklists];
+
+    let cnaeToUse = typeof cnae === 'string' ? cnae.trim() : '';
+
+    if (empresaId) {
+      const id = parseInt(empresaId, 10);
+      if (Number.isNaN(id)) {
+        return sendError(res, { message: 'empresaId invÇ­lido' }, 400);
+      }
+
+      const empresa = empresas.find((item) => item.id === id);
+      if (!empresa) {
+        return sendError(res, { message: 'Empresa nÇœo encontrada' }, 404);
+      }
+
+      cnaeToUse = String(empresa.cnae || '').trim();
+    }
+
+    if (cnaeToUse) {
+      filteredChecklists = getChecklistsForCnae(cnaeToUse);
+    }
 
     if (category) {
       filteredChecklists = filteredChecklists.filter((checklist) => checklist.category === category);
@@ -35,7 +57,30 @@ router.get('/', (req, res) => {
 // GET /api/checklists/categories - Listar categorias de checklists
 router.get('/categories', (req, res) => {
   try {
-    const categories = [...new Set(inspectionChecklists.map((c) => c.category))];
+    const { cnae, empresaId } = req.query;
+
+    let checklists = [...inspectionChecklists];
+    let cnaeToUse = typeof cnae === 'string' ? cnae.trim() : '';
+
+    if (empresaId) {
+      const id = parseInt(empresaId, 10);
+      if (Number.isNaN(id)) {
+        return sendError(res, { message: 'empresaId invÇ­lido' }, 400);
+      }
+
+      const empresa = empresas.find((item) => item.id === id);
+      if (!empresa) {
+        return sendError(res, { message: 'Empresa nÇœo encontrada' }, 404);
+      }
+
+      cnaeToUse = String(empresa.cnae || '').trim();
+    }
+
+    if (cnaeToUse) {
+      checklists = getChecklistsForCnae(cnaeToUse);
+    }
+
+    const categories = [...new Set(checklists.map((item) => item.category))].sort();
     return sendSuccess(res, { data: categories, meta: { total: categories.length } });
   } catch (error) {
     return sendError(res, { message: 'Erro ao buscar categorias', meta: { details: error.message } }, 500);
