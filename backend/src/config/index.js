@@ -14,19 +14,6 @@ const parseOptionalString = (name, fallback) => {
   return value.trim();
 };
 
-const parseOptionalStringAllowEmpty = (name, fallback) => {
-  if (!Object.prototype.hasOwnProperty.call(process.env, name)) {
-    return fallback;
-  }
-
-  const value = process.env[name];
-  if (typeof value !== 'string') {
-    return fallback;
-  }
-
-  return value.trim();
-};
-
 const parseOptionalInt = (name, fallback) => {
   const raw = process.env[name];
   if (typeof raw !== 'string' || raw.trim() === '') {
@@ -63,32 +50,11 @@ const config = {
   },
   security: {
     bcryptSaltRounds: parseOptionalInt('BCRYPT_SALT_ROUNDS', 10)
-  },
-  cnpja: {
-    apiUrl: parseOptionalString('CNPJA_API_URL', 'https://api.cnpja.com/office'),
-    timeoutMs: parseOptionalInt('CNPJA_TIMEOUT_MS', 8000),
-    apiKey: parseOptionalString('CNPJA_API_KEY', ''),
-    apiKeyHeader: parseOptionalString('CNPJA_API_KEY_HEADER', 'Authorization'),
-    apiKeyPrefix: parseOptionalStringAllowEmpty('CNPJA_API_KEY_PREFIX', ''),
-    userAgent: parseOptionalString('CNPJA_USER_AGENT', 'SST-SaaS/1.0'),
-    cacheTtlSeconds: parseOptionalInt('CNPJA_CACHE_TTL_SECONDS', 86400)
   }
 };
 
 if (config.port <= 0) {
   throw new Error('PORT must be a positive integer');
-}
-
-if (config.cnpja.timeoutMs <= 0) {
-  throw new Error('CNPJA_TIMEOUT_MS must be a positive integer');
-}
-
-if (config.cnpja.cacheTtlSeconds <= 0) {
-  throw new Error('CNPJA_CACHE_TTL_SECONDS must be a positive integer');
-}
-
-if (config.cnpja.apiKey && !config.cnpja.apiKeyHeader) {
-  throw new Error('CNPJA_API_KEY_HEADER cannot be empty when CNPJA_API_KEY is set');
 }
 
 if (isProduction && config.cors.origins.includes('*')) {

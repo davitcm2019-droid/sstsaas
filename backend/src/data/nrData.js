@@ -205,10 +205,6 @@ const calculateCompliance = (empresaId, cnae) => {
     const checklist = getChecklistByNr(nr.codigo);
     checklist.forEach(item => {
       totalPontos += item.peso;
-      // Simular pontuação baseada em dados mock
-      if (Math.random() > 0.3) { // 70% de chance de estar conforme
-        pontosObtidos += item.peso;
-      }
     });
   });
   
@@ -218,7 +214,7 @@ const calculateCompliance = (empresaId, cnae) => {
     percentual: Math.round(percentual),
     pontosObtidos,
     totalPontos,
-    status: percentual >= 90 ? 'em_dia' : percentual >= 70 ? 'atencao' : 'atrasado'
+    status: 'pendente'
   };
 };
 

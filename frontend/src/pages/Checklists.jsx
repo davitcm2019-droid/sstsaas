@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   ClipboardCheck, 
   Search, 
@@ -11,7 +11,7 @@ import {
   Building2,
   User
 } from 'lucide-react';
-import { checklistsService } from '../services/api';
+import { checklistsService, empresasService } from '../services/api';
 import ChecklistModal from '../components/ChecklistModal';
 
 const Checklists = () => {
@@ -25,10 +25,31 @@ const Checklists = () => {
   });
   const [selectedChecklist, setSelectedChecklist] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [empresas, setEmpresas] = useState([]);
+  const [selectedEmpresaId, setSelectedEmpresaId] = useState('');
+
+  const selectedEmpresa = useMemo(() => {
+    if (!selectedEmpresaId) return null;
+    const id = parseInt(selectedEmpresaId, 10);
+    return empresas.find((empresa) => empresa.id === id) || null;
+  }, [empresas, selectedEmpresaId]);
 
   useEffect(() => {
     loadData();
   }, [searchTerm, filters]);
+
+  useEffect(() => {
+    loadEmpresas();
+  }, []);
+
+  const loadEmpresas = async () => {
+    try {
+      const response = await empresasService.getAll();
+      setEmpresas(response.data.data);
+    } catch (error) {
+      console.error('Erro ao carregar empresas:', error);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -47,6 +68,10 @@ const Checklists = () => {
   };
 
   const handleStartInspection = (checklist) => {
+    if (!selectedEmpresa) {
+      window.alert('Selecione uma empresa para iniciar a inspeção.');
+      return;
+    }
     setSelectedChecklist(checklist);
     setModalOpen(true);
   };
@@ -76,6 +101,15 @@ const Checklists = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const checklistNameById = useMemo(() => {
+    return new Map(checklists.map((checklist) => [checklist.id, checklist.name]));
+  }, [checklists]);
+
+  const getChecklistName = (checklistId) => {
+    const id = parseInt(checklistId, 10);
+    return checklistNameById.get(id) || `Checklist #${checklistId}`;
   };
 
   if (loading) {
@@ -118,6 +152,18 @@ const Checklists = () => {
             </div>
           </div>
           <div className="flex gap-2">
+            <select
+              className="input-field"
+              value={selectedEmpresaId}
+              onChange={(e) => setSelectedEmpresaId(e.target.value)}
+            >
+              <option value="">Selecione a empresa</option>
+              {empresas.map((empresa) => (
+                <option key={empresa.id} value={empresa.id}>
+                  {empresa.nome}
+                </option>
+              ))}
+            </select>
             <select
               className="input-field"
               value={filters.category}
@@ -176,10 +222,11 @@ const Checklists = () => {
             </div>
 
             <div className="flex space-x-2">
-              <button 
-                className="flex-1 btn-primary flex items-center justify-center"
-                onClick={() => handleStartInspection(checklist)}
-              >
+                <button 
+                  className="flex-1 btn-primary flex items-center justify-center"
+                  onClick={() => handleStartInspection(checklist)}
+                  disabled={!selectedEmpresa}
+                >
                 <Play className="h-4 w-4 mr-2" />
                 Iniciar Inspeção
               </button>
@@ -203,9 +250,7 @@ const Checklists = () => {
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-900">
-                    {inspection.checklistId === 1 && 'Checklist de Segurança Geral'}
-                    {inspection.checklistId === 2 && 'Checklist de EPIs'}
-                    {inspection.checklistId === 3 && 'Checklist de Máquinas e Equipamentos'}
+                    {getChecklistName(inspection.checklistId)}
                   </h4>
                   <div className="flex items-center mt-1 text-sm text-gray-500">
                     <Building2 className="h-4 w-4 mr-1" />
@@ -276,8 +321,8 @@ const Checklists = () => {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         checklistId={selectedChecklist?.id}
-        empresaId={1} // Mock empresa ID
-        empresaNome="Indústria Metalúrgica ABC Ltda" // Mock empresa nome
+        empresaId={selectedEmpresa?.id}
+        empresaNome={selectedEmpresa?.nome}
       />
     </div>
   );

@@ -41,14 +41,9 @@ const selectStyles = {
 const EmpresaForm = ({ empresa, onSave, onCancel }) => {
   const [formData, setFormData] = useState({ ...DEFAULT_FORM });
   const [loading, setLoading] = useState(false);
-  const [lookupLoading, setLookupLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [lookupError, setLookupError] = useState(null);
   const [cnpjValid, setCnpjValid] = useState(true);
   const [selectedCnae, setSelectedCnae] = useState(null);
-  const [lockedFields, setLockedFields] = useState(() => new Set());
-  const [manualEdit, setManualEdit] = useState(false);
-  const [lastLookupCnpj, setLastLookupCnpj] = useState('');
 
   const cnaeOptions = useMemo(() => {
     const options = [];
@@ -60,8 +55,7 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
             options.push({
               value: classe.codigo_classe,
               label: `${classe.codigo_classe} - ${classe.descricao_classe}`,
-              secaoDescricao,
-              classeDescricao: classe.descricao_classe
+              secaoDescricao
             });
           });
         });
@@ -74,8 +68,8 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
     if (empresa) {
       const merged = { ...DEFAULT_FORM, ...empresa };
       const match = cnaeOptions.find(option => option.value === merged.cnae);
-      if (match && !merged.ramo) {
-        merged.ramo = match.classeDescricao;
+      if (match) {
+        merged.ramo = match.secaoDescricao;
       }
       setFormData(merged);
       setSelectedCnae(match || null);
@@ -83,11 +77,6 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
       setFormData({ ...DEFAULT_FORM });
       setSelectedCnae(null);
     }
-
-    setLockedFields(new Set());
-    setManualEdit(false);
-    setLookupError(null);
-    setLastLookupCnpj('');
   }, [empresa, cnaeOptions]);
 
   const handleChange = (e) => {
@@ -101,12 +90,6 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
   const handleCnpjChange = (e) => {
     const rawValue = e.target.rawValue;
     setFormData(prev => ({ ...prev, cnpj: rawValue }));
-    setLookupError(null);
-
-    if (lastLookupCnpj && rawValue !== lastLookupCnpj) {
-      setLockedFields(new Set());
-      setManualEdit(false);
-    }
 
     if (rawValue.length === 14) {
       setCnpjValid(cnpj.isValid(rawValue));
@@ -121,70 +104,8 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
     setFormData(prev => ({
       ...prev,
       cnae: option?.value || '',
-      ramo: option?.classeDescricao || ''
+      ramo: option?.secaoDescricao || ''
     }));
-  };
-
-  const isFieldLocked = (fieldName) => lockedFields.has(fieldName) && !manualEdit;
-
-  const applyLookupData = (lookupData) => {
-    const fieldsToLock = new Set();
-    const nextData = {};
-
-    Object.entries(lookupData || {}).forEach(([key, value]) => {
-      if (typeof value !== 'string') return;
-      const trimmed = value.trim();
-      if (!trimmed) return;
-      nextData[key] = trimmed;
-      if (key !== 'cnpj') {
-        fieldsToLock.add(key);
-      }
-    });
-
-    setFormData(prev => ({ ...prev, ...nextData }));
-
-    if (nextData.cnae) {
-      const match = cnaeOptions.find(option => option.value === nextData.cnae);
-      setSelectedCnae(match || null);
-      if (match && !nextData.ramo) {
-        setFormData(prev => ({ ...prev, ramo: match.classeDescricao }));
-      }
-    }
-
-    setLockedFields(fieldsToLock);
-    setManualEdit(false);
-  };
-
-  const canLookupCnpj = (cnpjDigits) => cnpjDigits?.length === 14 && cnpj.isValid(cnpjDigits);
-
-  const runCnpjLookup = async (cnpjDigits) => {
-    setLookupLoading(true);
-    setLookupError(null);
-
-    try {
-      const response = await empresasService.lookupCnpj(cnpjDigits);
-      applyLookupData(response.data.data);
-      setLastLookupCnpj(cnpjDigits);
-    } catch (err) {
-      setLookupError(err.response?.data?.message || err.response?.data?.error || 'Erro ao consultar CNPJ');
-    } finally {
-      setLookupLoading(false);
-    }
-  };
-
-  const handleCnpjBlur = () => {
-    if (!canLookupCnpj(formData.cnpj)) return;
-    if (formData.cnpj === lastLookupCnpj) return;
-    void runCnpjLookup(formData.cnpj);
-  };
-
-  const handleCnpjLookupClick = () => {
-    if (!canLookupCnpj(formData.cnpj)) {
-      setLookupError('Informe um CNPJ vǭlido para buscar os dados.');
-      return;
-    }
-
-    void runCnpjLookup(formData.cnpj);
   };
 
   const handleSubmit = async (e) => {
@@ -226,8 +147,7 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
             value={formData.nome}
             onChange={handleChange}
             required
-            readOnly={isFieldLocked('nome')}
-            className={`input-field ${isFieldLocked('nome') ? 'bg-gray-100' : ''}`}
+            className="input-field"
             placeholder="Digite o nome da empresa"
           />
         </div>
@@ -242,7 +162,6 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
             name="cnpj"
             value={formData.cnpj}
             onChange={handleCnpjChange}
-            onBlur={handleCnpjBlur}
             required
             className={`input-field ${!cnpjValid ? 'border-red-500' : ''}`}
             placeholder="00.000.000/0000-00"
@@ -250,30 +169,6 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
           {!cnpjValid && (
             <p className="text-red-500 text-xs mt-1">CNPJ inválido</p>
           )}
-
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={handleCnpjLookupClick}
-              disabled={lookupLoading || !canLookupCnpj(formData.cnpj)}
-              className="btn-secondary text-sm"
-            >
-              {lookupLoading ? 'Buscando...' : 'Buscar dados'}
-            </button>
-
-            {lockedFields.size > 0 && (
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={manualEdit}
-                  onChange={(e) => setManualEdit(e.target.checked)}
-                />
-                Editar manualmente
-              </label>
-            )}
-          </div>
-
-          {lookupError && <p className="text-red-500 text-xs mt-1">{lookupError}</p>}
         </div>
 
         {/* CNAE */}
@@ -290,7 +185,6 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
             classNamePrefix="cnae-select"
             noOptionsMessage={() => 'Nenhum CNAE encontrado'}
             styles={selectStyles}
-            isDisabled={isFieldLocked('cnae')}
           />
         </div>
 
@@ -319,8 +213,7 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
             value={formData.endereco}
             onChange={handleChange}
             required
-            readOnly={isFieldLocked('endereco')}
-            className={`input-field ${isFieldLocked('endereco') ? 'bg-gray-100' : ''}`}
+            className="input-field"
             placeholder="Rua, número, bairro"
           />
         </div>
@@ -336,8 +229,7 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
             value={formData.cidade}
             onChange={handleChange}
             required
-            readOnly={isFieldLocked('cidade')}
-            className={`input-field ${isFieldLocked('cidade') ? 'bg-gray-100' : ''}`}
+            className="input-field"
             placeholder="Nome da cidade"
           />
         </div>
@@ -352,8 +244,7 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
             value={formData.estado}
             onChange={handleChange}
             required
-            disabled={isFieldLocked('estado')}
-            className={`input-field ${isFieldLocked('estado') ? 'bg-gray-100' : ''}`}
+            className="input-field"
           >
             <option value="">Selecione o estado</option>
             {[
@@ -374,8 +265,7 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
             name="cep"
             value={formData.cep}
             onChange={handleChange}
-            readOnly={isFieldLocked('cep')}
-            className={`input-field ${isFieldLocked('cep') ? 'bg-gray-100' : ''}`}
+            className="input-field"
             placeholder="00000-000"
           />
         </div>
@@ -390,8 +280,7 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
             name="telefone"
             value={formData.telefone}
             onChange={handleChange}
-            readOnly={isFieldLocked('telefone')}
-            className={`input-field ${isFieldLocked('telefone') ? 'bg-gray-100' : ''}`}
+            className="input-field"
             placeholder="(00) 00000-0000"
           />
         </div>
@@ -406,8 +295,7 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
             name="email"
             value={formData.email}
             onChange={handleChange}
-            readOnly={isFieldLocked('email')}
-            className={`input-field ${isFieldLocked('email') ? 'bg-gray-100' : ''}`}
+            className="input-field"
             placeholder="empresa@exemplo.com"
           />
         </div>
@@ -422,8 +310,7 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
             name="responsavel"
             value={formData.responsavel}
             onChange={handleChange}
-            readOnly={isFieldLocked('responsavel')}
-            className={`input-field ${isFieldLocked('responsavel') ? 'bg-gray-100' : ''}`}
+            className="input-field"
             placeholder="Nome do responsável"
           />
         </div>

@@ -29,12 +29,14 @@ router.post('/register', async (req, res) => {
       return sendError(res, { message: 'Email já cadastrado' }, 400);
     }
 
+    const isFirstUser = usuarios.length === 0;
+
     const newUser = {
       id: usuarios.length + 1,
       nome,
       email: normalizedEmail,
       senha: await hashPassword(senha),
-      perfil: 'visualizador',
+      perfil: isFirstUser ? 'administrador' : 'visualizador',
       status: 'ativo',
       dataCadastro: new Date().toISOString().split('T')[0]
     };

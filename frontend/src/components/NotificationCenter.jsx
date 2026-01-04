@@ -12,8 +12,10 @@ import {
   ClipboardCheck
 } from 'lucide-react';
 import { notificationsService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const NotificationCenter = ({ isOpen, onClose }) => {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -27,9 +29,14 @@ const NotificationCenter = ({ isOpen, onClose }) => {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      const response = await notificationsService.getAll({ 
-        userId: 2, // Mock user ID
-        limit: 20 
+      if (!user?.id) {
+        setNotifications([]);
+        return;
+      }
+
+      const response = await notificationsService.getAll({
+        userId: user.id,
+        limit: 20
       });
       setNotifications(response.data.data);
     } catch (error) {

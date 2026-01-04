@@ -29,14 +29,14 @@ Este repositório inclui um Blueprint (`render.yaml`) para criar **3 recursos** 
   - **rewrite** `/* → /index.html` (necessário para React Router)
 - Postgres (`sst-saas-db`)
   - `plan: free`
-  - `ipAllowList: []` (bloqueia acesso externo; mantém acesso interno para serviços no Render na mesma região)
+  - `ipAllowList: []` (bloqueia acesso externo; mantém acesso interno para serviços do Render na mesma região)
 
 ## 2) Banco de dados no Render (como configurar corretamente)
 
 ### Estado atual do projeto (importante)
 
-- A persistência no backend ainda é **mock/em memória** (os dados não persistem após restart).
-- O Postgres no Render é **pré-configuração** para a Fase 15 (PostgreSQL + migrations). Até implementar essa fase, o backend **não usa** `DATABASE_URL`.
+- A persistência no backend ainda é **em memória** (os dados não persistem após restart).
+- O Postgres no Render é **pré-configuração** para a fase de persistência. Até implementar essa fase, o backend **não usa** `DATABASE_URL`.
 
 ### URLs do Render Postgres
 
@@ -62,16 +62,6 @@ Cada banco no Render tem:
 
 - `DATABASE_URL` (o Blueprint configura automaticamente via `fromDatabase`)
 
-### Backend (consulta CNPJ - CNPJA Open)
-
-- `CNPJA_API_URL` (padrão: `https://api.cnpja.com/office`)
-- `CNPJA_TIMEOUT_MS` (padrão: `8000`)
-- `CNPJA_CACHE_TTL_SECONDS` (padrão: `86400`)
-- `CNPJA_USER_AGENT` (padrão: `SST-SaaS/1.0`)
-- `CNPJA_API_KEY` (se a CNPJA exigir autenticação)
-- `CNPJA_API_KEY_HEADER` (default: `Authorization`)
-- `CNPJA_API_KEY_PREFIX` (default: vazio; exemplo: `Bearer`)
-
 ### Frontend (build-time)
 
 - `VITE_API_URL` (URL base do backend **sem** `/api`, ex.: `https://sst-saas-backend.onrender.com`)
@@ -90,3 +80,4 @@ Se preferir criar recursos manualmente:
 - Backend caiu com `Missing required environment variable: JWT_SECRET`: defina `JWT_SECRET` no serviço.
 - CORS bloqueando: ajuste `CORS_ORIGIN` para a URL real do frontend (sem barra no final).
 - Frontend 404 ao dar refresh em rotas (`/login`, `/dashboard`): falta o rewrite `/* → /index.html` no static site.
+

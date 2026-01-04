@@ -53,7 +53,6 @@ export const empresasService = {
   create: (data) => api.post('/empresas', data),
   update: (id, data) => api.put(`/empresas/${id}`, data),
   delete: (id) => api.delete(`/empresas/${id}`),
-  lookupCnpj: (cnpj) => api.post('/empresas/lookup-cnpj', { cnpj }),
 };
 
 // Servicos de CIPAs

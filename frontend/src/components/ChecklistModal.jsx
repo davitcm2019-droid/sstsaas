@@ -10,8 +10,10 @@ import {
   Building2
 } from 'lucide-react';
 import { checklistsService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const ChecklistModal = ({ isOpen, onClose, checklistId, empresaId, empresaNome }) => {
+  const { user } = useAuth();
   const [checklist, setChecklist] = useState(null);
   const [inspection, setInspection] = useState({
     empresaId,
@@ -20,11 +22,25 @@ const ChecklistModal = ({ isOpen, onClose, checklistId, empresaId, empresaNome }
     status: 'in_progress',
     items: [],
     observations: '',
-    inspectorId: 2, // Mock user ID
-    inspectorName: 'João Silva'
+    inspectorId: user?.id ?? null,
+    inspectorName: user?.nome ?? ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setInspection({
+      empresaId,
+      empresaNome,
+      checklistId,
+      status: 'in_progress',
+      items: [],
+      observations: '',
+      inspectorId: user?.id ?? null,
+      inspectorName: user?.nome ?? ''
+    });
+  }, [isOpen, checklistId, empresaId, empresaNome, user]);
 
   useEffect(() => {
     if (isOpen && checklistId) {
