@@ -21,8 +21,9 @@ router.get('/', (req, res) => {
       filteredChecklists = filteredChecklists.filter((checklist) => checklist.category === category);
     }
 
-    if (active !== undefined) {
-      filteredChecklists = filteredChecklists.filter((checklist) => checklist.active === (active === 'true'));
+    if (active === 'true' || active === 'false') {
+      const isActive = active === 'true';
+      filteredChecklists = filteredChecklists.filter((checklist) => checklist.active === isActive);
     }
 
     return sendSuccess(res, { data: filteredChecklists, meta: { total: filteredChecklists.length } });

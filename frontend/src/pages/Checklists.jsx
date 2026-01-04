@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   ClipboardCheck, 
   Search, 
@@ -36,7 +37,7 @@ const Checklists = () => {
 
   useEffect(() => {
     loadData();
-  }, [searchTerm, filters]);
+  }, [filters.category, filters.active]);
 
   useEffect(() => {
     loadEmpresas();
@@ -111,6 +112,17 @@ const Checklists = () => {
     const id = parseInt(checklistId, 10);
     return checklistNameById.get(id) || `Checklist #${checklistId}`;
   };
+
+  const visibleChecklists = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return checklists;
+
+    return checklists.filter((checklist) => {
+      const name = String(checklist.name || '').toLowerCase();
+      const description = String(checklist.description || '').toLowerCase();
+      return name.includes(term) || description.includes(term);
+    });
+  }, [checklists, searchTerm]);
 
   if (loading) {
     return (
@@ -190,7 +202,21 @@ const Checklists = () => {
 
       {/* Checklists Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {checklists.map((checklist) => (
+        {visibleChecklists.length === 0 ? (
+          <div className="card col-span-full text-center py-10">
+            <ClipboardCheck className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum checklist encontrado</h3>
+            <p className="mt-1 text-sm text-gray-500">Ajuste os filtros ou crie um checklist.</p>
+            <p className="mt-3 text-sm text-gray-500">
+              Para iniciar uma inspeção, é necessário ter uma empresa cadastrada em{' '}
+              <Link className="text-primary-600 hover:underline" to="/empresas">
+                Empresas
+              </Link>
+              .
+            </p>
+          </div>
+        ) : (
+          visibleChecklists.map((checklist) => (
           <div key={checklist.id} className="card hover:shadow-md transition-shadow duration-200">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center">
@@ -215,7 +241,7 @@ const Checklists = () => {
               <p className="text-sm text-gray-600">{checklist.description}</p>
               <div className="flex items-center text-sm text-gray-500">
                 <span className="font-medium">Itens:</span>
-                <span className="ml-1">{checklist.items.length}</span>
+                <span className="ml-1">{checklist.items?.length ?? 0}</span>
                 <span className="ml-2">•</span>
                 <span className="ml-2">Versão {checklist.version}</span>
               </div>
@@ -235,7 +261,8 @@ const Checklists = () => {
               </button>
             </div>
           </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Recent Inspections */}
