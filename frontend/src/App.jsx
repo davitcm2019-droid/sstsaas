@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Empresas from './pages/Empresas';
 import EmpresaDetalhes from './pages/EmpresaDetalhes';
 import EmpresaSstDashboard from './pages/EmpresaSstDashboard';
+import SstDashboard from './pages/SstDashboard';
 import Tarefas from './pages/Tarefas';
 import Checklists from './pages/Checklists';
 import Incidentes from './pages/Incidentes';
@@ -47,6 +48,14 @@ const AppRoutes = () => {
         <ProtectedRoute>
           <Layout>
             <Empresas />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/sst" element={
+        <ProtectedRoute>
+          <Layout>
+            <SstDashboard />
           </Layout>
         </ProtectedRoute>
       } />

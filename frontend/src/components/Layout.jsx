@@ -29,6 +29,7 @@ const Layout = ({ children }) => {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home, permission: null },
     { name: 'Empresas', href: '/empresas', icon: Building2, permission: null },
+    { name: 'Dashboard SST', href: '/sst', icon: Shield, permission: null },
     { name: 'Tarefas', href: '/tarefas', icon: CheckSquare, permission: null },
     { name: 'CIPA', href: '/cipa', icon: Users, permission: null },
     { name: 'Treinamentos', href: '/treinamentos', icon: ClipboardCheck, permission: null },

@@ -119,7 +119,7 @@ const EmpresaDetalhes = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center">
           <Link
             to="/empresas"
@@ -132,12 +132,15 @@ const EmpresaDetalhes = () => {
             <p className="mt-1 text-sm text-gray-500">{empresa.cnpj}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Link to={`/empresas/${empresa.id}/sst`} className="btn-secondary flex items-center">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link
+            to={`/empresas/${empresa.id}/sst`}
+            className="btn-secondary flex items-center justify-center w-full sm:w-auto"
+          >
             <Shield className="h-4 w-4 mr-2" />
             Dashboard SST
           </Link>
-          <button className="btn-primary flex items-center">
+          <button className="btn-primary flex items-center justify-center w-full sm:w-auto">
             <Edit className="h-4 w-4 mr-2" />
             Editar Empresa
           </button>

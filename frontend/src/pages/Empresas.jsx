@@ -10,7 +10,8 @@ import {
   Trash2,
   AlertTriangle,
   CheckCircle,
-  Clock
+  Clock,
+  Shield
 } from 'lucide-react';
 import { empresasService } from '../services/api';
 import FormModal from '../components/FormModal';
@@ -217,26 +218,39 @@ const Empresas = () => {
               {getStatusBadge(empresa.conformidade)}
             </div>
 
-            <div className="flex space-x-2">
-              <Link
-                to={`/empresas/${empresa.id}`}
-                className="flex-1 btn-secondary flex items-center justify-center"
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Ver Detalhes
-              </Link>
-              <button 
-                onClick={() => handleEdit(empresa)}
-                className="btn-secondary p-2"
-              >
-                <Edit className="h-4 w-4" />
-              </button>
-              <button 
-                className="btn-secondary p-2 text-red-600 hover:bg-red-50"
-                onClick={() => handleDelete(empresa.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+            <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Link
+                  to={`/empresas/${empresa.id}`}
+                  className="btn-secondary flex items-center justify-center"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Ver Detalhes
+                </Link>
+                <Link
+                  to={`/empresas/${empresa.id}/sst`}
+                  className="btn-primary flex items-center justify-center"
+                >
+                  <Shield className="h-4 w-4 mr-2" />
+                  Dashboard SST
+                </Link>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  onClick={() => handleEdit(empresa)}
+                  className="btn-secondary p-2"
+                  title="Editar"
+                >
+                  <Edit className="h-4 w-4" />
+                </button>
+                <button
+                  className="btn-secondary p-2 text-red-600 hover:bg-red-50"
+                  onClick={() => handleDelete(empresa.id)}
+                  title="Excluir"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         ))}
