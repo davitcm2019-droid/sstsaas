@@ -1,6 +1,8 @@
 const { config } = require('../config');
 const { sanitizeCnpj } = require('../utils/cnpj');
 
+const officeCache = new Map();
+
 const normalizeString = (value) => {
   if (typeof value !== 'string') return '';
   return value.replace(/\s+/g, ' ').trim();
@@ -42,12 +44,35 @@ const getJsonSafe = async (response) => {
   }
 };
 
+const getCachedOffice = (cnpjDigits) => {
+  const entry = officeCache.get(cnpjDigits);
+  if (!entry) return null;
+
+  if (entry.expiresAt <= Date.now()) {
+    officeCache.delete(cnpjDigits);
+    return null;
+  }
+
+  return entry.value;
+};
+
+const setCachedOffice = (cnpjDigits, office) => {
+  const ttlMs = config.cnpja.cacheTtlSeconds * 1000;
+  officeCache.set(cnpjDigits, { value: office, expiresAt: Date.now() + ttlMs });
+};
+
 const lookupCnpjOnCnpja = async (cnpjDigits) => {
   const normalizedCnpj = sanitizeCnpj(cnpjDigits);
+  const cached = getCachedOffice(normalizedCnpj);
+  if (cached) return cached;
+
   const baseUrl = config.cnpja.apiUrl.replace(/\/+$/, '');
   const url = `${baseUrl}/${normalizedCnpj}`;
 
-  const headers = { Accept: 'application/json' };
+  const headers = {
+    Accept: 'application/json',
+    'User-Agent': config.cnpja.userAgent
+  };
   if (config.cnpja.apiKey) {
     const prefix = config.cnpja.apiKeyPrefix ? `${config.cnpja.apiKeyPrefix} ` : '';
     headers[config.cnpja.apiKeyHeader] = `${prefix}${config.cnpja.apiKey}`;
@@ -65,6 +90,9 @@ const lookupCnpjOnCnpja = async (cnpjDigits) => {
 
     if (response.ok) {
       const payload = await getJsonSafe(response);
+      if (payload) {
+        setCachedOffice(normalizedCnpj, payload);
+      }
       return payload;
     }
 

@@ -66,6 +66,8 @@ Cada banco no Render tem:
 
 - `CNPJA_API_URL` (padrão: `https://api.cnpja.com/office`)
 - `CNPJA_TIMEOUT_MS` (padrão: `8000`)
+- `CNPJA_CACHE_TTL_SECONDS` (padrão: `86400`)
+- `CNPJA_USER_AGENT` (padrão: `SST-SaaS/1.0`)
 - `CNPJA_API_KEY` (se a CNPJA exigir autenticação)
 - `CNPJA_API_KEY_HEADER` (default: `Authorization`)
 - `CNPJA_API_KEY_PREFIX` (default: `Bearer`)

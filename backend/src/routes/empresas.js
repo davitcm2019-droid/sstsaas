@@ -95,6 +95,17 @@ router.post('/lookup-cnpj', async (req, res) => {
       );
     }
 
+    if (statusCode === 429) {
+      return sendError(
+        res,
+        {
+          message: 'Limite de requisições da CNPJA atingido. Tente novamente em alguns minutos.',
+          meta: { code: 'CNPJ_RATE_LIMIT' }
+        },
+        503
+      );
+    }
+
     if (statusCode === 504) {
       return sendError(res, { message: 'Tempo limite ao consultar CNPJ', meta: { code: 'CNPJ_TIMEOUT' } }, 504);
     }
