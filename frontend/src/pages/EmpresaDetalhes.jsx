@@ -132,10 +132,16 @@ const EmpresaDetalhes = () => {
             <p className="mt-1 text-sm text-gray-500">{empresa.cnpj}</p>
           </div>
         </div>
-        <button className="btn-primary flex items-center">
-          <Edit className="h-4 w-4 mr-2" />
-          Editar Empresa
-        </button>
+        <div className="flex items-center gap-2">
+          <Link to={`/empresas/${empresa.id}/sst`} className="btn-secondary flex items-center">
+            <Shield className="h-4 w-4 mr-2" />
+            Dashboard SST
+          </Link>
+          <button className="btn-primary flex items-center">
+            <Edit className="h-4 w-4 mr-2" />
+            Editar Empresa
+          </button>
+        </div>
       </div>
 
       {/* Company Info Card */}

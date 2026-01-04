@@ -7,6 +7,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Empresas from './pages/Empresas';
 import EmpresaDetalhes from './pages/EmpresaDetalhes';
+import EmpresaSstDashboard from './pages/EmpresaSstDashboard';
 import Tarefas from './pages/Tarefas';
 import Checklists from './pages/Checklists';
 import Incidentes from './pages/Incidentes';
@@ -54,6 +55,14 @@ const AppRoutes = () => {
         <ProtectedRoute>
           <Layout>
             <EmpresaDetalhes />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/empresas/:id/sst" element={
+        <ProtectedRoute>
+          <Layout>
+            <EmpresaSstDashboard />
           </Layout>
         </ProtectedRoute>
       } />
