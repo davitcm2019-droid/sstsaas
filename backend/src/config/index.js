@@ -28,6 +28,19 @@ const parseOptionalInt = (name, fallback) => {
   return parsed;
 };
 
+const parseOptionalBool = (name, fallback) => {
+  const raw = process.env[name];
+  if (typeof raw !== 'string' || raw.trim() === '') {
+    return fallback;
+  }
+
+  const normalized = raw.trim().toLowerCase();
+  if (['true', '1', 'yes', 'y'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'n'].includes(normalized)) return false;
+
+  throw new Error(`Invalid boolean environment variable: ${name}`);
+};
+
 const parseCorsOrigins = (rawOrigins) =>
   rawOrigins
     .split(',')
@@ -36,11 +49,16 @@ const parseCorsOrigins = (rawOrigins) =>
 
 const nodeEnv = parseOptionalString('NODE_ENV', 'development');
 const isProduction = nodeEnv === 'production';
+const isRender = String(process.env.RENDER || '').trim().toLowerCase() === 'true';
 
 const config = {
   nodeEnv,
   isProduction,
   port: parseOptionalInt('PORT', isProduction ? 10000 : 5000),
+  database: {
+    url: parseRequiredString('DATABASE_URL'),
+    ssl: parseOptionalBool('DATABASE_SSL', isProduction || isRender)
+  },
   jwt: {
     secret: parseRequiredString('JWT_SECRET'),
     expiresIn: parseOptionalString('JWT_EXPIRES_IN', '24h')
@@ -57,7 +75,7 @@ if (config.port <= 0) {
   throw new Error('PORT must be a positive integer');
 }
 
-if (isProduction && config.cors.origins.includes('*')) {
+if ((isProduction || isRender) && config.cors.origins.includes('*')) {
   throw new Error('CORS_ORIGIN cannot be "*" in production');
 }
 

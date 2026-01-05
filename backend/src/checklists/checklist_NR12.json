@@ -1,0 +1,54 @@
+{
+  "nr": "NR-12",
+  "title": "Segurança no Trabalho em Máquinas e Equipamentos",
+  "version": {
+    "portaria": "Ver arquivo fonte",
+    "date": "2025-01-01"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR12-Q-001",
+      "question": "Existe inventário de máquinas e equipamentos atualizado?"
+    },
+    {
+      "id": "NR12-Q-002",
+      "question": "Cada máquina possui manual do fabricante disponível e acessível?"
+    },
+    {
+      "id": "NR12-Q-003",
+      "question": "Proteções fixas/móveis e dispositivos de intertravamento estão instalados e funcionais?"
+    },
+    {
+      "id": "NR12-Q-004",
+      "question": "Partes móveis expostas estão protegidas contra contato acidental?"
+    },
+    {
+      "id": "NR12-Q-005",
+      "question": "Há análise de risco por máquina/posição de trabalho?"
+    },
+    {
+      "id": "NR12-Q-006",
+      "question": "Existem procedimentos de bloqueio e etiquetagem (LOTO) para manutenção?"
+    },
+    {
+      "id": "NR12-Q-007",
+      "question": "Dispositivos de parada de emergência estão presentes e testados?"
+    },
+    {
+      "id": "NR12-Q-008",
+      "question": "Áreas de operação possuem sinalização e demarcações de segurança?"
+    },
+    {
+      "id": "NR12-Q-009",
+      "question": "Treinamento NR‑12 para operadores e manutentores está realizado e válido?"
+    },
+    {
+      "id": "NR12-Q-010",
+      "question": "Adequações possuem ART/laudos e registros de inspeção periódica?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-12-atualizada-2025.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

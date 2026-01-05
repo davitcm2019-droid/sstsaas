@@ -1,0 +1,336 @@
+{
+  "generated_at": "2025-10-26",
+  "mapping": [
+    {
+      "cnae_secao": "A",
+      "descricao": "Agricultura, pecuária, pesca e aquicultura",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-02",
+        "NR-03",
+        "NR-04",
+        "NR-05",
+        "NR-06",
+        "NR-07",
+        "NR-09",
+        "NR-11",
+        "NR-12",
+        "NR-13",
+        "NR-17",
+        "NR-31",
+        "NR-33",
+        "NR-35"
+      ]
+    },
+    {
+      "cnae_secao": "B",
+      "descricao": "Indústrias extrativas",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-02",
+        "NR-03",
+        "NR-04",
+        "NR-05",
+        "NR-06",
+        "NR-07",
+        "NR-09",
+        "NR-22",
+        "NR-33",
+        "NR-35"
+      ]
+    },
+    {
+      "cnae_secao": "C",
+      "descricao": "Indústrias de transformação",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-06",
+        "NR-07",
+        "NR-09",
+        "NR-11",
+        "NR-12",
+        "NR-13",
+        "NR-15",
+        "NR-17",
+        "NR-18",
+        "NR-23",
+        "NR-26",
+        "NR-33",
+        "NR-35",
+        "NR-36"
+      ]
+    },
+    {
+      "cnae_secao": "D",
+      "descricao": "Eletricidade e gás",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-06",
+        "NR-07",
+        "NR-09",
+        "NR-10",
+        "NR-12",
+        "NR-33",
+        "NR-35",
+        "NR-37"
+      ]
+    },
+    {
+      "cnae_secao": "E",
+      "descricao": "Água, esgoto, gestão de resíduos e descontaminação",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-06",
+        "NR-07",
+        "NR-09",
+        "NR-33",
+        "NR-38",
+        "NR-35",
+        "NR-23"
+      ]
+    },
+    {
+      "cnae_secao": "F",
+      "descricao": "Construção",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-06",
+        "NR-07",
+        "NR-09",
+        "NR-11",
+        "NR-12",
+        "NR-18",
+        "NR-33",
+        "NR-35",
+        "NR-37"
+      ]
+    },
+    {
+      "cnae_secao": "G",
+      "descricao": "Comércio; reparação de veículos automotores e motocicletas",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-06",
+        "NR-07",
+        "NR-09",
+        "NR-12",
+        "NR-17",
+        "NR-23",
+        "NR-26",
+        "NR-33"
+      ]
+    },
+    {
+      "cnae_secao": "H",
+      "descricao": "Transporte, armazenagem e correio",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-06",
+        "NR-07",
+        "NR-09",
+        "NR-11",
+        "NR-17",
+        "NR-20",
+        "NR-33",
+        "NR-35"
+      ]
+    },
+    {
+      "cnae_secao": "I",
+      "descricao": "Alojamento e alimentação",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-06",
+        "NR-07",
+        "NR-09",
+        "NR-17",
+        "NR-24",
+        "NR-26",
+        "NR-36"
+      ]
+    },
+    {
+      "cnae_secao": "J",
+      "descricao": "Informação e comunicação",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-07",
+        "NR-09",
+        "NR-17",
+        "NR-23"
+      ]
+    },
+    {
+      "cnae_secao": "K",
+      "descricao": "Atividades financeiras e de seguros",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-07",
+        "NR-09",
+        "NR-17",
+        "NR-23"
+      ]
+    },
+    {
+      "cnae_secao": "L",
+      "descricao": "Atividades imobiliárias",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-07",
+        "NR-09",
+        "NR-17"
+      ]
+    },
+    {
+      "cnae_secao": "M",
+      "descricao": "Atividades profissionais, científicas e técnicas",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-07",
+        "NR-09",
+        "NR-17",
+        "NR-23"
+      ]
+    },
+    {
+      "cnae_secao": "N",
+      "descricao": "Atividades administrativas e serviços complementares",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-07",
+        "NR-09",
+        "NR-17",
+        "NR-23"
+      ]
+    },
+    {
+      "cnae_secao": "O",
+      "descricao": "Administração pública, defesa e seguridade social",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-02",
+        "NR-03",
+        "NR-04",
+        "NR-05",
+        "NR-06",
+        "NR-07",
+        "NR-09",
+        "NR-17",
+        "NR-23",
+        "NR-33",
+        "NR-35"
+      ]
+    },
+    {
+      "cnae_secao": "P",
+      "descricao": "Educação",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-07",
+        "NR-09",
+        "NR-17",
+        "NR-23"
+      ]
+    },
+    {
+      "cnae_secao": "Q",
+      "descricao": "Saúde humana e serviços sociais",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-06",
+        "NR-07",
+        "NR-09",
+        "NR-32",
+        "NR-17",
+        "NR-23",
+        "NR-33"
+      ]
+    },
+    {
+      "cnae_secao": "R",
+      "descricao": "Artes, cultura, esporte e recreação",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-07",
+        "NR-09",
+        "NR-17",
+        "NR-23",
+        "NR-35"
+      ]
+    },
+    {
+      "cnae_secao": "S",
+      "descricao": "Outras atividades de serviços",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-06",
+        "NR-07",
+        "NR-09",
+        "NR-17",
+        "NR-23",
+        "NR-35"
+      ]
+    },
+    {
+      "cnae_secao": "T",
+      "descricao": "Serviços domésticos",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-04",
+        "NR-05",
+        "NR-06",
+        "NR-07",
+        "NR-09",
+        "NR-17"
+      ]
+    },
+    {
+      "cnae_secao": "U",
+      "descricao": "Organismos internacionais",
+      "nrs_relacionadas": [
+        "NR-01",
+        "NR-02",
+        "NR-03",
+        "NR-04",
+        "NR-05",
+        "NR-06",
+        "NR-07",
+        "NR-09",
+        "NR-17",
+        "NR-23"
+      ]
+    }
+  ]
+}

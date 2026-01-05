@@ -1,0 +1,94 @@
+{
+  "nr": "NR-01",
+  "title": "Disposições Gerais e Gerenciamento de Riscos Ocupacionais (GRO)",
+  "version": {
+    "portaria": "Portaria MTE nº 765",
+    "date": "2025-05-15"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR01-Q-001",
+      "question": "A organização possui política formal de SST aprovada e assinada pela direção?"
+    },
+    {
+      "id": "NR01-Q-002",
+      "question": "Existe nomeação formal dos responsáveis pelo GRO e pelo PGR?"
+    },
+    {
+      "id": "NR01-Q-003",
+      "question": "O PGR está elaborado, revisado e assinado por profissional legalmente habilitado?"
+    },
+    {
+      "id": "NR01-Q-004",
+      "question": "O PGR contém Inventário de Riscos e Plano de Ação atualizados?"
+    },
+    {
+      "id": "NR01-Q-005",
+      "question": "As revisões do PGR ocorrem no prazo (≤ 2 anos ou ≤ 3 anos com SG‑SST)?"
+    },
+    {
+      "id": "NR01-Q-006",
+      "question": "Há registro de revisão do PGR por mudança de processo/instalação?"
+    },
+    {
+      "id": "NR01-Q-007",
+      "question": "Foi realizado Levantamento Preliminar de Perigos (LPP) antes do início das atividades?"
+    },
+    {
+      "id": "NR01-Q-008",
+      "question": "Foram identificados perigos físicos, químicos, biológicos, ergonômicos, psicossociais e de acidentes?"
+    },
+    {
+      "id": "NR01-Q-009",
+      "question": "A metodologia de avaliação e classificação de riscos está documentada?"
+    },
+    {
+      "id": "NR01-Q-010",
+      "question": "O Plano de Ação possui responsáveis, prazos e status de execução?"
+    },
+    {
+      "id": "NR01-Q-011",
+      "question": "As medidas de prevenção seguem a hierarquia (eliminação → EPC → adm. → EPI)?"
+    },
+    {
+      "id": "NR01-Q-012",
+      "question": "Existe procedimento documentado de resposta a emergências?"
+    },
+    {
+      "id": "NR01-Q-013",
+      "question": "Foram realizados simulados de emergência com lições aprendidas registradas?"
+    },
+    {
+      "id": "NR01-Q-014",
+      "question": "O PGR está integrado ao PCMSO e demais programas de SST?"
+    },
+    {
+      "id": "NR01-Q-015",
+      "question": "Há relação entre riscos do PGR e exames do PCMSO?"
+    },
+    {
+      "id": "NR01-Q-016",
+      "question": "Os trabalhadores receberam capacitação conforme Anexo II (inclusive EAD, quando aplicável)?"
+    },
+    {
+      "id": "NR01-Q-017",
+      "question": "Os certificados de treinamento registram conteúdo, carga e instrutor habilitado?"
+    },
+    {
+      "id": "NR01-Q-018",
+      "question": "Existe procedimento formal para direito de recusa e seus registros?"
+    },
+    {
+      "id": "NR01-Q-019",
+      "question": "Os documentos digitais de SST garantem autenticidade, integridade e disponibilidade?"
+    },
+    {
+      "id": "NR01-Q-020",
+      "question": "A guarda mínima de registros críticos de SST é assegurada (≥ 20 anos)?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-01-atualizada-2025-i-3.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

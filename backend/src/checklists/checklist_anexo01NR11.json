@@ -1,0 +1,54 @@
+{
+  "nr": "NR-11 (Anexo I)",
+  "title": "Transporte, Movimentação, Armazenagem e Manuseio de Materiais — Chapas de Rochas",
+  "version": {
+    "portaria": "Portaria MTPS nº 505",
+    "date": "2016-04-29"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR11-Q-001",
+      "question": "Equipamentos exibem plaquetas com carga máxima, fabricante e RT?"
+    },
+    {
+      "id": "NR11-Q-002",
+      "question": "Existe livro/sistema de registros dos equipamentos e inspeções?"
+    },
+    {
+      "id": "NR11-Q-003",
+      "question": "Relatório de Inspeção anual foi emitido por profissional habilitado com ART?"
+    },
+    {
+      "id": "NR11-Q-004",
+      "question": "Acondicionamento/armazenagem das chapas atende espaçamento e travamento?"
+    },
+    {
+      "id": "NR11-Q-005",
+      "question": "Dispositivos de içamento e acessórios possuem identificação e inspeção?"
+    },
+    {
+      "id": "NR11-Q-006",
+      "question": "Rotas de movimentação estão definidas e sinalizadas?"
+    },
+    {
+      "id": "NR11-Q-007",
+      "question": "Operadores e equipe receberam capacitação específica?"
+    },
+    {
+      "id": "NR11-Q-008",
+      "question": "Planos de manutenção preventiva estão implementados?"
+    },
+    {
+      "id": "NR11-Q-009",
+      "question": "Procedimentos de emergência para tombamento/queda estão definidos?"
+    },
+    {
+      "id": "NR11-Q-010",
+      "question": "Notas fiscais/projetos/laudos estão arquivados conforme exigido?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-11-anexo-01.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

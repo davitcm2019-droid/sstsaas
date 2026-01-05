@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const CHECKLISTS_DIR = path.join(__dirname, '../../../frontend/src/checklists');
+const CHECKLISTS_DIR = path.join(__dirname, '../checklists');
 
 const safeReadJson = (filePath) => {
   try {
@@ -193,4 +193,3 @@ module.exports = {
   getInspectionsByEmpresa,
   getInspectionsByInspector
 };
-

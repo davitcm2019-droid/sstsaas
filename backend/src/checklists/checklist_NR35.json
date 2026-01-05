@@ -1,0 +1,54 @@
+{
+  "nr": "NR-35",
+  "title": "Trabalho em Altura",
+  "version": {
+    "portaria": "Portaria MTP nº 1.847",
+    "date": "2025-01-01"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR35-Q-001",
+      "question": "Há análise de risco e autorização de trabalho para atividades em altura?"
+    },
+    {
+      "id": "NR35-Q-002",
+      "question": "Os trabalhadores possuem treinamento inicial e periódico válido?"
+    },
+    {
+      "id": "NR35-Q-003",
+      "question": "Os EPIs (cintos, talabartes, trava-quedas) são inspecionados e rastreáveis?"
+    },
+    {
+      "id": "NR35-Q-004",
+      "question": "As ancoragens e linhas de vida possuem ART e inspeção técnica?"
+    },
+    {
+      "id": "NR35-Q-005",
+      "question": "Há plano de resgate e emergência para quedas?"
+    },
+    {
+      "id": "NR35-Q-006",
+      "question": "Os locais de trabalho possuem sinalização e isolamento adequados?"
+    },
+    {
+      "id": "NR35-Q-007",
+      "question": "As condições meteorológicas são avaliadas antes do início das atividades?"
+    },
+    {
+      "id": "NR35-Q-008",
+      "question": "Os sistemas de proteção coletiva estão instalados e mantidos?"
+    },
+    {
+      "id": "NR35-Q-009",
+      "question": "Há controle documental das autorizações e treinamentos?"
+    },
+    {
+      "id": "NR35-Q-010",
+      "question": "Os supervisores estão devidamente capacitados conforme NR‑35?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-35-atualizada-2025.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

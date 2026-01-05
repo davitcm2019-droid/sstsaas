@@ -1,0 +1,54 @@
+{
+  "nr": "NR-36",
+  "title": "Segurança e Saúde no Trabalho em Empresas de Abate e Processamento de Carnes e Derivados",
+  "version": {
+    "portaria": "Portaria MTP nº 1.864",
+    "date": "2024-04-30"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR36-Q-001",
+      "question": "Existe PGR específico para o setor frigorífico?"
+    },
+    {
+      "id": "NR36-Q-002",
+      "question": "As condições ergonômicas dos postos de trabalho são avaliadas?"
+    },
+    {
+      "id": "NR36-Q-003",
+      "question": "Os intervalos para recuperação psicofisiológica estão implantados?"
+    },
+    {
+      "id": "NR36-Q-004",
+      "question": "As temperaturas das áreas de trabalho seguem limites da norma?"
+    },
+    {
+      "id": "NR36-Q-005",
+      "question": "Há controle de ruído, umidade e iluminação?"
+    },
+    {
+      "id": "NR36-Q-006",
+      "question": "Os trabalhadores recebem EPI adequado às condições térmicas e sanitárias?"
+    },
+    {
+      "id": "NR36-Q-007",
+      "question": "Há pausas e revezamentos programados para atividades repetitivas?"
+    },
+    {
+      "id": "NR36-Q-008",
+      "question": "As áreas de afiação e corte possuem barreiras e proteções?"
+    },
+    {
+      "id": "NR36-Q-009",
+      "question": "Os sanitários, vestiários e refeitórios estão conforme NR‑24 e NR‑36?"
+    },
+    {
+      "id": "NR36-Q-010",
+      "question": "Os treinamentos são realizados na admissão e periodicamente?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-36-atualizada-2024-1.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

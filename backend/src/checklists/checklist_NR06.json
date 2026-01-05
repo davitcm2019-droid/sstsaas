@@ -1,0 +1,54 @@
+{
+  "nr": "NR-06",
+  "title": "Equipamentos de Proteção Individual (EPI)",
+  "version": {
+    "portaria": "Portaria MTE nº 57",
+    "date": "2025-01-16"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR06-Q-001",
+      "question": "Os EPIs fornecidos possuem CA válido e adequado ao risco?"
+    },
+    {
+      "id": "NR06-Q-002",
+      "question": "Existe registro individual de entrega por trabalhador e por EPI?"
+    },
+    {
+      "id": "NR06-Q-003",
+      "question": "Há orientação/treinamento documentado sobre uso, guarda e conservação?"
+    },
+    {
+      "id": "NR06-Q-004",
+      "question": "Há controle de higienização, manutenção e substituição dos EPIs?"
+    },
+    {
+      "id": "NR06-Q-005",
+      "question": "A seleção de EPI está alinhada ao inventário do PGR?"
+    },
+    {
+      "id": "NR06-Q-006",
+      "question": "Há verificação periódica de validade/eficiência dos EPIs críticos?"
+    },
+    {
+      "id": "NR06-Q-007",
+      "question": "Evidências de responsabilização por não fornecimento/uso incorreto são tratadas com orientação?"
+    },
+    {
+      "id": "NR06-Q-008",
+      "question": "Existem procedimentos para descarte adequado de EPIs contaminados?"
+    },
+    {
+      "id": "NR06-Q-009",
+      "question": "Os trabalhadores confirmam ciência das responsabilidades sobre o EPI?"
+    },
+    {
+      "id": "NR06-Q-010",
+      "question": "Fornecedores e marcas dos EPIs estão rastreados (lote/nota/CA)?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-06-atualizada-2025-ii.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

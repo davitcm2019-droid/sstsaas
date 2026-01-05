@@ -1,9 +1,10 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { config } = require('../config');
+const { pool } = require('../db/pool');
 const { sendError } = require('../utils/response');
 
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   if (req.method === 'OPTIONS') {
     return next();
   }
@@ -15,14 +16,58 @@ const authenticateToken = (req, res, next) => {
     return sendError(res, { message: 'Token de acesso requerido', meta: { code: 'AUTH_MISSING_TOKEN' } }, 401);
   }
 
-  jwt.verify(token, config.jwt.secret, (err, payload) => {
-    if (err) {
-      return sendError(res, { message: 'Token inválido ou expirado', meta: { code: 'AUTH_INVALID_TOKEN' } }, 403);
+  let payload;
+  try {
+    payload = jwt.verify(token, config.jwt.secret);
+  } catch (error) {
+    return sendError(res, { message: 'Token inválido ou expirado', meta: { code: 'AUTH_INVALID_TOKEN' } }, 403);
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT
+          id,
+          nome,
+          email,
+          perfil,
+          status,
+          telefone,
+          cargo,
+          empresa_id,
+          created_at,
+          updated_at
+        FROM usuarios
+        WHERE id = $1
+      `,
+      [payload.id]
+    );
+
+    const user = result.rows[0];
+    if (!user) {
+      return sendError(res, { message: 'Usuário não autenticado', meta: { code: 'AUTH_USER_NOT_FOUND' } }, 401);
     }
 
-    req.user = payload;
+    if (user.status !== 'ativo') {
+      return sendError(res, { message: 'Usuário inativo', meta: { code: 'AUTH_USER_INACTIVE' } }, 401);
+    }
+
+    req.user = {
+      id: user.id,
+      nome: user.nome,
+      email: user.email,
+      perfil: user.perfil,
+      status: user.status,
+      telefone: user.telefone,
+      cargo: user.cargo,
+      empresaId: user.empresa_id,
+      dataCadastro: user.created_at ? new Date(user.created_at).toISOString().split('T')[0] : null
+    };
+
     return next();
-  });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao validar token', meta: { code: 'AUTH_VALIDATE_ERROR' } }, 500);
+  }
 };
 
 const authorize = (...roles) => {

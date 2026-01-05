@@ -1,0 +1,54 @@
+{
+  "nr": "NR-31",
+  "title": "Segurança e Saúde no Trabalho na Agricultura, Pecuária, Silvicultura, Exploração Florestal e Aquicultura",
+  "version": {
+    "portaria": "Portaria MTP nº 1.864",
+    "date": "2024-04-10"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR31-Q-001",
+      "question": "Existe PGR Rural implementado e atualizado?"
+    },
+    {
+      "id": "NR31-Q-002",
+      "question": "Os alojamentos rurais atendem às condições sanitárias e de conforto?"
+    },
+    {
+      "id": "NR31-Q-003",
+      "question": "Os trabalhadores receberam treinamento sobre riscos e uso de agrotóxicos?"
+    },
+    {
+      "id": "NR31-Q-004",
+      "question": "Há armazenamento seguro de produtos químicos e defensivos?"
+    },
+    {
+      "id": "NR31-Q-005",
+      "question": "Os equipamentos agrícolas possuem proteções e manutenções em dia?"
+    },
+    {
+      "id": "NR31-Q-006",
+      "question": "As áreas de vivência possuem água potável e banheiros adequados?"
+    },
+    {
+      "id": "NR31-Q-007",
+      "question": "O transporte de trabalhadores segue requisitos da NR‑31?"
+    },
+    {
+      "id": "NR31-Q-008",
+      "question": "Há controle médico ocupacional compatível com as atividades rurais?"
+    },
+    {
+      "id": "NR31-Q-009",
+      "question": "As condições ergonômicas de colheita e manejo estão avaliadas?"
+    },
+    {
+      "id": "NR31-Q-010",
+      "question": "O empregador mantém registros das capacitações obrigatórias?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-31-atualizada-2024-2.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

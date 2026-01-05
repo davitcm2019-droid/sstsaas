@@ -1,0 +1,1846 @@
+{
+  "cnaes": [
+    {
+      "secao": "A",
+      "descricao_secao": "Agricultura, Pecuária, Produção Florestal, Pesca e Aquicultura",
+      "divisoes": [
+        {
+          "codigo_divisao": "01",
+          "descricao_divisao": "Agricultura, pecuária e serviços relacionados",
+          "grupos": [
+            {
+              "codigo_grupo": "01.1",
+              "descricao_grupo": "Produção de lavouras temporárias",
+              "classes": [
+                {
+                  "codigo_classe": "0111-3",
+                  "descricao_classe": "Cultivo de cereais"
+                },
+                {
+                  "codigo_classe": "0112-1",
+                  "descricao_classe": "Cultivo de algodão herbáceo"
+                },
+                {
+                  "codigo_classe": "0113-0",
+                  "descricao_classe": "Cultivo de cana-de-açúcar"
+                },
+                {
+                  "codigo_classe": "0114-8",
+                  "descricao_classe": "Cultivo de fumo"
+                },
+                {
+                  "codigo_classe": "0115-6",
+                  "descricao_classe": "Cultivo de soja"
+                },
+                {
+                  "codigo_classe": "0119-9",
+                  "descricao_classe": "Cultivo de outras lavouras temporárias"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "01.2",
+              "descricao_grupo": "Horticultura e floricultura",
+              "classes": [
+                {
+                  "codigo_classe": "0121-1",
+                  "descricao_classe": "Horticultura"
+                },
+                {
+                  "codigo_classe": "0122-0",
+                  "descricao_classe": "Floricultura"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "02",
+          "descricao_divisao": "Produção florestal",
+          "grupos": [
+            {
+              "codigo_grupo": "02.1",
+              "descricao_grupo": "Silvicultura",
+              "classes": [
+                {
+                  "codigo_classe": "0210-1",
+                  "descricao_classe": "Silvicultura"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "02.2",
+              "descricao_grupo": "Exploração florestal",
+              "classes": [
+                {
+                  "codigo_classe": "0220-9",
+                  "descricao_classe": "Exploração florestal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "03",
+          "descricao_divisao": "Pesca e aquicultura",
+          "grupos": [
+            {
+              "codigo_grupo": "03.1",
+              "descricao_grupo": "Pesca",
+              "classes": [
+                {
+                  "codigo_classe": "0311-6",
+                  "descricao_classe": "Pesca em água salgada"
+                },
+                {
+                  "codigo_classe": "0312-4",
+                  "descricao_classe": "Pesca em água doce"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "03.2",
+              "descricao_grupo": "Aquicultura",
+              "classes": [
+                {
+                  "codigo_classe": "0321-3",
+                  "descricao_classe": "Aquicultura em água salgada e salobra"
+                },
+                {
+                  "codigo_classe": "0322-1",
+                  "descricao_classe": "Aquicultura em água doce"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "B",
+      "descricao_secao": "Indústrias Extrativas",
+      "divisoes": [
+        {
+          "codigo_divisao": "05",
+          "descricao_divisao": "Extração de carvão mineral",
+          "grupos": [
+            {
+              "codigo_grupo": "05.0",
+              "descricao_grupo": "Extração de carvão mineral",
+              "classes": [
+                {
+                  "codigo_classe": "0500-3",
+                  "descricao_classe": "Extração de carvão mineral"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "06",
+          "descricao_divisao": "Extração de petróleo e gás natural",
+          "grupos": [
+            {
+              "codigo_grupo": "06.0",
+              "descricao_grupo": "Extração de petróleo e gás natural",
+              "classes": [
+                {
+                  "codigo_classe": "0600-0",
+                  "descricao_classe": "Extração de petróleo e gás natural"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "07",
+          "descricao_divisao": "Extração de minerais metálicos",
+          "grupos": [
+            {
+              "codigo_grupo": "07.1",
+              "descricao_grupo": "Extração de minério de ferro",
+              "classes": [
+                {
+                  "codigo_classe": "0710-3",
+                  "descricao_classe": "Extração de minério de ferro"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "07.2",
+              "descricao_grupo": "Extração de outros minerais metálicos",
+              "classes": [
+                {
+                  "codigo_classe": "0721-9",
+                  "descricao_classe": "Extração de minerais metálicos não-ferrosos"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "C",
+      "descricao_secao": "Indústrias de Transformação",
+      "divisoes": [
+        {
+          "codigo_divisao": "10",
+          "descricao_divisao": "Fabricação de produtos alimentícios",
+          "grupos": [
+            {
+              "codigo_grupo": "10.1",
+              "descricao_grupo": "Abate e fabricação de produtos de carne",
+              "classes": [
+                {
+                  "codigo_classe": "1011-2",
+                  "descricao_classe": "Abate de reses, exceto suínos"
+                },
+                {
+                  "codigo_classe": "1012-1",
+                  "descricao_classe": "Abate de suínos"
+                },
+                {
+                  "codigo_classe": "1013-9",
+                  "descricao_classe": "Abate de aves"
+                },
+                {
+                  "codigo_classe": "1019-8",
+                  "descricao_classe": "Fabricação de produtos de carne"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "D",
+      "descricao_secao": "Eletricidade e Gás",
+      "divisoes": [
+        {
+          "codigo_divisao": "35",
+          "descricao_divisao": "Eletricidade, gás e outras utilidades",
+          "grupos": [
+            {
+              "codigo_grupo": "35.1",
+              "descricao_grupo": "Geração, transmissão e distribuição de energia elétrica",
+              "classes": [
+                {
+                  "codigo_classe": "3511-5",
+                  "descricao_classe": "Geração de energia elétrica"
+                },
+                {
+                  "codigo_classe": "3512-3",
+                  "descricao_classe": "Transmissão de energia elétrica"
+                },
+                {
+                  "codigo_classe": "3513-1",
+                  "descricao_classe": "Distribuição de energia elétrica"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "35.2",
+              "descricao_grupo": "Produção e distribuição de gás natural",
+              "classes": [
+                {
+                  "codigo_classe": "3520-4",
+                  "descricao_classe": "Produção de gás; distribuição de combustíveis gasosos"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "35.3",
+              "descricao_grupo": "Produção e distribuição de vapor, água quente e ar condicionado",
+              "classes": [
+                {
+                  "codigo_classe": "3530-1",
+                  "descricao_classe": "Produção e distribuição de vapor, água quente e ar condicionado"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "E",
+      "descricao_secao": "Água, Esgoto, Atividades de Gestão de Resíduos e Descontaminação",
+      "divisoes": [
+        {
+          "codigo_divisao": "36",
+          "descricao_divisao": "Captação, tratamento e distribuição de água",
+          "grupos": [
+            {
+              "codigo_grupo": "36.0",
+              "descricao_grupo": "Captação, tratamento e distribuição de água",
+              "classes": [
+                {
+                  "codigo_classe": "3600-6",
+                  "descricao_classe": "Captação, tratamento e distribuição de água"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "37",
+          "descricao_divisao": "Esgoto e atividades relacionadas",
+          "grupos": [
+            {
+              "codigo_grupo": "37.0",
+              "descricao_grupo": "Esgoto e atividades relacionadas",
+              "classes": [
+                {
+                  "codigo_classe": "3700-1",
+                  "descricao_classe": "Esgoto e atividades relacionadas"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "38",
+          "descricao_divisao": "Coleta, tratamento e disposição de resíduos",
+          "grupos": [
+            {
+              "codigo_grupo": "38.1",
+              "descricao_grupo": "Coleta de resíduos",
+              "classes": [
+                {
+                  "codigo_classe": "3811-4",
+                  "descricao_classe": "Coleta de resíduos não-perigosos"
+                },
+                {
+                  "codigo_classe": "3812-2",
+                  "descricao_classe": "Coleta de resíduos perigosos"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "38.2",
+              "descricao_grupo": "Tratamento e disposição de resíduos",
+              "classes": [
+                {
+                  "codigo_classe": "3821-1",
+                  "descricao_classe": "Tratamento e disposição de resíduos não-perigosos"
+                },
+                {
+                  "codigo_classe": "3822-9",
+                  "descricao_classe": "Tratamento e disposição de resíduos perigosos"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "39",
+          "descricao_divisao": "Descontaminação e outros serviços de gestão de resíduos",
+          "grupos": [
+            {
+              "codigo_grupo": "39.0",
+              "descricao_grupo": "Descontaminação e outros serviços de gestão de resíduos",
+              "classes": [
+                {
+                  "codigo_classe": "3900-5",
+                  "descricao_classe": "Descontaminação e outros serviços de gestão de resíduos"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "F",
+      "descricao_secao": "Construção",
+      "divisoes": [
+        {
+          "codigo_divisao": "41",
+          "descricao_divisao": "Construção de edifícios",
+          "grupos": [
+            {
+              "codigo_grupo": "41.1",
+              "descricao_grupo": "Construção de edifícios",
+              "classes": [
+                {
+                  "codigo_classe": "4110-7",
+                  "descricao_classe": "Incorporação de empreendimentos imobiliários"
+                },
+                {
+                  "codigo_classe": "4120-4",
+                  "descricao_classe": "Construção de edifícios"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "42",
+          "descricao_divisao": "Obras de infraestrutura",
+          "grupos": [
+            {
+              "codigo_grupo": "42.1",
+              "descricao_grupo": "Construção de rodovias, ferrovias, obras urbanas e obras de arte especiais",
+              "classes": [
+                {
+                  "codigo_classe": "4211-1",
+                  "descricao_classe": "Construção de rodovias e ferrovias"
+                },
+                {
+                  "codigo_classe": "4212-0",
+                  "descricao_classe": "Construção de obras de arte especiais"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "42.2",
+              "descricao_grupo": "Obras de infraestrutura para energia e telecomunicações",
+              "classes": [
+                {
+                  "codigo_classe": "4221-9",
+                  "descricao_classe": "Construção de redes de energia elétrica"
+                },
+                {
+                  "codigo_classe": "4222-7",
+                  "descricao_classe": "Construção de redes de telecomunicações"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "43",
+          "descricao_divisao": "Serviços especializados para construção",
+          "grupos": [
+            {
+              "codigo_grupo": "43.1",
+              "descricao_grupo": "Demolição e preparação de terreno",
+              "classes": [
+                {
+                  "codigo_classe": "4311-8",
+                  "descricao_classe": "Demolição e preparação de terreno"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "43.2",
+              "descricao_grupo": "Instalações elétricas, hidráulicas e de sistemas",
+              "classes": [
+                {
+                  "codigo_classe": "4321-5",
+                  "descricao_classe": "Instalações elétricas"
+                },
+                {
+                  "codigo_classe": "4322-3",
+                  "descricao_classe": "Instalações hidráulicas, de gás, sanitárias e de climatização"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "G",
+      "descricao_secao": "Comércio; Reparação de Veículos Automotores e Motocicletas",
+      "divisoes": [
+        {
+          "codigo_divisao": "45",
+          "descricao_divisao": "Comércio e reparação de veículos automotores e motocicletas",
+          "grupos": [
+            {
+              "codigo_grupo": "45.1",
+              "descricao_grupo": "Comércio de veículos automotores",
+              "classes": [
+                {
+                  "codigo_classe": "4511-1",
+                  "descricao_classe": "Comércio a varejo de automóveis, camionetas e utilitários novos"
+                },
+                {
+                  "codigo_classe": "4512-9",
+                  "descricao_classe": "Comércio a varejo de automóveis, camionetas e utilitários usados"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "45.2",
+              "descricao_grupo": "Manutenção e reparação de veículos automotores",
+              "classes": [
+                {
+                  "codigo_classe": "4520-0",
+                  "descricao_classe": "Serviços de manutenção e reparação mecânica de veículos automotores"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "45.3",
+              "descricao_grupo": "Comércio de peças e acessórios para veículos automotores",
+              "classes": [
+                {
+                  "codigo_classe": "4530-7",
+                  "descricao_classe": "Comércio de peças e acessórios para veículos automotores"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "45.4",
+              "descricao_grupo": "Comércio, manutenção e reparação de motocicletas",
+              "classes": [
+                {
+                  "codigo_classe": "4541-2",
+                  "descricao_classe": "Comércio de motocicletas e motonetas"
+                },
+                {
+                  "codigo_classe": "4542-0",
+                  "descricao_classe": "Manutenção e reparação de motocicletas e motonetas"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "46",
+          "descricao_divisao": "Comércio por atacado, exceto de veículos automotores e motocicletas",
+          "grupos": [
+            {
+              "codigo_grupo": "46.1",
+              "descricao_grupo": "Representantes comerciais e agentes do comércio",
+              "classes": [
+                {
+                  "codigo_classe": "4611-7",
+                  "descricao_classe": "Representantes comerciais e agentes do comércio de matérias-primas agrícolas e animais vivos"
+                },
+                {
+                  "codigo_classe": "4618-4",
+                  "descricao_classe": "Outros representantes comerciais e agentes do comércio especializado em produtos diversos"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "46.2",
+              "descricao_grupo": "Comércio atacadista de matérias-primas agrícolas e animais vivos",
+              "classes": [
+                {
+                  "codigo_classe": "4621-4",
+                  "descricao_classe": "Comércio atacadista de café em grão"
+                },
+                {
+                  "codigo_classe": "4622-2",
+                  "descricao_classe": "Comércio atacadista de soja"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "47",
+          "descricao_divisao": "Comércio varejista",
+          "grupos": [
+            {
+              "codigo_grupo": "47.1",
+              "descricao_grupo": "Comércio varejista não especializado",
+              "classes": [
+                {
+                  "codigo_classe": "4711-3",
+                  "descricao_classe": "Comércio varejista não especializado, com predominância de produtos alimentícios - hipermercados"
+                },
+                {
+                  "codigo_classe": "4712-1",
+                  "descricao_classe": "Comércio varejista não especializado, com predominância de produtos alimentícios - supermercados"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "47.3",
+              "descricao_grupo": "Comércio varejista de combustíveis e lubrificantes",
+              "classes": [
+                {
+                  "codigo_classe": "4731-8",
+                  "descricao_classe": "Comércio varejista de combustíveis para veículos automotores"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "H",
+      "descricao_secao": "Transporte, Armazenagem e Correio",
+      "divisoes": [
+        {
+          "codigo_divisao": "49",
+          "descricao_divisao": "Transporte terrestre",
+          "grupos": [
+            {
+              "codigo_grupo": "49.1",
+              "descricao_grupo": "Transporte ferroviário e metroviário",
+              "classes": [
+                {
+                  "codigo_classe": "4911-6",
+                  "descricao_classe": "Transporte ferroviário de carga"
+                },
+                {
+                  "codigo_classe": "4912-4",
+                  "descricao_classe": "Transporte ferroviário de passageiros"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "49.2",
+              "descricao_grupo": "Transporte rodoviário de passageiros",
+              "classes": [
+                {
+                  "codigo_classe": "4921-3",
+                  "descricao_classe": "Transporte rodoviário coletivo de passageiros, municipal"
+                },
+                {
+                  "codigo_classe": "4922-1",
+                  "descricao_classe": "Transporte rodoviário coletivo de passageiros, intermunicipal e interestadual"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "49.3",
+              "descricao_grupo": "Transporte rodoviário de carga",
+              "classes": [
+                {
+                  "codigo_classe": "4930-2",
+                  "descricao_classe": "Transporte rodoviário de carga"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "50",
+          "descricao_divisao": "Transporte aquaviário",
+          "grupos": [
+            {
+              "codigo_grupo": "50.1",
+              "descricao_grupo": "Transporte marítimo e costeiro de carga",
+              "classes": [
+                {
+                  "codigo_classe": "5011-4",
+                  "descricao_classe": "Transporte marítimo de carga"
+                },
+                {
+                  "codigo_classe": "5012-2",
+                  "descricao_classe": "Transporte costeiro de carga"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "50.3",
+              "descricao_grupo": "Transporte por navegação interior",
+              "classes": [
+                {
+                  "codigo_classe": "5030-1",
+                  "descricao_classe": "Transporte por navegação interior"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "51",
+          "descricao_divisao": "Transporte aéreo",
+          "grupos": [
+            {
+              "codigo_grupo": "51.1",
+              "descricao_grupo": "Transporte aéreo de passageiros",
+              "classes": [
+                {
+                  "codigo_classe": "5111-1",
+                  "descricao_classe": "Transporte aéreo regular de passageiros"
+                },
+                {
+                  "codigo_classe": "5112-9",
+                  "descricao_classe": "Transporte aéreo não-regular de passageiros"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "51.2",
+              "descricao_grupo": "Transporte aéreo de carga",
+              "classes": [
+                {
+                  "codigo_classe": "5120-0",
+                  "descricao_classe": "Transporte aéreo de carga"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "52",
+          "descricao_divisao": "Armazenagem e atividades auxiliares dos transportes",
+          "grupos": [
+            {
+              "codigo_grupo": "52.1",
+              "descricao_grupo": "Armazenagem e depósitos",
+              "classes": [
+                {
+                  "codigo_classe": "5211-7",
+                  "descricao_classe": "Armazenagem e depósito de mercadorias"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "52.2",
+              "descricao_grupo": "Atividades auxiliares dos transportes",
+              "classes": [
+                {
+                  "codigo_classe": "5221-4",
+                  "descricao_classe": "Atividades auxiliares dos transportes terrestres"
+                },
+                {
+                  "codigo_classe": "5223-0",
+                  "descricao_classe": "Atividades auxiliares dos transportes aéreos"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "53",
+          "descricao_divisao": "Correio e outras atividades de entrega",
+          "grupos": [
+            {
+              "codigo_grupo": "53.0",
+              "descricao_grupo": "Correio e atividades de entrega",
+              "classes": [
+                {
+                  "codigo_classe": "5310-5",
+                  "descricao_classe": "Atividades de correio"
+                },
+                {
+                  "codigo_classe": "5320-2",
+                  "descricao_classe": "Outras atividades de entrega"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "I",
+      "descricao_secao": "Alojamento e Alimentação",
+      "divisoes": [
+        {
+          "codigo_divisao": "55",
+          "descricao_divisao": "Alojamento",
+          "grupos": [
+            {
+              "codigo_grupo": "55.1",
+              "descricao_grupo": "Hotéis e similares",
+              "classes": [
+                {
+                  "codigo_classe": "5510-8",
+                  "descricao_classe": "Hotéis e similares"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "56",
+          "descricao_divisao": "Alimentação",
+          "grupos": [
+            {
+              "codigo_grupo": "56.1",
+              "descricao_grupo": "Restaurantes e outros serviços de alimentação e bebidas",
+              "classes": [
+                {
+                  "codigo_classe": "5611-2",
+                  "descricao_classe": "Restaurantes e similares"
+                },
+                {
+                  "codigo_classe": "5612-0",
+                  "descricao_classe": "Serviços ambulantes de alimentação"
+                },
+                {
+                  "codigo_classe": "5620-1",
+                  "descricao_classe": "Fornecimento de alimentos preparados preponderantemente para empresas"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "J",
+      "descricao_secao": "Informação e Comunicação",
+      "divisoes": [
+        {
+          "codigo_divisao": "58",
+          "descricao_divisao": "Edição e edição integrada à impressão",
+          "grupos": [
+            {
+              "codigo_grupo": "58.1",
+              "descricao_grupo": "Edição de livros, jornais e revistas",
+              "classes": [
+                {
+                  "codigo_classe": "5811-5",
+                  "descricao_classe": "Edição de livros"
+                },
+                {
+                  "codigo_classe": "5812-3",
+                  "descricao_classe": "Edição de jornais"
+                },
+                {
+                  "codigo_classe": "5813-1",
+                  "descricao_classe": "Edição de revistas"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "59",
+          "descricao_divisao": "Atividades cinematográficas, produção de vídeos e programas de televisão, gravação de som e edição de música",
+          "grupos": [
+            {
+              "codigo_grupo": "59.1",
+              "descricao_grupo": "Atividades de produção cinematográfica, de vídeos e de programas de televisão",
+              "classes": [
+                {
+                  "codigo_classe": "5911-1",
+                  "descricao_classe": "Produção de filmes para publicidade e outras finalidades"
+                },
+                {
+                  "codigo_classe": "5912-0",
+                  "descricao_classe": "Atividades de pós-produção cinematográfica, de vídeos e de programas de televisão"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "59.2",
+              "descricao_grupo": "Atividades de gravação de som e edição de música",
+              "classes": [
+                {
+                  "codigo_classe": "5920-1",
+                  "descricao_classe": "Atividades de gravação de som e edição de música"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "60",
+          "descricao_divisao": "Atividades de rádio e de televisão",
+          "grupos": [
+            {
+              "codigo_grupo": "60.1",
+              "descricao_grupo": "Atividades de rádio",
+              "classes": [
+                {
+                  "codigo_classe": "6010-1",
+                  "descricao_classe": "Atividades de rádio"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "60.2",
+              "descricao_grupo": "Atividades de televisão",
+              "classes": [
+                {
+                  "codigo_classe": "6021-7",
+                  "descricao_classe": "Programadoras e atividades relacionadas à televisão"
+                },
+                {
+                  "codigo_classe": "6022-5",
+                  "descricao_classe": "Atividades de transmissão de televisão"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "61",
+          "descricao_divisao": "Telecomunicações",
+          "grupos": [
+            {
+              "codigo_grupo": "61.1",
+              "descricao_grupo": "Telecomunicações por fio",
+              "classes": [
+                {
+                  "codigo_classe": "6110-8",
+                  "descricao_classe": "Telecomunicações por fio"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "61.2",
+              "descricao_grupo": "Telecomunicações sem fio",
+              "classes": [
+                {
+                  "codigo_classe": "6120-5",
+                  "descricao_classe": "Telecomunicações sem fio"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "61.3",
+              "descricao_grupo": "Telecomunicações por satélite",
+              "classes": [
+                {
+                  "codigo_classe": "6130-2",
+                  "descricao_classe": "Telecomunicações por satélite"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "62",
+          "descricao_divisao": "Atividades dos serviços de tecnologia da informação",
+          "grupos": [
+            {
+              "codigo_grupo": "62.0",
+              "descricao_grupo": "Atividades dos serviços de tecnologia da informação",
+              "classes": [
+                {
+                  "codigo_classe": "6201-5",
+                  "descricao_classe": "Desenvolvimento de programas de computador sob encomenda"
+                },
+                {
+                  "codigo_classe": "6202-3",
+                  "descricao_classe": "Desenvolvimento e licenciamento de programas de computador customizáveis"
+                },
+                {
+                  "codigo_classe": "6209-1",
+                  "descricao_classe": "Suporte técnico, manutenção e outros serviços em tecnologia da informação"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "63",
+          "descricao_divisao": "Atividades de prestação de serviços de informação",
+          "grupos": [
+            {
+              "codigo_grupo": "63.1",
+              "descricao_grupo": "Tratamento de dados, hospedagem na internet e outras atividades relacionadas",
+              "classes": [
+                {
+                  "codigo_classe": "6311-9",
+                  "descricao_classe": "Tratamento de dados, provedores de serviços de aplicação e hospedagem na internet"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "63.9",
+              "descricao_grupo": "Outras atividades de prestação de serviços de informação",
+              "classes": [
+                {
+                  "codigo_classe": "6391-7",
+                  "descricao_classe": "Agências de notícias"
+                },
+                {
+                  "codigo_classe": "6399-2",
+                  "descricao_classe": "Outras atividades de prestação de serviços de informação não especificadas anteriormente"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "K",
+      "descricao_secao": "Atividades Financeiras, de Seguros e Serviços Relacionados",
+      "divisoes": [
+        {
+          "codigo_divisao": "64",
+          "descricao_divisao": "Atividades de serviços financeiros, exceto seguros e previdência complementar",
+          "grupos": [
+            {
+              "codigo_grupo": "64.1",
+              "descricao_grupo": "Intermediação monetária",
+              "classes": [
+                {
+                  "codigo_classe": "6410-7",
+                  "descricao_classe": "Bancos comerciais"
+                },
+                {
+                  "codigo_classe": "6421-2",
+                  "descricao_classe": "Caixas econômicas"
+                },
+                {
+                  "codigo_classe": "6431-0",
+                  "descricao_classe": "Cooperativas de crédito"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "64.9",
+              "descricao_grupo": "Outras atividades de serviços financeiros",
+              "classes": [
+                {
+                  "codigo_classe": "6499-9",
+                  "descricao_classe": "Outras atividades de serviços financeiros não especificadas anteriormente"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "65",
+          "descricao_divisao": "Seguros, resseguros, previdência complementar e planos de saúde",
+          "grupos": [
+            {
+              "codigo_grupo": "65.1",
+              "descricao_grupo": "Seguros de vida e não-vida",
+              "classes": [
+                {
+                  "codigo_classe": "6511-2",
+                  "descricao_classe": "Seguros de vida"
+                },
+                {
+                  "codigo_classe": "6512-0",
+                  "descricao_classe": "Seguros não-vida"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "65.3",
+              "descricao_grupo": "Planos de saúde e previdência complementar",
+              "classes": [
+                {
+                  "codigo_classe": "6530-8",
+                  "descricao_classe": "Planos de saúde e previdência complementar"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "66",
+          "descricao_divisao": "Atividades auxiliares dos serviços financeiros, seguros, previdência complementar e planos de saúde",
+          "grupos": [
+            {
+              "codigo_grupo": "66.1",
+              "descricao_grupo": "Atividades auxiliares dos serviços financeiros",
+              "classes": [
+                {
+                  "codigo_classe": "6611-8",
+                  "descricao_classe": "Administração de bolsas e mercados de balcão organizados"
+                },
+                {
+                  "codigo_classe": "6612-6",
+                  "descricao_classe": "Corretoras de títulos e valores mobiliários"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "L",
+      "descricao_secao": "Atividades Imobiliárias",
+      "divisoes": [
+        {
+          "codigo_divisao": "68",
+          "descricao_divisao": "Atividades imobiliárias",
+          "grupos": [
+            {
+              "codigo_grupo": "68.1",
+              "descricao_grupo": "Compra e venda de imóveis próprios",
+              "classes": [
+                {
+                  "codigo_classe": "6810-2",
+                  "descricao_classe": "Compra e venda de imóveis próprios"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "68.2",
+              "descricao_grupo": "Aluguel de imóveis próprios",
+              "classes": [
+                {
+                  "codigo_classe": "6821-7",
+                  "descricao_classe": "Aluguel de imóveis próprios"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "68.3",
+              "descricao_grupo": "Atividades imobiliárias por contrato de comissão",
+              "classes": [
+                {
+                  "codigo_classe": "6830-2",
+                  "descricao_classe": "Administração de imóveis por contrato de comissão ou porcentagem"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "M",
+      "descricao_secao": "Atividades Profissionais, Científicas e Técnicas",
+      "divisoes": [
+        {
+          "codigo_divisao": "69",
+          "descricao_divisao": "Atividades jurídicas, de contabilidade e de auditoria",
+          "grupos": [
+            {
+              "codigo_grupo": "69.1",
+              "descricao_grupo": "Atividades jurídicas",
+              "classes": [
+                {
+                  "codigo_classe": "6911-7",
+                  "descricao_classe": "Atividades jurídicas"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "69.2",
+              "descricao_grupo": "Atividades de contabilidade, auditoria e consultoria tributária",
+              "classes": [
+                {
+                  "codigo_classe": "6920-6",
+                  "descricao_classe": "Atividades de contabilidade, auditoria e consultoria tributária"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "70",
+          "descricao_divisao": "Atividades de sedes de empresas e de consultoria em gestão empresarial",
+          "grupos": [
+            {
+              "codigo_grupo": "70.1",
+              "descricao_grupo": "Atividades de sedes de empresas",
+              "classes": [
+                {
+                  "codigo_classe": "7010-8",
+                  "descricao_classe": "Atividades de sedes de empresas"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "70.2",
+              "descricao_grupo": "Consultoria em gestão empresarial",
+              "classes": [
+                {
+                  "codigo_classe": "7020-5",
+                  "descricao_classe": "Consultoria em gestão empresarial"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "71",
+          "descricao_divisao": "Arquitetura, engenharia, testes e análises técnicas",
+          "grupos": [
+            {
+              "codigo_grupo": "71.1",
+              "descricao_grupo": "Arquitetura e engenharia",
+              "classes": [
+                {
+                  "codigo_classe": "7111-1",
+                  "descricao_classe": "Serviços de arquitetura"
+                },
+                {
+                  "codigo_classe": "7112-9",
+                  "descricao_classe": "Serviços de engenharia"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "71.2",
+              "descricao_grupo": "Testes e análises técnicas",
+              "classes": [
+                {
+                  "codigo_classe": "7120-0",
+                  "descricao_classe": "Serviços de testes e análises técnicas"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "72",
+          "descricao_divisao": "Pesquisa e desenvolvimento científico",
+          "grupos": [
+            {
+              "codigo_grupo": "72.1",
+              "descricao_grupo": "Pesquisa e desenvolvimento experimental em ciências físicas e naturais",
+              "classes": [
+                {
+                  "codigo_classe": "7210-0",
+                  "descricao_classe": "Pesquisa e desenvolvimento experimental em ciências físicas e naturais"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "72.2",
+              "descricao_grupo": "Pesquisa e desenvolvimento experimental em ciências sociais e humanas",
+              "classes": [
+                {
+                  "codigo_classe": "7220-8",
+                  "descricao_classe": "Pesquisa e desenvolvimento experimental em ciências sociais e humanas"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "73",
+          "descricao_divisao": "Publicidade e pesquisa de mercado",
+          "grupos": [
+            {
+              "codigo_grupo": "73.1",
+              "descricao_grupo": "Publicidade",
+              "classes": [
+                {
+                  "codigo_classe": "7311-4",
+                  "descricao_classe": "Agências de publicidade"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "73.2",
+              "descricao_grupo": "Pesquisa de mercado e de opinião pública",
+              "classes": [
+                {
+                  "codigo_classe": "7320-1",
+                  "descricao_classe": "Pesquisas de mercado e de opinião pública"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "N",
+      "descricao_secao": "Atividades Administrativas e Serviços Complementares",
+      "divisoes": [
+        {
+          "codigo_divisao": "77",
+          "descricao_divisao": "Locação de equipamentos e objetos pessoais e domésticos",
+          "grupos": [
+            {
+              "codigo_grupo": "77.1",
+              "descricao_grupo": "Locação de veículos automotores",
+              "classes": [
+                {
+                  "codigo_classe": "7711-0",
+                  "descricao_classe": "Locação de automóveis sem condutor"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "77.2",
+              "descricao_grupo": "Locação de equipamentos de transporte",
+              "classes": [
+                {
+                  "codigo_classe": "7721-6",
+                  "descricao_classe": "Locação de equipamentos de transporte, exceto veículos automotores"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "78",
+          "descricao_divisao": "Seleção, agenciamento e locação de mão de obra",
+          "grupos": [
+            {
+              "codigo_grupo": "78.1",
+              "descricao_grupo": "Seleção e agenciamento de mão de obra",
+              "classes": [
+                {
+                  "codigo_classe": "7810-8",
+                  "descricao_classe": "Seleção e agenciamento de mão de obra"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "78.2",
+              "descricao_grupo": "Locação de mão de obra temporária",
+              "classes": [
+                {
+                  "codigo_classe": "7820-5",
+                  "descricao_classe": "Locação de mão de obra temporária"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "79",
+          "descricao_divisao": "Agências de viagens, operadores turísticos e serviços de reservas",
+          "grupos": [
+            {
+              "codigo_grupo": "79.1",
+              "descricao_grupo": "Agências de viagens e operadores turísticos",
+              "classes": [
+                {
+                  "codigo_classe": "7911-2",
+                  "descricao_classe": "Agências de viagens"
+                },
+                {
+                  "codigo_classe": "7912-0",
+                  "descricao_classe": "Operadores turísticos"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "80",
+          "descricao_divisao": "Atividades de segurança e investigação",
+          "grupos": [
+            {
+              "codigo_grupo": "80.1",
+              "descricao_grupo": "Atividades de vigilância e segurança privada",
+              "classes": [
+                {
+                  "codigo_classe": "8011-1",
+                  "descricao_classe": "Atividades de vigilância e segurança privada"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "80.3",
+              "descricao_grupo": "Atividades de investigação particular",
+              "classes": [
+                {
+                  "codigo_classe": "8030-3",
+                  "descricao_classe": "Atividades de investigação particular"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "81",
+          "descricao_divisao": "Serviços para edifícios e atividades paisagísticas",
+          "grupos": [
+            {
+              "codigo_grupo": "81.2",
+              "descricao_grupo": "Limpeza em prédios e em domicílios",
+              "classes": [
+                {
+                  "codigo_classe": "8121-4",
+                  "descricao_classe": "Limpeza em prédios e em domicílios"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "81.3",
+              "descricao_grupo": "Atividades paisagísticas",
+              "classes": [
+                {
+                  "codigo_classe": "8130-2",
+                  "descricao_classe": "Atividades paisagísticas"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "82",
+          "descricao_divisao": "Serviços administrativos e complementares",
+          "grupos": [
+            {
+              "codigo_grupo": "82.1",
+              "descricao_grupo": "Serviços combinados de escritório e apoio administrativo",
+              "classes": [
+                {
+                  "codigo_classe": "8211-3",
+                  "descricao_classe": "Serviços combinados de escritório e apoio administrativo"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "82.2",
+              "descricao_grupo": "Atividades de call center",
+              "classes": [
+                {
+                  "codigo_classe": "8220-9",
+                  "descricao_classe": "Atividades de call center"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "O",
+      "descricao_secao": "Administração Pública, Defesa e Seguridade Social",
+      "divisoes": [
+        {
+          "codigo_divisao": "84",
+          "descricao_divisao": "Administração pública, defesa e seguridade social",
+          "grupos": [
+            {
+              "codigo_grupo": "84.1",
+              "descricao_grupo": "Administração pública geral",
+              "classes": [
+                {
+                  "codigo_classe": "8411-6",
+                  "descricao_classe": "Administração pública em geral"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "84.2",
+              "descricao_grupo": "Defesa e segurança pública",
+              "classes": [
+                {
+                  "codigo_classe": "8421-3",
+                  "descricao_classe": "Defesa nacional"
+                },
+                {
+                  "codigo_classe": "8422-1",
+                  "descricao_classe": "Segurança pública e defesa civil"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "84.3",
+              "descricao_grupo": "Seguridade social obrigatória",
+              "classes": [
+                {
+                  "codigo_classe": "8430-2",
+                  "descricao_classe": "Seguridade social obrigatória"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "P",
+      "descricao_secao": "Educação",
+      "divisoes": [
+        {
+          "codigo_divisao": "85",
+          "descricao_divisao": "Educação",
+          "grupos": [
+            {
+              "codigo_grupo": "85.1",
+              "descricao_grupo": "Educação infantil",
+              "classes": [
+                {
+                  "codigo_classe": "8511-2",
+                  "descricao_classe": "Educação infantil - creche"
+                },
+                {
+                  "codigo_classe": "8512-0",
+                  "descricao_classe": "Educação infantil - pré-escola"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "85.2",
+              "descricao_grupo": "Ensino fundamental",
+              "classes": [
+                {
+                  "codigo_classe": "8521-0",
+                  "descricao_classe": "Ensino fundamental"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "85.3",
+              "descricao_grupo": "Ensino médio",
+              "classes": [
+                {
+                  "codigo_classe": "8531-7",
+                  "descricao_classe": "Ensino médio"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "85.4",
+              "descricao_grupo": "Educação superior",
+              "classes": [
+                {
+                  "codigo_classe": "8541-4",
+                  "descricao_classe": "Educação superior - graduação"
+                },
+                {
+                  "codigo_classe": "8542-2",
+                  "descricao_classe": "Educação superior - pós-graduação"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "85.5",
+              "descricao_grupo": "Educação profissional e tecnológica",
+              "classes": [
+                {
+                  "codigo_classe": "8550-3",
+                  "descricao_classe": "Educação profissional de nível técnico e tecnológico"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "85.9",
+              "descricao_grupo": "Outras atividades de ensino",
+              "classes": [
+                {
+                  "codigo_classe": "8591-1",
+                  "descricao_classe": "Ensino de idiomas"
+                },
+                {
+                  "codigo_classe": "8599-6",
+                  "descricao_classe": "Outras atividades de ensino não especificadas anteriormente"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "Q",
+      "descricao_secao": "Saúde Humana e Serviços Sociais",
+      "divisoes": [
+        {
+          "codigo_divisao": "86",
+          "descricao_divisao": "Atividades de atenção à saúde humana",
+          "grupos": [
+            {
+              "codigo_grupo": "86.1",
+              "descricao_grupo": "Atividades hospitalares",
+              "classes": [
+                {
+                  "codigo_classe": "8610-1",
+                  "descricao_classe": "Atividades de atendimento hospitalar"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "86.2",
+              "descricao_grupo": "Serviços médicos e odontológicos",
+              "classes": [
+                {
+                  "codigo_classe": "8621-6",
+                  "descricao_classe": "Atividades de prática médica ambulatorial"
+                },
+                {
+                  "codigo_classe": "8622-4",
+                  "descricao_classe": "Atividades odontológicas"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "86.9",
+              "descricao_grupo": "Atividades de apoio à gestão da saúde",
+              "classes": [
+                {
+                  "codigo_classe": "8690-9",
+                  "descricao_classe": "Atividades de apoio à gestão da saúde"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "87",
+          "descricao_divisao": "Atividades de atenção à saúde humana integradas com assistência social, com internação",
+          "grupos": [
+            {
+              "codigo_grupo": "87.1",
+              "descricao_grupo": "Atividades de atendimento residencial coletivo",
+              "classes": [
+                {
+                  "codigo_classe": "8711-5",
+                  "descricao_classe": "Atividades de assistência a idosos com internação"
+                },
+                {
+                  "codigo_classe": "8712-3",
+                  "descricao_classe": "Atividades de assistência social para deficientes com internação"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "88",
+          "descricao_divisao": "Serviços de assistência social sem alojamento",
+          "grupos": [
+            {
+              "codigo_grupo": "88.0",
+              "descricao_grupo": "Serviços de assistência social sem alojamento",
+              "classes": [
+                {
+                  "codigo_classe": "8800-6",
+                  "descricao_classe": "Serviços de assistência social sem alojamento"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "R",
+      "descricao_secao": "Artes, Cultura, Esporte e Recreação",
+      "divisoes": [
+        {
+          "codigo_divisao": "90",
+          "descricao_divisao": "Atividades artísticas, criativas e de espetáculos",
+          "grupos": [
+            {
+              "codigo_grupo": "90.0",
+              "descricao_grupo": "Atividades artísticas, criativas e de espetáculos",
+              "classes": [
+                {
+                  "codigo_classe": "9001-9",
+                  "descricao_classe": "Produção teatral"
+                },
+                {
+                  "codigo_classe": "9002-7",
+                  "descricao_classe": "Produção musical"
+                },
+                {
+                  "codigo_classe": "9003-5",
+                  "descricao_classe": "Produção de espetáculos de dança"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "91",
+          "descricao_divisao": "Atividades ligadas ao patrimônio cultural e ambiental",
+          "grupos": [
+            {
+              "codigo_grupo": "91.0",
+              "descricao_grupo": "Atividades de bibliotecas, arquivos, museus e outras atividades culturais",
+              "classes": [
+                {
+                  "codigo_classe": "9101-5",
+                  "descricao_classe": "Atividades de bibliotecas e arquivos"
+                },
+                {
+                  "codigo_classe": "9102-3",
+                  "descricao_classe": "Atividades de museus e de exploração de lugares e prédios históricos e atrações similares"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "92",
+          "descricao_divisao": "Atividades de jogos de azar e apostas",
+          "grupos": [
+            {
+              "codigo_grupo": "92.0",
+              "descricao_grupo": "Atividades de jogos de azar e apostas",
+              "classes": [
+                {
+                  "codigo_classe": "9200-3",
+                  "descricao_classe": "Atividades de jogos de azar e apostas"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "93",
+          "descricao_divisao": "Atividades esportivas e de recreação e lazer",
+          "grupos": [
+            {
+              "codigo_grupo": "93.1",
+              "descricao_grupo": "Atividades esportivas",
+              "classes": [
+                {
+                  "codigo_classe": "9311-5",
+                  "descricao_classe": "Gestão de instalações esportivas"
+                },
+                {
+                  "codigo_classe": "9312-3",
+                  "descricao_classe": "Clubes sociais, esportivos e similares"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "93.2",
+              "descricao_grupo": "Atividades de recreação e lazer",
+              "classes": [
+                {
+                  "codigo_classe": "9321-1",
+                  "descricao_classe": "Parques de diversão e parques temáticos"
+                },
+                {
+                  "codigo_classe": "9329-8",
+                  "descricao_classe": "Outras atividades de recreação e lazer não especificadas anteriormente"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "S",
+      "descricao_secao": "Outras Atividades de Serviços",
+      "divisoes": [
+        {
+          "codigo_divisao": "94",
+          "descricao_divisao": "Atividades de organizações associativas",
+          "grupos": [
+            {
+              "codigo_grupo": "94.1",
+              "descricao_grupo": "Atividades de organizações empresariais, profissionais e patronais",
+              "classes": [
+                {
+                  "codigo_classe": "9411-1",
+                  "descricao_classe": "Atividades de organizações empresariais e patronais"
+                },
+                {
+                  "codigo_classe": "9412-9",
+                  "descricao_classe": "Atividades de organizações profissionais"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "94.9",
+              "descricao_grupo": "Outras atividades associativas",
+              "classes": [
+                {
+                  "codigo_classe": "9491-0",
+                  "descricao_classe": "Atividades de organizações religiosas"
+                },
+                {
+                  "codigo_classe": "9492-8",
+                  "descricao_classe": "Atividades de organizações políticas"
+                },
+                {
+                  "codigo_classe": "9499-5",
+                  "descricao_classe": "Atividades de outras organizações associativas não especificadas anteriormente"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "95",
+          "descricao_divisao": "Reparação e manutenção de objetos pessoais e domésticos",
+          "grupos": [
+            {
+              "codigo_grupo": "95.1",
+              "descricao_grupo": "Reparação de computadores e de equipamentos de comunicação",
+              "classes": [
+                {
+                  "codigo_classe": "9511-8",
+                  "descricao_classe": "Reparação e manutenção de computadores e de equipamentos periféricos"
+                },
+                {
+                  "codigo_classe": "9512-6",
+                  "descricao_classe": "Reparação e manutenção de equipamentos de comunicação"
+                }
+              ]
+            },
+            {
+              "codigo_grupo": "95.2",
+              "descricao_grupo": "Reparação de bens de uso pessoal e doméstico",
+              "classes": [
+                {
+                  "codigo_classe": "9521-5",
+                  "descricao_classe": "Reparação de eletrodomésticos e equipamentos para uso doméstico e pessoal"
+                },
+                {
+                  "codigo_classe": "9529-0",
+                  "descricao_classe": "Reparação de outros objetos pessoais e domésticos"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codigo_divisao": "96",
+          "descricao_divisao": "Outras atividades de serviços pessoais",
+          "grupos": [
+            {
+              "codigo_grupo": "96.0",
+              "descricao_grupo": "Serviços pessoais diversos",
+              "classes": [
+                {
+                  "codigo_classe": "9601-7",
+                  "descricao_classe": "Lavanderias, tinturarias e similares"
+                },
+                {
+                  "codigo_classe": "9602-5",
+                  "descricao_classe": "Cabeleireiros, manicure e pedicure"
+                },
+                {
+                  "codigo_classe": "9603-3",
+                  "descricao_classe": "Atividades funerárias e serviços relacionados"
+                },
+                {
+                  "codigo_classe": "9609-2",
+                  "descricao_classe": "Outras atividades de serviços pessoais não especificadas anteriormente"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "T",
+      "descricao_secao": "Serviços Domésticos",
+      "divisoes": [
+        {
+          "codigo_divisao": "97",
+          "descricao_divisao": "Serviços domésticos",
+          "grupos": [
+            {
+              "codigo_grupo": "97.0",
+              "descricao_grupo": "Serviços domésticos",
+              "classes": [
+                {
+                  "codigo_classe": "9700-5",
+                  "descricao_classe": "Serviços domésticos"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "secao": "U",
+      "descricao_secao": "Organismos Internacionais e Outras Instituições Extraterritoriais",
+      "divisoes": [
+        {
+          "codigo_divisao": "99",
+          "descricao_divisao": "Organismos internacionais e outras instituições extraterritoriais",
+          "grupos": [
+            {
+              "codigo_grupo": "99.0",
+              "descricao_grupo": "Organismos internacionais e outras instituições extraterritoriais",
+              "classes": [
+                {
+                  "codigo_classe": "9900-8",
+                  "descricao_classe": "Organismos internacionais e outras instituições extraterritoriais"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

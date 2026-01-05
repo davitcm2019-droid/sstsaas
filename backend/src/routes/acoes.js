@@ -1,20 +1,18 @@
 const express = require('express');
-const router = express.Router();
-const { acoes, empresas, usuarios } = require('../data/mockData');
+const { acoes } = require('../data/mockData');
+const lookupsRepository = require('../repositories/lookupsRepository');
 const { sendSuccess, sendError } = require('../utils/response');
+
+const router = express.Router();
 
 const toLower = (value = '') => String(value).toLowerCase();
 
-const findEmpresaNome = (empresaId) => {
-  if (!empresaId) return '';
-  const empresa = empresas.find((item) => item.id === empresaId);
-  return empresa ? empresa.nome : '';
+const getEmpresaNome = async (empresaId) => {
+  return lookupsRepository.getEmpresaNomeById(empresaId);
 };
 
-const findResponsavelNome = (responsavelId) => {
-  if (!responsavelId) return '';
-  const responsavel = usuarios.find((item) => item.id === responsavelId);
-  return responsavel ? responsavel.nome : '';
+const getResponsavelNome = async (responsavelId) => {
+  return lookupsRepository.getUsuarioNomeById(responsavelId);
 };
 
 const parseNumber = (value, fallback = 0) => {
@@ -22,7 +20,7 @@ const parseNumber = (value, fallback = 0) => {
   return Number.isNaN(parsed) ? fallback : parsed;
 };
 
-const sanitizePayload = (data = {}) => {
+const sanitizePayload = async (data = {}) => {
   const empresaId = data.empresaId ? parseInt(data.empresaId, 10) : null;
   const responsavelId = data.responsavelId ? parseInt(data.responsavelId, 10) : null;
 
@@ -30,9 +28,9 @@ const sanitizePayload = (data = {}) => {
     titulo: data.titulo || '',
     descricao: data.descricao || '',
     empresaId,
-    empresaNome: data.empresaNome || findEmpresaNome(empresaId),
+    empresaNome: data.empresaNome || (await getEmpresaNome(empresaId)),
     responsavelId,
-    responsavelNome: data.responsavelNome || findResponsavelNome(responsavelId),
+    responsavelNome: data.responsavelNome || (await getResponsavelNome(responsavelId)),
     tipo: data.tipo || 'preventiva',
     prioridade: data.prioridade || 'media',
     status: data.status || 'pendente',
@@ -96,9 +94,9 @@ router.get('/:id(\\d+)', (req, res) => {
 });
 
 // POST /api/acoes
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const sanitized = sanitizePayload(req.body);
+    const sanitized = await sanitizePayload(req.body);
     const nextId = acoes.length ? Math.max(...acoes.map((item) => item.id)) + 1 : 1;
 
     const novaAcao = {
@@ -115,7 +113,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/acoes/:id
-router.put('/:id(\\d+)', (req, res) => {
+router.put('/:id(\\d+)', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const index = acoes.findIndex((item) => item.id === id);
@@ -124,7 +122,7 @@ router.put('/:id(\\d+)', (req, res) => {
       return sendError(res, { message: 'Ação não encontrada' }, 404);
     }
 
-    const sanitized = sanitizePayload({
+    const sanitized = await sanitizePayload({
       ...acoes[index],
       ...req.body
     });
@@ -159,3 +157,4 @@ router.delete('/:id(\\d+)', (req, res) => {
 });
 
 module.exports = router;
+

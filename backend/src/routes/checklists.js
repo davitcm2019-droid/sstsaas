@@ -8,13 +8,37 @@ const {
   getInspectionsByInspector,
   calculateScore
 } = require('../data/checklists');
-const { empresas } = require('../data/mockData');
+const empresasRepository = require('../repositories/empresasRepository');
+const { requirePermission } = require('../middleware/rbac');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
 
+const resolveEmpresaFromId = async (empresaIdRaw) => {
+  const id = parseInt(empresaIdRaw, 10);
+  if (Number.isNaN(id)) {
+    const error = new Error('empresaId inválido');
+    error.status = 400;
+    throw error;
+  }
+
+  const empresa = await empresasRepository.findById(id);
+  if (!empresa) {
+    const error = new Error('Empresa não encontrada');
+    error.status = 404;
+    throw error;
+  }
+
+  return empresa;
+};
+
+const resolveCnaeFromEmpresaId = async (empresaIdRaw) => {
+  const empresa = await resolveEmpresaFromId(empresaIdRaw);
+  return String(empresa.cnae || '').trim();
+};
+
 // GET /api/checklists - Listar checklists disponíveis
-router.get('/', (req, res) => {
+router.get('/', requirePermission('checklists:read'), async (req, res) => {
   try {
     const { category, active, cnae, empresaId } = req.query;
     let filteredChecklists = [...inspectionChecklists];
@@ -22,17 +46,7 @@ router.get('/', (req, res) => {
     let cnaeToUse = typeof cnae === 'string' ? cnae.trim() : '';
 
     if (empresaId) {
-      const id = parseInt(empresaId, 10);
-      if (Number.isNaN(id)) {
-        return sendError(res, { message: 'empresaId invÇ­lido' }, 400);
-      }
-
-      const empresa = empresas.find((item) => item.id === id);
-      if (!empresa) {
-        return sendError(res, { message: 'Empresa nÇœo encontrada' }, 404);
-      }
-
-      cnaeToUse = String(empresa.cnae || '').trim();
+      cnaeToUse = await resolveCnaeFromEmpresaId(empresaId);
     }
 
     if (cnaeToUse) {
@@ -50,12 +64,17 @@ router.get('/', (req, res) => {
 
     return sendSuccess(res, { data: filteredChecklists, meta: { total: filteredChecklists.length } });
   } catch (error) {
+    const status = error.status || 500;
+    if (status !== 500) {
+      return sendError(res, { message: error.message }, status);
+    }
+
     return sendError(res, { message: 'Erro ao buscar checklists', meta: { details: error.message } }, 500);
   }
 });
 
 // GET /api/checklists/categories - Listar categorias de checklists
-router.get('/categories', (req, res) => {
+router.get('/categories', requirePermission('checklists:read'), async (req, res) => {
   try {
     const { cnae, empresaId } = req.query;
 
@@ -63,17 +82,7 @@ router.get('/categories', (req, res) => {
     let cnaeToUse = typeof cnae === 'string' ? cnae.trim() : '';
 
     if (empresaId) {
-      const id = parseInt(empresaId, 10);
-      if (Number.isNaN(id)) {
-        return sendError(res, { message: 'empresaId invÇ­lido' }, 400);
-      }
-
-      const empresa = empresas.find((item) => item.id === id);
-      if (!empresa) {
-        return sendError(res, { message: 'Empresa nÇœo encontrada' }, 404);
-      }
-
-      cnaeToUse = String(empresa.cnae || '').trim();
+      cnaeToUse = await resolveCnaeFromEmpresaId(empresaId);
     }
 
     if (cnaeToUse) {
@@ -83,12 +92,17 @@ router.get('/categories', (req, res) => {
     const categories = [...new Set(checklists.map((item) => item.category))].sort();
     return sendSuccess(res, { data: categories, meta: { total: categories.length } });
   } catch (error) {
+    const status = error.status || 500;
+    if (status !== 500) {
+      return sendError(res, { message: error.message }, status);
+    }
+
     return sendError(res, { message: 'Erro ao buscar categorias', meta: { details: error.message } }, 500);
   }
 });
 
 // POST /api/checklists/:id/inspection - Criar inspeção
-router.post('/:id(\\d+)/inspection', (req, res) => {
+router.post('/:id(\\d+)/inspection', requirePermission('inspections:write'), async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const checklist = inspectionChecklists.find((c) => c.id === id);
@@ -97,21 +111,36 @@ router.post('/:id(\\d+)/inspection', (req, res) => {
       return sendError(res, { message: 'Checklist não encontrado' }, 404);
     }
 
+    const empresaId = req.body?.empresaId;
+    if (!empresaId) {
+      return sendError(res, { message: 'empresaId é obrigatório' }, 400);
+    }
+
+    const empresa = await resolveEmpresaFromId(empresaId);
+
     const inspectionData = {
       checklistId: id,
-      ...req.body
+      ...req.body,
+      empresaNome: req.body?.empresaNome || empresa.nome,
+      inspectorId: req.user?.id ?? req.body?.inspectorId,
+      inspectorName: req.user?.nome ?? req.body?.inspectorName
     };
 
     const newInspection = createInspection(inspectionData);
 
     return sendSuccess(res, { data: newInspection, message: 'Inspeção criada com sucesso' }, 201);
   } catch (error) {
+    const status = error.status || 500;
+    if (status !== 500) {
+      return sendError(res, { message: error.message }, status);
+    }
+
     return sendError(res, { message: 'Erro ao criar inspeção', meta: { details: error.message } }, 500);
   }
 });
 
 // GET /api/checklists/inspections - Listar inspeções
-router.get('/inspections', (req, res) => {
+router.get('/inspections', requirePermission('inspections:read'), (req, res) => {
   try {
     const { empresaId, inspectorId, status } = req.query;
     let filteredInspections = [...inspections];
@@ -135,7 +164,7 @@ router.get('/inspections', (req, res) => {
 });
 
 // GET /api/checklists/inspections/stats - Estatísticas de inspeções
-router.get('/inspections/stats', (req, res) => {
+router.get('/inspections/stats', requirePermission('inspections:read'), (req, res) => {
   try {
     const stats = {
       total: inspections.length,
@@ -164,7 +193,7 @@ router.get('/inspections/stats', (req, res) => {
 });
 
 // GET /api/checklists/inspections/:id - Buscar inspeção por ID
-router.get('/inspections/:id(\\d+)', (req, res) => {
+router.get('/inspections/:id(\\d+)', requirePermission('inspections:read'), (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const inspection = inspections.find((i) => i.id === id);
@@ -180,7 +209,7 @@ router.get('/inspections/:id(\\d+)', (req, res) => {
 });
 
 // PUT /api/checklists/inspections/:id - Atualizar inspeção
-router.put('/inspections/:id(\\d+)', (req, res) => {
+router.put('/inspections/:id(\\d+)', requirePermission('inspections:write'), (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const inspectionIndex = inspections.findIndex((i) => i.id === id);
@@ -210,7 +239,7 @@ router.put('/inspections/:id(\\d+)', (req, res) => {
 });
 
 // GET /api/checklists/:id - Buscar checklist por ID
-router.get('/:id(\\d+)', (req, res) => {
+router.get('/:id(\\d+)', requirePermission('checklists:read'), (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const checklist = inspectionChecklists.find((c) => c.id === id);
@@ -226,4 +255,3 @@ router.get('/:id(\\d+)', (req, res) => {
 });
 
 module.exports = router;
-

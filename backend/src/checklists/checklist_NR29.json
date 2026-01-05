@@ -1,0 +1,54 @@
+{
+  "nr": "NR-29",
+  "title": "Segurança e Saúde no Trabalho Portuário",
+  "version": {
+    "portaria": "Portaria MTP nº 1.864",
+    "date": "2023-08-24"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR29-Q-001",
+      "question": "Existe PGR Portuário implementado e atualizado?"
+    },
+    {
+      "id": "NR29-Q-002",
+      "question": "Os trabalhadores portuários estão capacitados conforme NR‑29?"
+    },
+    {
+      "id": "NR29-Q-003",
+      "question": "Há controle de riscos de queda, atropelamento e afogamento?"
+    },
+    {
+      "id": "NR29-Q-004",
+      "question": "Os equipamentos de içamento possuem inspeções regulares?"
+    },
+    {
+      "id": "NR29-Q-005",
+      "question": "As áreas de atracação e cais possuem sinalização e barreiras de segurança?"
+    },
+    {
+      "id": "NR29-Q-006",
+      "question": "Os EPIs e EPCs estão disponíveis e adequados às atividades portuárias?"
+    },
+    {
+      "id": "NR29-Q-007",
+      "question": "Os planos de emergência e evacuação foram testados e divulgados?"
+    },
+    {
+      "id": "NR29-Q-008",
+      "question": "Há controle médico ocupacional conforme exposição aos agentes?"
+    },
+    {
+      "id": "NR29-Q-009",
+      "question": "Os riscos de atmosferas explosivas e confinadas são monitorados?"
+    },
+    {
+      "id": "NR29-Q-010",
+      "question": "Os operadores e guindasteiros possuem certificados válidos?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-29-atualizada-2023.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

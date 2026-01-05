@@ -1,0 +1,54 @@
+{
+  "nr": "NR-25",
+  "title": "Resíduos Industriais",
+  "version": {
+    "portaria": "Portaria MTP nº 1.857",
+    "date": "2022-06-10"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR25-Q-001",
+      "question": "Existe plano de gerenciamento de resíduos industriais (PGRI)?"
+    },
+    {
+      "id": "NR25-Q-002",
+      "question": "Os resíduos são segregados e identificados na fonte geradora?"
+    },
+    {
+      "id": "NR25-Q-003",
+      "question": "Há armazenamento temporário em locais adequados e sinalizados?"
+    },
+    {
+      "id": "NR25-Q-004",
+      "question": "Os resíduos perigosos possuem destinação conforme legislação ambiental?"
+    },
+    {
+      "id": "NR25-Q-005",
+      "question": "Os trabalhadores são capacitados sobre manuseio de resíduos?"
+    },
+    {
+      "id": "NR25-Q-006",
+      "question": "Há registros de transporte, destinação e tratamento final?"
+    },
+    {
+      "id": "NR25-Q-007",
+      "question": "As áreas de resíduos possuem contenção e piso impermeável?"
+    },
+    {
+      "id": "NR25-Q-008",
+      "question": "Existem EPIs e EPCs adequados para coleta e movimentação?"
+    },
+    {
+      "id": "NR25-Q-009",
+      "question": "Os recipientes de resíduos estão em bom estado e identificados?"
+    },
+    {
+      "id": "NR25-Q-010",
+      "question": "A empresa mantém licenças ambientais atualizadas?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-25-atualizada-2022-1.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

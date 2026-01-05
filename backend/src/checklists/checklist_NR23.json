@@ -1,0 +1,54 @@
+{
+  "nr": "NR-23",
+  "title": "Proteção Contra Incêndios",
+  "version": {
+    "portaria": "Portaria MTP nº 2.188",
+    "date": "2022-07-28"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR23-Q-001",
+      "question": "O estabelecimento possui sistema de proteção contra incêndio conforme legislação?"
+    },
+    {
+      "id": "NR23-Q-002",
+      "question": "Os extintores estão distribuídos e sinalizados adequadamente?"
+    },
+    {
+      "id": "NR23-Q-003",
+      "question": "Há inspeção e manutenção periódica dos equipamentos de combate ao fogo?"
+    },
+    {
+      "id": "NR23-Q-004",
+      "question": "As saídas de emergência estão desobstruídas e sinalizadas?"
+    },
+    {
+      "id": "NR23-Q-005",
+      "question": "Os trabalhadores receberam treinamento em prevenção e combate a incêndio?"
+    },
+    {
+      "id": "NR23-Q-006",
+      "question": "Existe plano de abandono e simulado anual de evacuação?"
+    },
+    {
+      "id": "NR23-Q-007",
+      "question": "Os equipamentos fixos (hidrantes, sprinklers) estão operacionais?"
+    },
+    {
+      "id": "NR23-Q-008",
+      "question": "As brigadas de incêndio estão constituídas e treinadas?"
+    },
+    {
+      "id": "NR23-Q-009",
+      "question": "As rotas de fuga estão demarcadas e iluminadas?"
+    },
+    {
+      "id": "NR23-Q-010",
+      "question": "Há integração com o Corpo de Bombeiros e documentação aprovada?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-23-atualizada-2022.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

@@ -6,7 +6,9 @@ Este repositório inclui um Blueprint (`render.yaml`) para criar **3 recursos** 
 - **Frontend**: Static Site (Vite/React)
 - **Banco**: Render Postgres (`sst-saas-db`)
 
-## 1) Blueprint (recomendado)
+O backend **usa PostgreSQL** para persistir **usuários e empresas** e executa **migrations automaticamente** no startup.
+
+## 1) Blueprint (mais simples)
 
 1. Suba o repositório no GitHub.
 2. No Render: **New + → Blueprint** e selecione o repositório.
@@ -19,24 +21,30 @@ Este repositório inclui um Blueprint (`render.yaml`) para criar **3 recursos** 
   - `buildCommand: npm ci`
   - `startCommand: npm start`
   - `healthCheckPath: /api/health`
-  - `JWT_SECRET` é gerado automaticamente (`generateValue: true`)
+  - `NODE_ENV=production`
+  - `JWT_SECRET` gerado automaticamente (`generateValue: true`)
   - `CORS_ORIGIN` deve apontar para a URL do frontend
-  - `DATABASE_URL` é injetado a partir do Postgres (`fromDatabase.connectionString`)
+  - `DATABASE_URL` injetado a partir do Postgres (`fromDatabase.connectionString`)
 - Frontend (`sst-saas-frontend`)
   - `rootDir: frontend`
   - build: `npm ci && npm run build`
   - publish: `dist`
-  - **rewrite** `/* → /index.html` (necessário para React Router)
+  - rewrite `/* → /index.html` (necessário para React Router)
 - Postgres (`sst-saas-db`)
   - `plan: free`
   - `ipAllowList: []` (bloqueia acesso externo; mantém acesso interno para serviços do Render na mesma região)
 
-## 2) Banco de dados no Render (como configurar corretamente)
+## 2) Deploy manual (sem Blueprint)
 
-### Estado atual do projeto (importante)
+Se preferir criar recursos manualmente:
 
-- A persistência no backend ainda é **em memória** (os dados não persistem após restart).
-- O Postgres no Render é **pré-configuração** para a fase de persistência. Até implementar essa fase, o backend **não usa** `DATABASE_URL`.
+1) Crie o Postgres: **New + → PostgreSQL**  
+2) Copie a **Internal Database URL** do banco  
+3) Crie o backend: **New + → Web Service** (Root Directory: `backend`)  
+4) Configure as variáveis do backend (aba *Environment*)  
+5) Crie o frontend: **New + → Static Site** (Root Directory: `frontend`) e configure `VITE_API_URL`  
+
+## 3) Banco de dados no Render (configuração correta)
 
 ### URLs do Render Postgres
 
@@ -49,35 +57,33 @@ Cada banco no Render tem:
 
 - Use sempre o **Internal Database URL** no backend do Render.
 - Mantenha `ipAllowList: []` para evitar acesso externo.
-- Se você precisar acessar externamente para debug, libere apenas seu IP no allow list (CIDR) e use a **External Database URL**.
+- Se precisar acessar externamente para debug, libere apenas seu IP no allow list (CIDR) e use a **External Database URL**.
 
-## 3) Variáveis de ambiente (Render Dashboard)
+### Migrations
+
+- O backend executa migrations automaticamente ao iniciar.
+- Se `DATABASE_URL` estiver inválida ou o banco estiver indisponível, o serviço não sobe.
+
+## 4) Variáveis de ambiente (Render Dashboard)
 
 ### Backend (obrigatórias)
 
-- `JWT_SECRET` (o Blueprint gera automaticamente)
+- `DATABASE_URL` (use a *Internal Database URL* do Render Postgres)
+- `JWT_SECRET`
 - `CORS_ORIGIN` (ex.: `https://sst-saas-frontend.onrender.com`)
 
-### Backend (preparação para banco)
+### Backend (opcional)
 
-- `DATABASE_URL` (o Blueprint configura automaticamente via `fromDatabase`)
+- `DATABASE_SSL` (`true`/`false`) — se `NODE_ENV` não for `production`, defina `DATABASE_SSL=true` no Render.
 
 ### Frontend (build-time)
 
 - `VITE_API_URL` (URL base do backend **sem** `/api`, ex.: `https://sst-saas-backend.onrender.com`)
 
-## 4) Deploy manual (sem Blueprint)
-
-Se preferir criar recursos manualmente:
-
-1) Crie o Postgres: **New + → PostgreSQL**  
-2) Pegue a **Internal Database URL** do banco no dashboard  
-3) No backend, adicione `DATABASE_URL` com essa URL  
-4) (Opcional) Restrinja acessos externos no banco (Networking / IP allow list)
-
 ## Troubleshooting
 
-- Backend caiu com `Missing required environment variable: JWT_SECRET`: defina `JWT_SECRET` no serviço.
+- Backend caiu com `Missing required environment variable`: configure as variáveis obrigatórias no serviço.
+- Falha de conexão no Postgres no Render: garanta `NODE_ENV=production` ou `DATABASE_SSL=true`.
 - CORS bloqueando: ajuste `CORS_ORIGIN` para a URL real do frontend (sem barra no final).
 - Frontend 404 ao dar refresh em rotas (`/login`, `/dashboard`): falta o rewrite `/* → /index.html` no static site.
 

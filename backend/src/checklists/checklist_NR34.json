@@ -1,0 +1,54 @@
+{
+  "nr": "NR-34",
+  "title": "Condições e Meio Ambiente de Trabalho na Indústria da Construção e Reparação Naval",
+  "version": {
+    "portaria": "Portaria MTP nº 1.864",
+    "date": "2023-09-20"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR34-Q-001",
+      "question": "Existe PGR específico para construção e reparo naval?"
+    },
+    {
+      "id": "NR34-Q-002",
+      "question": "As atividades de soldagem e corte possuem exaustão local exaurida?"
+    },
+    {
+      "id": "NR34-Q-003",
+      "question": "Há controle e inspeção de tanques e espaços confinados?"
+    },
+    {
+      "id": "NR34-Q-004",
+      "question": "Os trabalhadores receberam capacitação sobre riscos e emergências?"
+    },
+    {
+      "id": "NR34-Q-005",
+      "question": "Os EPIs e EPCs estão disponíveis e adequados?"
+    },
+    {
+      "id": "NR34-Q-006",
+      "question": "Há procedimentos para movimentação de cargas e içamento?"
+    },
+    {
+      "id": "NR34-Q-007",
+      "question": "Os sistemas de prevenção e combate a incêndio estão operacionais?"
+    },
+    {
+      "id": "NR34-Q-008",
+      "question": "Os planos de emergência incluem resgate em altura e confinamento?"
+    },
+    {
+      "id": "NR34-Q-009",
+      "question": "Há controle de ruído, calor e substâncias químicas?"
+    },
+    {
+      "id": "NR34-Q-010",
+      "question": "As áreas de vivência atendem às exigências da NR‑34?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-34-atualizada-2023-2.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

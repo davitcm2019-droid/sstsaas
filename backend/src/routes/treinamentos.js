@@ -1,28 +1,28 @@
 const express = require('express');
-const router = express.Router();
-const { treinamentos, empresas } = require('../data/mockData');
+const { treinamentos } = require('../data/mockData');
+const lookupsRepository = require('../repositories/lookupsRepository');
 const { sendSuccess, sendError } = require('../utils/response');
 
-const toLower = (value = '') => String(value).toLowerCase();
+const router = express.Router();
 
-const findEmpresaNome = (empresaId) => {
-  if (!empresaId) return '';
-  const empresa = empresas.find((item) => item.id === empresaId);
-  return empresa ? empresa.nome : '';
-};
+const toLower = (value = '') => String(value).toLowerCase();
 
 const normalizeNumber = (value, fallback = 0) => {
   const parsed = parseInt(value, 10);
   return Number.isNaN(parsed) ? fallback : parsed;
 };
 
-const sanitizeTreinamento = (data = {}) => {
+const getEmpresaNome = async (empresaId) => {
+  return lookupsRepository.getEmpresaNomeById(empresaId);
+};
+
+const sanitizeTreinamento = async (data = {}) => {
   const empresaId = data.empresaId ? parseInt(data.empresaId, 10) : null;
   return {
     titulo: data.titulo || '',
     descricao: data.descricao || '',
     empresaId,
-    empresaNome: data.empresaNome || findEmpresaNome(empresaId),
+    empresaNome: data.empresaNome || (await getEmpresaNome(empresaId)),
     tipo: data.tipo || 'obrigatorio',
     duracao: normalizeNumber(data.duracao, 0),
     instrutor: data.instrutor || '',
@@ -85,9 +85,9 @@ router.get('/:id(\\d+)', (req, res) => {
 });
 
 // POST /api/treinamentos
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const sanitized = sanitizeTreinamento(req.body);
+    const sanitized = await sanitizeTreinamento(req.body);
     const nextId = treinamentos.length ? Math.max(...treinamentos.map((item) => item.id)) + 1 : 1;
 
     const novoTreinamento = {
@@ -104,7 +104,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/treinamentos/:id
-router.put('/:id(\\d+)', (req, res) => {
+router.put('/:id(\\d+)', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const index = treinamentos.findIndex((item) => item.id === id);
@@ -113,7 +113,7 @@ router.put('/:id(\\d+)', (req, res) => {
       return sendError(res, { message: 'Treinamento não encontrado' }, 404);
     }
 
-    const sanitized = sanitizeTreinamento({
+    const sanitized = await sanitizeTreinamento({
       ...treinamentos[index],
       ...req.body
     });
@@ -148,3 +148,4 @@ router.delete('/:id(\\d+)', (req, res) => {
 });
 
 module.exports = router;
+

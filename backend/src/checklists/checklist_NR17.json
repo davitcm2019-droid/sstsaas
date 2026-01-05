@@ -1,0 +1,54 @@
+{
+  "nr": "NR-17",
+  "title": "Ergonomia",
+  "version": {
+    "portaria": "Portaria MTP nº 4.219",
+    "date": "2023-09-22"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR17-Q-001",
+      "question": "Foi realizada Análise Ergonômica do Trabalho (AET) atualizada?"
+    },
+    {
+      "id": "NR17-Q-002",
+      "question": "Os postos de trabalho são ajustáveis conforme características dos trabalhadores?"
+    },
+    {
+      "id": "NR17-Q-003",
+      "question": "As condições de iluminação, ruído e conforto térmico são adequadas?"
+    },
+    {
+      "id": "NR17-Q-004",
+      "question": "O mobiliário atende às normas de ergonomia e às atividades executadas?"
+    },
+    {
+      "id": "NR17-Q-005",
+      "question": "Há pausas para recuperação psicofisiológica em atividades repetitivas?"
+    },
+    {
+      "id": "NR17-Q-006",
+      "question": "Os equipamentos de trabalho reduzem esforços excessivos e posturas forçadas?"
+    },
+    {
+      "id": "NR17-Q-007",
+      "question": "Os trabalhadores participaram da identificação de fatores de risco ergonômico?"
+    },
+    {
+      "id": "NR17-Q-008",
+      "question": "Existem registros de recomendações ergonômicas e acompanhamento de implementação?"
+    },
+    {
+      "id": "NR17-Q-009",
+      "question": "O transporte manual de cargas segue limites da NR‑17 e NHO‑11?"
+    },
+    {
+      "id": "NR17-Q-010",
+      "question": "O PGR contempla os riscos ergonômicos identificados?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-17-atualizada-2023.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "nr": "NR-05",
+  "title": "Comissão Interna de Prevenção de Acidentes e de Assédio (CIPA)",
+  "version": {
+    "portaria": "Portaria MTP nº 4.219",
+    "date": "2022-12-20"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR05-Q-001",
+      "question": "A CIPA está constituída conforme o quadro de dimensionamento da NR‑05?"
+    },
+    {
+      "id": "NR05-Q-002",
+      "question": "O processo eleitoral atendeu prazos, edital e voto secreto?"
+    },
+    {
+      "id": "NR05-Q-003",
+      "question": "Há documentação completa do processo (inscrições, atas, posse)?"
+    },
+    {
+      "id": "NR05-Q-004",
+      "question": "As reuniões ocorrem na periodicidade prevista e há atas assinadas?"
+    },
+    {
+      "id": "NR05-Q-005",
+      "question": "As deliberações são divulgadas aos trabalhadores?"
+    },
+    {
+      "id": "NR05-Q-006",
+      "question": "Existe plano anual de trabalho da CIPA?"
+    },
+    {
+      "id": "NR05-Q-007",
+      "question": "A CIPA participa da análise de acidentes e doenças?"
+    },
+    {
+      "id": "NR05-Q-008",
+      "question": "A SIPAT é realizada anualmente e registrada?"
+    },
+    {
+      "id": "NR05-Q-009",
+      "question": "Os membros receberam treinamento com conteúdo e carga conforme NR‑05?"
+    },
+    {
+      "id": "NR05-Q-010",
+      "question": "Há integração da CIPA com PGR, PCMSO e SESMT?"
+    },
+    {
+      "id": "NR05-Q-011",
+      "question": "Há controle de frequência e substituições conforme a norma?"
+    },
+    {
+      "id": "NR05-Q-012",
+      "question": "A documentação é arquivada pelo prazo mínimo exigido?"
+    },
+    {
+      "id": "NR05-Q-013",
+      "question": "Para obras: a CIPA/representantes foram constituídos conforme Anexo aplicável?"
+    },
+    {
+      "id": "NR05-Q-014",
+      "question": "Contratadas: existem representantes da NR‑05 e integração com a contratante?"
+    },
+    {
+      "id": "NR05-Q-015",
+      "question": "O empregador garante meios e tempo para atuação da CIPA?"
+    }
+  ],
+  "metadata": {
+    "source": "NR05atualizada2023.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

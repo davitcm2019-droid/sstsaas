@@ -1,32 +1,34 @@
 const express = require('express');
-const { usuarios } = require('../data/mockData');
-const { authorize, hashPassword } = require('../middleware/auth');
+const { hashPassword } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/rbac');
 const { toUserDTO } = require('../dtos/user');
+const usersRepository = require('../repositories/usersRepository');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
 
-router.use(authorize('administrador'));
+router.use(requirePermission('users:manage'));
+
+const allowedPerfis = new Set(['visualizador', 'tecnico_seguranca', 'administrador']);
 
 const normalizeEmail = (email = '') => String(email).trim().toLowerCase();
 
+const parseOptionalInt = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed)) return null;
+  return parsed;
+};
+
 // GET /api/usuarios - Listar todos os usuários
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const { perfil, status } = req.query;
-    let filteredUsuarios = [...usuarios];
-
-    if (perfil) {
-      filteredUsuarios = filteredUsuarios.filter((usuario) => usuario.perfil === perfil);
-    }
-
-    if (status) {
-      filteredUsuarios = filteredUsuarios.filter((usuario) => usuario.status === status);
-    }
+    const { perfil, status, search } = req.query;
+    const users = await usersRepository.listUsers({ perfil, status, search });
 
     return sendSuccess(res, {
-      data: filteredUsuarios.map(toUserDTO),
-      meta: { total: filteredUsuarios.length }
+      data: users.map(toUserDTO),
+      meta: { total: users.length }
     });
   } catch (error) {
     return sendError(res, { message: 'Erro ao buscar usuários', meta: { details: error.message } }, 500);
@@ -34,16 +36,16 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/usuarios/:id - Buscar usuário por ID
-router.get('/:id', (req, res) => {
+router.get('/:id(\\d+)', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const usuario = usuarios.find((usr) => usr.id === id);
+    const user = await usersRepository.findById(id);
 
-    if (!usuario) {
+    if (!user) {
       return sendError(res, { message: 'Usuário não encontrado' }, 404);
     }
 
-    return sendSuccess(res, { data: toUserDTO(usuario) });
+    return sendSuccess(res, { data: toUserDTO(user) });
   } catch (error) {
     return sendError(res, { message: 'Erro ao buscar usuário', meta: { details: error.message } }, 500);
   }
@@ -58,77 +60,105 @@ router.post('/', async (req, res) => {
       return sendError(res, { message: 'Nome, email e senha são obrigatórios' }, 400);
     }
 
+    if (String(senha).length < 6) {
+      return sendError(res, { message: 'A senha deve ter pelo menos 6 caracteres' }, 400);
+    }
+
     const normalizedEmail = normalizeEmail(email);
-    const existingUser = usuarios.find((usr) => normalizeEmail(usr.email) === normalizedEmail);
+    const existingUser = await usersRepository.findByEmail(normalizedEmail);
     if (existingUser) {
       return sendError(res, { message: 'Email já cadastrado' }, 400);
     }
 
-    const novoUsuario = {
-      id: usuarios.length ? Math.max(...usuarios.map((usr) => usr.id)) + 1 : 1,
-      ...req.body,
+    const perfil = req.body?.perfil || 'visualizador';
+    if (!allowedPerfis.has(perfil)) {
+      return sendError(res, { message: 'Perfil inválido' }, 400);
+    }
+
+    const createdUser = await usersRepository.createUser({
+      nome,
       email: normalizedEmail,
-      senha: await hashPassword(senha),
-      dataCadastro: new Date().toISOString().split('T')[0],
+      senhaHash: await hashPassword(senha),
+      perfil,
       status: req.body?.status || 'ativo',
-      perfil: req.body?.perfil || 'visualizador'
-    };
+      telefone: req.body?.telefone || null,
+      cargo: req.body?.cargo || null,
+      empresaId: parseOptionalInt(req.body?.empresaId)
+    });
 
-    usuarios.push(novoUsuario);
-
-    return sendSuccess(res, { data: toUserDTO(novoUsuario), message: 'Usuário criado com sucesso' }, 201);
+    return sendSuccess(res, { data: toUserDTO(createdUser), message: 'Usuário criado com sucesso' }, 201);
   } catch (error) {
+    if (error?.code === '23505') {
+      return sendError(res, { message: 'Email já cadastrado' }, 400);
+    }
+
     return sendError(res, { message: 'Erro ao criar usuário', meta: { details: error.message } }, 500);
   }
 });
 
 // PUT /api/usuarios/:id - Atualizar usuário
-router.put('/:id', async (req, res) => {
+router.put('/:id(\\d+)', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const usuarioIndex = usuarios.findIndex((usr) => usr.id === id);
+    const currentUser = await usersRepository.findById(id);
 
-    if (usuarioIndex === -1) {
+    if (!currentUser) {
       return sendError(res, { message: 'Usuário não encontrado' }, 404);
     }
 
-    const payload = { ...req.body };
+    const updates = {};
 
-    if (payload.email) {
-      payload.email = normalizeEmail(payload.email);
-      const emailOwner = usuarios.find((usr) => normalizeEmail(usr.email) === payload.email);
+    if (req.body?.nome !== undefined) updates.nome = req.body.nome;
+
+    if (req.body?.email !== undefined) {
+      const normalizedEmail = normalizeEmail(req.body.email);
+      const emailOwner = await usersRepository.findByEmail(normalizedEmail);
       if (emailOwner && emailOwner.id !== id) {
         return sendError(res, { message: 'Email já cadastrado' }, 400);
       }
+      updates.email = normalizedEmail;
     }
 
-    if (payload.senha) {
-      payload.senha = await hashPassword(payload.senha);
+    if (req.body?.senha !== undefined) {
+      if (String(req.body.senha).length < 6) {
+        return sendError(res, { message: 'A senha deve ter pelo menos 6 caracteres' }, 400);
+      }
+      updates.senhaHash = await hashPassword(req.body.senha);
     }
 
-    usuarios[usuarioIndex] = {
-      ...usuarios[usuarioIndex],
-      ...payload,
-      id
-    };
+    if (req.body?.perfil !== undefined) {
+      if (!allowedPerfis.has(req.body.perfil)) {
+        return sendError(res, { message: 'Perfil inválido' }, 400);
+      }
+      updates.perfil = req.body.perfil;
+    }
 
-    return sendSuccess(res, { data: toUserDTO(usuarios[usuarioIndex]), message: 'Usuário atualizado com sucesso' });
+    if (req.body?.status !== undefined) updates.status = req.body.status;
+    if (req.body?.telefone !== undefined) updates.telefone = req.body.telefone;
+    if (req.body?.cargo !== undefined) updates.cargo = req.body.cargo;
+    if (req.body?.empresaId !== undefined) updates.empresaId = parseOptionalInt(req.body.empresaId);
+
+    const updatedUser = await usersRepository.updateUser(id, updates);
+
+    return sendSuccess(res, { data: toUserDTO(updatedUser), message: 'Usuário atualizado com sucesso' });
   } catch (error) {
+    if (error?.code === '23505') {
+      return sendError(res, { message: 'Email já cadastrado' }, 400);
+    }
+
     return sendError(res, { message: 'Erro ao atualizar usuário', meta: { details: error.message } }, 500);
   }
 });
 
 // DELETE /api/usuarios/:id - Deletar usuário
-router.delete('/:id', (req, res) => {
+router.delete('/:id(\\d+)', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const usuarioIndex = usuarios.findIndex((usr) => usr.id === id);
+    const deleted = await usersRepository.deleteUser(id);
 
-    if (usuarioIndex === -1) {
+    if (!deleted) {
       return sendError(res, { message: 'Usuário não encontrado' }, 404);
     }
-
-    usuarios.splice(usuarioIndex, 1);
 
     return sendSuccess(res, { data: null, message: 'Usuário deletado com sucesso' });
   } catch (error) {

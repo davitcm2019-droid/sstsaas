@@ -1,0 +1,54 @@
+{
+  "nr": "NR-18",
+  "title": "Condições de Segurança e Saúde no Trabalho na Indústria da Construção",
+  "version": {
+    "portaria": "Portaria MTE nº 1.847",
+    "date": "2025-01-01"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR18-Q-001",
+      "question": "O PCMAT ou PGR da obra está elaborado, assinado e disponível no canteiro?"
+    },
+    {
+      "id": "NR18-Q-002",
+      "question": "Os acessos e circulações estão sinalizados e mantidos limpos?"
+    },
+    {
+      "id": "NR18-Q-003",
+      "question": "As escavações possuem escoramentos e sinalização conforme projeto?"
+    },
+    {
+      "id": "NR18-Q-004",
+      "question": "Há guarda-corpos e rodapés em locais com risco de queda?"
+    },
+    {
+      "id": "NR18-Q-005",
+      "question": "Equipamentos de elevação possuem inspeção e registro?"
+    },
+    {
+      "id": "NR18-Q-006",
+      "question": "Há instalações sanitárias e áreas de vivência em conformidade?"
+    },
+    {
+      "id": "NR18-Q-007",
+      "question": "Os trabalhadores receberam treinamento admissional e periódico conforme NR‑18?"
+    },
+    {
+      "id": "NR18-Q-008",
+      "question": "Os andaimes possuem ART, projeto e inspeções regulares?"
+    },
+    {
+      "id": "NR18-Q-009",
+      "question": "Os sistemas de proteção coletiva estão instalados e mantidos?"
+    },
+    {
+      "id": "NR18-Q-010",
+      "question": "Há registros de controle de fornecimento e uso de EPIs?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-18-atualizada-2025-1.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

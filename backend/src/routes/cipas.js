@@ -1,15 +1,14 @@
 const express = require('express');
-const { cipas, empresas } = require('../data/mockData');
+const { cipas } = require('../data/mockData');
+const lookupsRepository = require('../repositories/lookupsRepository');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
 
 const toLower = (value = '') => String(value).toLowerCase();
 
-const getEmpresaNome = (empresaId) => {
-  if (!empresaId) return '';
-  const empresa = empresas.find((emp) => emp.id === empresaId);
-  return empresa ? empresa.nome : '';
+const getEmpresaNome = async (empresaId) => {
+  return lookupsRepository.getEmpresaNomeById(empresaId);
 };
 
 const sanitizeMembros = (membros) => {
@@ -74,7 +73,7 @@ router.get('/:id(\\d+)', (req, res) => {
 });
 
 // POST /api/cipas
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const payload = { ...req.body };
     const empresaId = payload.empresaId ? parseInt(payload.empresaId, 10) : null;
@@ -83,7 +82,7 @@ router.post('/', (req, res) => {
     const novaCipa = {
       id: nextId,
       empresaId,
-      empresaNome: payload.empresaNome || getEmpresaNome(empresaId),
+      empresaNome: payload.empresaNome || (await getEmpresaNome(empresaId)),
       gestao: payload.gestao || '',
       dataInicio: payload.dataInicio || '',
       dataFim: payload.dataFim || '',
@@ -104,7 +103,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/cipas/:id
-router.put('/:id(\\d+)', (req, res) => {
+router.put('/:id(\\d+)', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const index = cipas.findIndex((item) => item.id === id);
@@ -119,11 +118,16 @@ router.put('/:id(\\d+)', (req, res) => {
         ? cipas[index].empresaId
         : parseInt(payload.empresaId, 10);
 
+    const empresaNome =
+      payload.empresaNome !== undefined
+        ? payload.empresaNome
+        : (await getEmpresaNome(empresaId)) || cipas[index].empresaNome;
+
     const updatedCipa = {
       ...cipas[index],
       ...payload,
       empresaId,
-      empresaNome: payload.empresaNome || getEmpresaNome(empresaId) || cipas[index].empresaNome,
+      empresaNome,
       membros: sanitizeMembros(payload.membros !== undefined ? payload.membros : cipas[index].membros),
       status: payload.status || cipas[index].status,
       observacoes: payload.observacoes !== undefined ? payload.observacoes : cipas[index].observacoes

@@ -1,0 +1,54 @@
+{
+  "nr": "NR-28",
+  "title": "Fiscalização e Penalidades",
+  "version": {
+    "portaria": "Portaria MTP nº 1.864",
+    "date": "2024-04-30"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR28-Q-001",
+      "question": "Os responsáveis conhecem os critérios de gradação das infrações?"
+    },
+    {
+      "id": "NR28-Q-002",
+      "question": "As não conformidades de SST são registradas e acompanhadas?"
+    },
+    {
+      "id": "NR28-Q-003",
+      "question": "Há plano de ação para correção das irregularidades apontadas?"
+    },
+    {
+      "id": "NR28-Q-004",
+      "question": "Os autos de infração e notificações são tratados dentro dos prazos?"
+    },
+    {
+      "id": "NR28-Q-005",
+      "question": "A empresa mantém histórico de inspeções e respostas?"
+    },
+    {
+      "id": "NR28-Q-006",
+      "question": "Os gestores receberam orientação sobre o sistema de penalidades?"
+    },
+    {
+      "id": "NR28-Q-007",
+      "question": "As reincidências são tratadas com medidas corretivas estruturais?"
+    },
+    {
+      "id": "NR28-Q-008",
+      "question": "As evidências de correção são documentadas e arquivadas?"
+    },
+    {
+      "id": "NR28-Q-009",
+      "question": "Existe sistema interno de auditoria preventiva?"
+    },
+    {
+      "id": "NR28-Q-010",
+      "question": "Há controle de prazos e recursos administrativos de autuações?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-28-atualizada-2024-i.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "nr": "NR-30",
+  "title": "Segurança e Saúde no Trabalho Aquaviário",
+  "version": {
+    "portaria": "Portaria MTP nº 1.864",
+    "date": "2023-08-24"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR30-Q-001",
+      "question": "Existe PGR específico para operações aquaviárias?"
+    },
+    {
+      "id": "NR30-Q-002",
+      "question": "Os trabalhadores embarcados receberam capacitação sobre riscos e emergências?"
+    },
+    {
+      "id": "NR30-Q-003",
+      "question": "Há controle de EPIs e EPCs específicos para atividades em embarcações?"
+    },
+    {
+      "id": "NR30-Q-004",
+      "question": "Os equipamentos de salvatagem estão disponíveis e inspecionados?"
+    },
+    {
+      "id": "NR30-Q-005",
+      "question": "As áreas de embarque e desembarque possuem sinalização e barreiras?"
+    },
+    {
+      "id": "NR30-Q-006",
+      "question": "O transporte de combustíveis e inflamáveis segue procedimentos seguros?"
+    },
+    {
+      "id": "NR30-Q-007",
+      "question": "Há plano de emergência e abandono a bordo atualizado?"
+    },
+    {
+      "id": "NR30-Q-008",
+      "question": "Os registros de manutenção das embarcações estão disponíveis?"
+    },
+    {
+      "id": "NR30-Q-009",
+      "question": "A embarcação possui tripulação de segurança e primeiros socorros treinada?"
+    },
+    {
+      "id": "NR30-Q-010",
+      "question": "As condições de habitabilidade estão de acordo com a NR‑30?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-30-atualizada-2023.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

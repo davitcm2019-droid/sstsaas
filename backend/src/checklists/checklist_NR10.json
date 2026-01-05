@@ -1,0 +1,54 @@
+{
+  "nr": "NR-10",
+  "title": "Segurança em Instalações e Serviços em Eletricidade",
+  "version": {
+    "portaria": "Portaria MTE nº 598",
+    "date": "2004-12-07"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR10-Q-001",
+      "question": "Há Prontuário de Instalações Elétricas (PIE) quando carga instalada > 75 kW?"
+    },
+    {
+      "id": "NR10-Q-002",
+      "question": "Os esquemas unifilares e diagramas estão atualizados e disponíveis?"
+    },
+    {
+      "id": "NR10-Q-003",
+      "question": "Há procedimentos de desenergização (LOTO) e sua aplicação evidenciada?"
+    },
+    {
+      "id": "NR10-Q-004",
+      "question": "Serviços em eletricidade são realizados por trabalhadores autorizados e capacitados?"
+    },
+    {
+      "id": "NR10-Q-005",
+      "question": "Ferramentas e EPCs específicos (detector de tensão, tapete, barreiras) estão disponíveis e inspecionados?"
+    },
+    {
+      "id": "NR10-Q-006",
+      "question": "Há relatórios de SPDA e aterramento atualizados?"
+    },
+    {
+      "id": "NR10-Q-007",
+      "question": "Treinamentos NR‑10 (básico/complementar) estão válidos e registrados?"
+    },
+    {
+      "id": "NR10-Q-008",
+      "question": "Há análise de risco e prontuário de operação para intervenções?"
+    },
+    {
+      "id": "NR10-Q-009",
+      "question": "Sinalização de áreas e riscos elétricos está implementada?"
+    },
+    {
+      "id": "NR10-Q-010",
+      "question": "Registros de inspeções e não conformidades são mantidos?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-10.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

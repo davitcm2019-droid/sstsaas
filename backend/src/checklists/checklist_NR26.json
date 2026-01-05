@@ -1,0 +1,54 @@
+{
+  "nr": "NR-26",
+  "title": "Sinalização de Segurança",
+  "version": {
+    "portaria": "Portaria MTP nº 1.857",
+    "date": "2022-06-10"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR26-Q-001",
+      "question": "As cores de segurança estão aplicadas conforme padrão da NR‑26?"
+    },
+    {
+      "id": "NR26-Q-002",
+      "question": "Os produtos químicos possuem rótulos e FISPQ atualizadas?"
+    },
+    {
+      "id": "NR26-Q-003",
+      "question": "As áreas e equipamentos perigosos estão devidamente sinalizados?"
+    },
+    {
+      "id": "NR26-Q-004",
+      "question": "Há placas de advertência e proibição conforme riscos identificados?"
+    },
+    {
+      "id": "NR26-Q-005",
+      "question": "Os pictogramas e símbolos seguem a NBR 14725?"
+    },
+    {
+      "id": "NR26-Q-006",
+      "question": "Os trabalhadores receberam treinamento sobre sinalização e GHS?"
+    },
+    {
+      "id": "NR26-Q-007",
+      "question": "A iluminação garante visibilidade adequada das sinalizações?"
+    },
+    {
+      "id": "NR26-Q-008",
+      "question": "As sinalizações são resistentes e mantidas em bom estado?"
+    },
+    {
+      "id": "NR26-Q-009",
+      "question": "Há revisão periódica da sinalização conforme mudanças no layout?"
+    },
+    {
+      "id": "NR26-Q-010",
+      "question": "A sinalização de emergência é visível mesmo em queda de energia?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-26-atualizada-2022.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

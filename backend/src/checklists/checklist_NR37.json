@@ -1,0 +1,54 @@
+{
+  "nr": "NR-37",
+  "title": "Segurança e Saúde em Plataformas de Petróleo",
+  "version": {
+    "portaria": "Portaria MTP nº 1.864",
+    "date": "2023-08-24"
+  },
+  "checklist_questions": [
+    {
+      "id": "NR37-Q-001",
+      "question": "Existe PGR e plano de emergência específico da plataforma?"
+    },
+    {
+      "id": "NR37-Q-002",
+      "question": "Os trabalhadores receberam capacitação e simulados de abandono?"
+    },
+    {
+      "id": "NR37-Q-003",
+      "question": "Os sistemas de ventilação, alarme e combate a incêndio estão operacionais?"
+    },
+    {
+      "id": "NR37-Q-004",
+      "question": "Os EPIs e EPCs marítimos estão disponíveis e inspecionados?"
+    },
+    {
+      "id": "NR37-Q-005",
+      "question": "Há controle de atmosferas explosivas e equipamentos Ex?"
+    },
+    {
+      "id": "NR37-Q-006",
+      "question": "Os alojamentos e áreas de vivência atendem às condições da NR‑37?"
+    },
+    {
+      "id": "NR37-Q-007",
+      "question": "Há equipe de primeiros socorros e brigada embarcada?"
+    },
+    {
+      "id": "NR37-Q-008",
+      "question": "As condições de evacuação e resgate estão documentadas e testadas?"
+    },
+    {
+      "id": "NR37-Q-009",
+      "question": "Há registros de inspeções e manutenção dos equipamentos críticos?"
+    },
+    {
+      "id": "NR37-Q-010",
+      "question": "As comunicações e meios de transporte marítimos são seguros e regulares?"
+    }
+  ],
+  "metadata": {
+    "source": "nr-37-atualizada-2023.pdf",
+    "generated_at": "2025-10-26"
+  }
+}

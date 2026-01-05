@@ -1,9 +1,9 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { config } = require('../config');
-const { usuarios } = require('../data/mockData');
 const { authenticateToken, generateToken, verifyPassword, hashPassword } = require('../middleware/auth');
 const { toUserDTO } = require('../dtos/user');
+const usersRepository = require('../repositories/usersRepository');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
@@ -24,24 +24,20 @@ router.post('/register', async (req, res) => {
     }
 
     const normalizedEmail = normalizeEmail(email);
-    const existingUser = usuarios.find((user) => normalizeEmail(user.email) === normalizedEmail);
+    const existingUser = await usersRepository.findByEmail(normalizedEmail);
     if (existingUser) {
       return sendError(res, { message: 'Email já cadastrado' }, 400);
     }
 
-    const isFirstUser = usuarios.length === 0;
+    const isFirstUser = (await usersRepository.countUsers()) === 0;
 
-    const newUser = {
-      id: usuarios.length + 1,
+    const newUser = await usersRepository.createUser({
       nome,
       email: normalizedEmail,
-      senha: await hashPassword(senha),
+      senhaHash: await hashPassword(senha),
       perfil: isFirstUser ? 'administrador' : 'visualizador',
-      status: 'ativo',
-      dataCadastro: new Date().toISOString().split('T')[0]
-    };
-
-    usuarios.push(newUser);
+      status: 'ativo'
+    });
 
     const token = generateToken(newUser);
 
@@ -71,7 +67,7 @@ router.post('/login', async (req, res) => {
     }
 
     const normalizedEmail = normalizeEmail(email);
-    const user = usuarios.find((candidate) => normalizeEmail(candidate.email) === normalizedEmail);
+    const user = await usersRepository.findByEmail(normalizedEmail);
     if (!user) {
       return sendError(res, { message: 'Credenciais inválidas' }, 401);
     }
@@ -110,19 +106,14 @@ router.post('/logout', authenticateToken, (req, res) => {
 // GET /api/auth/me - Obter dados do usuário logado
 router.get('/me', authenticateToken, (req, res) => {
   try {
-    const user = usuarios.find((candidate) => candidate.id === req.user.id);
-    if (!user) {
-      return sendError(res, { message: 'Usuário não encontrado' }, 404);
-    }
-
-    return sendSuccess(res, { data: toUserDTO(user) });
+    return sendSuccess(res, { data: toUserDTO(req.user) });
   } catch (error) {
     return sendError(res, { message: 'Erro ao obter usuário atual', meta: { details: error.message } }, 500);
   }
 });
 
 // POST /api/auth/refresh - Renovar token
-router.post('/refresh', (req, res) => {
+router.post('/refresh', async (req, res) => {
   try {
     const { token } = req.body;
 
@@ -131,7 +122,7 @@ router.post('/refresh', (req, res) => {
     }
 
     const decoded = jwt.verify(token, config.jwt.secret);
-    const user = usuarios.find((candidate) => candidate.id === decoded.id);
+    const user = await usersRepository.findById(decoded.id);
     if (!user) {
       return sendError(res, { message: 'Usuário não encontrado' }, 404);
     }
