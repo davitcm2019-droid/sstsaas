@@ -147,39 +147,42 @@ const Usuarios = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
+          <h1 className="text-3xl font-semibold text-gray-900">Usuários</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Gerencie os usuários e permissões do sistema
+            Gerencie pessoas, perfis e acessos dentro do SST SaaS.
           </p>
         </div>
-        <button onClick={handleCreate} className="btn-primary flex items-center">
-          <Plus className="h-4 w-4 mr-2" />
+        <button
+          onClick={handleCreate}
+          className="btn-primary bg-emerald-500 hover:bg-emerald-600 focus:ring-emerald-300 flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
           Novo Usuário
         </button>
       </div>
 
       {/* Filters */}
-      <div className="card">
-        <div className="flex flex-col sm:flex-row gap-4">
+      <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5">
+        <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Buscar por nome ou email..."
-                className="input-field pl-10"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-12 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-primary-400 focus:bg-white focus:outline-none"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
             <select
-              className="input-field"
+              className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-primary-400 focus:outline-none"
               value={filters.perfil}
-              onChange={(e) => setFilters({...filters, perfil: e.target.value})}
+              onChange={(e) => setFilters({ ...filters, perfil: e.target.value })}
             >
               <option value="">Todos os perfis</option>
               <option value="administrador">Administrador</option>
@@ -187,9 +190,9 @@ const Usuarios = () => {
               <option value="visualizador">Visualizador</option>
             </select>
             <select
-              className="input-field"
+              className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:border-primary-400 focus:outline-none"
               value={filters.status}
-              onChange={(e) => setFilters({...filters, status: e.target.value})}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
             >
               <option value="">Todos os status</option>
               <option value="ativo">Ativo</option>
@@ -200,60 +203,60 @@ const Usuarios = () => {
       </div>
 
       {/* Users Grid */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {usuarios.map((usuario) => (
-          <div key={usuario.id} className="card hover:shadow-md transition-shadow duration-200">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-primary-100 rounded-lg">
+          <div
+            key={usuario.id}
+            className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 transition hover:shadow-lg"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
                   {getPerfilIcon(usuario.perfil)}
                 </div>
-                <div className="ml-3">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    {usuario.nome}
-                  </h3>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">{usuario.nome}</h3>
                   <p className="text-sm text-gray-500">{usuario.email}</p>
                 </div>
               </div>
-              <div className="flex space-x-1">
+              <div className="flex flex-col gap-2 text-right">
                 {getPerfilBadge(usuario.perfil)}
                 {getStatusBadge(usuario.status)}
               </div>
             </div>
 
-            <div className="space-y-2 mb-4">
-              <div className="text-sm text-gray-600">
-                <strong>Perfil:</strong> {usuario.perfil.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-              </div>
-              <div className="text-sm text-gray-600">
-                <strong>Descrição:</strong> {getPerfilDescription(usuario.perfil)}
-              </div>
-              <div className="text-sm text-gray-500">
-                <strong>Cadastrado em:</strong> {formatDate(usuario.dataCadastro)}
-              </div>
-            </div>
+            <p className="mt-4 text-sm text-gray-600">
+              {getPerfilDescription(usuario.perfil)}
+            </p>
+            <p className="mt-2 text-xs text-gray-400">
+              Cadastrado em {formatDate(usuario.dataCadastro)}
+            </p>
 
-            <div className="flex space-x-2">
+            <div className="mt-5 flex flex-wrap gap-2">
               <button
-                className="flex-1 btn-secondary flex items-center justify-center"
+                className="btn-secondary flex-1 min-w-[120px] rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
                 onClick={() => handleEdit(usuario)}
               >
-                <Edit className="h-4 w-4 mr-2" />
+                <Edit className="h-4 w-4 mr-2 inline-block" />
                 Editar
               </button>
-              <button 
-                className={`btn-secondary p-2 ${
-                  usuario.status === 'ativo' 
-                    ? 'text-red-600 hover:bg-red-50' 
-                    : 'text-green-600 hover:bg-green-50'
+              <button
+                className={`rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold transition ${
+                  usuario.status === 'ativo'
+                    ? 'text-red-600 hover:bg-red-50'
+                    : 'text-emerald-600 hover:bg-emerald-50'
                 }`}
                 onClick={() => handleToggleStatus(usuario.id, usuario.status)}
                 title={usuario.status === 'ativo' ? 'Desativar usuário' : 'Ativar usuário'}
               >
-                {usuario.status === 'ativo' ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                {usuario.status === 'ativo' ? (
+                  <UserX className="h-4 w-4" />
+                ) : (
+                  <UserCheck className="h-4 w-4" />
+                )}
               </button>
-              <button 
-                className="btn-secondary p-2 text-red-600 hover:bg-red-50"
+              <button
+                className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 transition"
                 onClick={() => handleDelete(usuario.id)}
                 title="Excluir usuário"
               >
@@ -269,68 +272,65 @@ const Usuarios = () => {
           <Users className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum usuário encontrado</h3>
           <p className="mt-1 text-sm text-gray-500">
-            {searchTerm || Object.values(filters).some(f => f) 
-              ? 'Tente ajustar os filtros de busca.' 
-              : 'Comece criando um novo usuário.'
-            }
+            {searchTerm || Object.values(filters).some((f) => f)
+              ? 'Tente ajustar os filtros de busca.'
+              : 'Comece criando um novo usuário.'}
           </p>
         </div>
       )}
 
       {/* Summary Stats */}
-      {usuarios.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <div className="card text-center">
-            <div className="text-2xl font-bold text-gray-900">{usuarios.length}</div>
-            <div className="text-sm text-gray-500">Total de Usuários</div>
-          </div>
-          <div className="card text-center">
-            <div className="text-2xl font-bold text-green-600">
-              {usuarios.filter(u => u.status === 'ativo').length}
-            </div>
-            <div className="text-sm text-gray-500">Usuários Ativos</div>
-          </div>
-          <div className="card text-center">
-            <div className="text-2xl font-bold text-red-600">
-              {usuarios.filter(u => u.perfil === 'administrador').length}
-            </div>
-            <div className="text-sm text-gray-500">Administradores</div>
-          </div>
-          <div className="card text-center">
-            <div className="text-2xl font-bold text-blue-600">
-              {usuarios.filter(u => u.perfil === 'tecnico_seguranca').length}
-            </div>
-            <div className="text-sm text-gray-500">Técnicos</div>
-          </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 text-center shadow-sm">
+          <div className="text-3xl font-semibold text-gray-900">{usuarios.length}</div>
+          <p className="text-sm text-gray-500 mt-1">Total de Usuários</p>
         </div>
-      )}
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 text-center shadow-sm">
+          <div className="text-3xl font-semibold text-emerald-600">
+            {usuarios.filter((u) => u.status === 'ativo').length}
+          </div>
+          <p className="text-sm text-gray-500 mt-1">Usuários Ativos</p>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 text-center shadow-sm">
+          <div className="text-3xl font-semibold text-red-600">
+            {usuarios.filter((u) => u.perfil === 'administrador').length}
+          </div>
+          <p className="text-sm text-gray-500 mt-1">Administradores</p>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 text-center shadow-sm">
+          <div className="text-3xl font-semibold text-blue-600">
+            {usuarios.filter((u) => u.perfil === 'tecnico_seguranca').length}
+          </div>
+          <p className="text-sm text-gray-500 mt-1">Técnicos</p>
+        </div>
+      </div>
 
       {/* Profile Information */}
-      <div className="card">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Informações sobre Perfis</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 bg-red-50 rounded-lg">
-            <div className="flex items-center mb-2">
-              <Shield className="h-5 w-5 text-red-500 mr-2" />
-              <h4 className="font-medium text-gray-900">Administrador</h4>
+      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-900 mb-5">Informações sobre Perfis</h3>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-2xl bg-red-50 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="h-5 w-5 text-red-500" />
+              <h4 className="text-sm font-semibold text-gray-900">Administrador</h4>
             </div>
             <p className="text-sm text-gray-600">
               Acesso total ao sistema, pode gerenciar usuários, empresas, tarefas e configurações.
             </p>
           </div>
-          <div className="p-4 bg-yellow-50 rounded-lg">
-            <div className="flex items-center mb-2">
-              <UserCheck className="h-5 w-5 text-yellow-500 mr-2" />
-              <h4 className="font-medium text-gray-900">Técnico de Segurança</h4>
+          <div className="rounded-2xl bg-yellow-50 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <UserCheck className="h-5 w-5 text-yellow-500" />
+              <h4 className="text-sm font-semibold text-gray-900">Técnico de Segurança</h4>
             </div>
             <p className="text-sm text-gray-600">
               Pode criar e gerenciar tarefas, riscos, relatórios e visualizar dados das empresas.
             </p>
           </div>
-          <div className="p-4 bg-blue-50 rounded-lg">
-            <div className="flex items-center mb-2">
-              <Eye className="h-5 w-5 text-blue-500 mr-2" />
-              <h4 className="font-medium text-gray-900">Visualizador</h4>
+          <div className="rounded-2xl bg-blue-50 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Eye className="h-5 w-5 text-blue-500" />
+              <h4 className="text-sm font-semibold text-gray-900">Visualizador</h4>
             </div>
             <p className="text-sm text-gray-600">
               Apenas visualização de dados e relatórios, sem permissões de edição ou criação.
