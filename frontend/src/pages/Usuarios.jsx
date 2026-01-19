@@ -211,7 +211,7 @@ const Usuarios = () => {
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary-50 text-primary-600">
                   {getPerfilIcon(usuario.perfil)}
                 </div>
                 <div>
