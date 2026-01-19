@@ -69,11 +69,19 @@ router.post('/login', async (req, res) => {
     const normalizedEmail = normalizeEmail(email);
     const user = await usersRepository.findByEmail(normalizedEmail);
     if (!user) {
-      return sendError(res, { message: 'Credenciais inválidas' }, 401);
+      return sendError(
+        res,
+        { message: 'Usuário não encontrado', meta: { code: 'AUTH_USER_NOT_FOUND' } },
+        401
+      );
     }
 
     if (!(await verifyPassword(senha, user.senha))) {
-      return sendError(res, { message: 'Credenciais inválidas' }, 401);
+      return sendError(
+        res,
+        { message: 'Senha incorreta', meta: { code: 'AUTH_INVALID_PASSWORD' } },
+        401
+      );
     }
 
     if (user.status !== 'ativo') {

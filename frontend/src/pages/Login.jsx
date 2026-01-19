@@ -11,21 +11,56 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({
+    email: '',
+    senha: ''
+  });
   
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const resetFieldError = (field) => {
+    setFieldErrors((prev) => ({ ...prev, [field]: '' }));
+  };
+
+  const emailIsValid = (value) => /\S+@\S+\.\S+/.test(String(value).trim());
+  const validateBeforeSubmit = () => {
+    const errors = {};
+    if (!emailIsValid(formData.email)) {
+      errors.email = 'Informe um email válido';
+    }
+
+    if (String(formData.senha).trim().length < 6) {
+      errors.senha = 'A senha precisa ter pelo menos 6 caracteres';
+    }
+
+    if (Object.keys(errors).length) {
+      setFieldErrors((prev) => ({ ...prev, ...errors }));
+      return false;
+    }
+
+    return true;
+  };
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    resetFieldError(e.target.name);
+    setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setFieldErrors({ email: '', senha: '' });
+
+    if (!validateBeforeSubmit()) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const result = await login(formData.email, formData.senha);
@@ -36,7 +71,16 @@ const Login = () => {
         setError(result.error);
       }
     } catch (error) {
-      setError('Erro inesperado. Tente novamente.');
+      const apiCode = error?.response?.data?.meta?.code;
+      if (apiCode === 'AUTH_USER_NOT_FOUND') {
+        setFieldErrors((prev) => ({ ...prev, email: 'Usuário não encontrado' }));
+        setError('Usuário não encontrado');
+      } else if (apiCode === 'AUTH_INVALID_PASSWORD') {
+        setFieldErrors((prev) => ({ ...prev, senha: 'Senha incorreta' }));
+        setError('Senha incorreta');
+      } else {
+        setError('Erro inesperado. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -90,7 +134,14 @@ const Login = () => {
                 placeholder="seu@email.com"
                 value={formData.email}
                 onChange={handleChange}
+                aria-invalid={!!fieldErrors.email}
+                aria-describedby={fieldErrors.email ? 'email-feedback' : undefined}
               />
+              {fieldErrors.email && (
+                <p id="email-feedback" className="text-xs text-red-600 mt-1">
+                  {fieldErrors.email}
+                </p>
+              )}
             </div>
             
             <div>
@@ -99,29 +150,36 @@ const Login = () => {
               </label>
               <div className="mt-1 relative">
                 <input
-                  id="senha"
-                  name="senha"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                  placeholder="Sua senha"
-                  value={formData.senha}
-                  onChange={handleChange}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
-              </div>
+                id="senha"
+                name="senha"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                required
+                className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="Sua senha"
+                value={formData.senha}
+                onChange={handleChange}
+                aria-invalid={!!fieldErrors.senha}
+                aria-describedby={fieldErrors.senha ? 'senha-feedback' : undefined}
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5 text-gray-400" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400" />
+                )}
+              </button>
             </div>
+            {fieldErrors.senha && (
+              <p id="senha-feedback" className="text-xs text-red-600 mt-1">
+                {fieldErrors.senha}
+              </p>
+            )}
+          </div>
           </div>
 
           <div>
