@@ -37,9 +37,16 @@ api.interceptors.response.use(
 
     const status = error.response?.status;
     const code = error.response?.data?.meta?.code;
+    const requestUrl = error.config?.url || '';
+    const isAuthRequest = ['/auth/login', '/auth/register', '/auth/refresh'].some((path) =>
+      requestUrl.includes(path)
+    );
+
     if (status === 401 || code === 'AUTH_INVALID_TOKEN') {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      if (!isAuthRequest) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
     }
     
     return Promise.reject(error);
