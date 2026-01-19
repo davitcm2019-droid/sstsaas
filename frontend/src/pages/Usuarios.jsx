@@ -216,7 +216,6 @@ const Usuarios = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">{usuario.nome}</h3>
-                  <p className="text-sm text-gray-500">{usuario.email}</p>
                 </div>
               </div>
               <div className="flex flex-col gap-2 text-right">
