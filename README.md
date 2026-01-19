@@ -70,5 +70,10 @@ Todas as respostas seguem o formato:
 
 ## Notas
 
-- Persistência atual é mock (em memória). Ao reiniciar o backend, os dados são perdidos.
-- O `render.yaml` já provisiona um Render Postgres e injeta `DATABASE_URL` no backend, mas a integração com banco ainda não foi implementada.
+- O backend já usa PostgreSQL para persistir usuários e empresas; as migrations são executadas no startup.
+- O `render.yaml` provisiona o banco (`sst-saas-db`) e passa a `DATABASE_URL` ao backend.
+
+## Validação do login
+
+- A API responde com `meta.code = AUTH_USER_NOT_FOUND` quando o email não existe e `AUTH_INVALID_PASSWORD` para senha incorreta.
+- O frontend valida format de email e tamanho mínimo da senha antes de enviar e mostra mensagens inline para cada campo (`frontend/src/pages/Login.jsx`).
