@@ -31,10 +31,9 @@ router.get('/', requirePermission('companies:read'), async (req, res) => {
 });
 
 // GET /api/empresas/:id - Buscar empresa por ID
-router.get('/:id(\\d+)', requirePermission('companies:read'), async (req, res) => {
+router.get('/:id', requirePermission('companies:read'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    const empresa = await empresasRepository.findById(id);
+    const empresa = await empresasRepository.findById(req.params.id);
 
     if (!empresa) {
       return sendError(res, { message: 'Empresa não encontrada' }, 404);
@@ -82,7 +81,7 @@ router.post('/', requirePermission('companies:write'), async (req, res) => {
 
     return sendSuccess(res, { data: createdEmpresa, message: 'Empresa criada com sucesso' }, 201);
   } catch (error) {
-    if (error?.code === '23505') {
+    if (error?.code === '23505' || error?.code === 11000) {
       return sendError(res, { message: 'CNPJ já cadastrado' }, 400);
     }
 
@@ -91,9 +90,9 @@ router.post('/', requirePermission('companies:write'), async (req, res) => {
 });
 
 // PUT /api/empresas/:id - Atualizar empresa
-router.put('/:id(\\d+)', requirePermission('companies:write'), async (req, res) => {
+router.put('/:id', requirePermission('companies:write'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = req.params.id;
     const currentEmpresa = await empresasRepository.findById(id);
 
     if (!currentEmpresa) {
@@ -120,7 +119,7 @@ router.put('/:id(\\d+)', requirePermission('companies:write'), async (req, res) 
 
     return sendSuccess(res, { data: updatedEmpresa, message: 'Empresa atualizada com sucesso' });
   } catch (error) {
-    if (error?.code === '23505') {
+    if (error?.code === '23505' || error?.code === 11000) {
       return sendError(res, { message: 'CNPJ já cadastrado' }, 400);
     }
 
@@ -129,10 +128,9 @@ router.put('/:id(\\d+)', requirePermission('companies:write'), async (req, res) 
 });
 
 // DELETE /api/empresas/:id - Deletar empresa
-router.delete('/:id(\\d+)', requirePermission('companies:write'), async (req, res) => {
+router.delete('/:id', requirePermission('companies:write'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    const deleted = await empresasRepository.deleteEmpresa(id);
+    const deleted = await empresasRepository.deleteEmpresa(req.params.id);
 
     if (!deleted) {
       return sendError(res, { message: 'Empresa não encontrada' }, 404);

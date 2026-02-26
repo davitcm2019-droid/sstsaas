@@ -13,11 +13,9 @@ const allowedPerfis = new Set(['visualizador', 'tecnico_seguranca', 'administrad
 
 const normalizeEmail = (email = '') => String(email).trim().toLowerCase();
 
-const parseOptionalInt = (value) => {
+const parseOptionalId = (value) => {
   if (value === undefined || value === null || value === '') return null;
-  const parsed = parseInt(value, 10);
-  if (Number.isNaN(parsed)) return null;
-  return parsed;
+  return String(value);
 };
 
 // GET /api/usuarios - Listar todos os usuários
@@ -36,10 +34,9 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/usuarios/:id - Buscar usuário por ID
-router.get('/:id(\\d+)', async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    const user = await usersRepository.findById(id);
+    const user = await usersRepository.findById(req.params.id);
 
     if (!user) {
       return sendError(res, { message: 'Usuário não encontrado' }, 404);
@@ -75,7 +72,7 @@ router.post('/', async (req, res) => {
       return sendError(res, { message: 'Perfil inválido' }, 400);
     }
 
-    const createdUser = await usersRepository.createUser({
+  const createdUser = await usersRepository.createUser({
       nome,
       email: normalizedEmail,
       senhaHash: await hashPassword(senha),
@@ -83,12 +80,12 @@ router.post('/', async (req, res) => {
       status: req.body?.status || 'ativo',
       telefone: req.body?.telefone || null,
       cargo: req.body?.cargo || null,
-      empresaId: parseOptionalInt(req.body?.empresaId)
+      empresaId: parseOptionalId(req.body?.empresaId)
     });
 
     return sendSuccess(res, { data: toUserDTO(createdUser), message: 'Usuário criado com sucesso' }, 201);
   } catch (error) {
-    if (error?.code === '23505') {
+    if (error?.code === '23505' || error?.code === 11000) {
       return sendError(res, { message: 'Email já cadastrado' }, 400);
     }
 
@@ -97,9 +94,9 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/usuarios/:id - Atualizar usuário
-router.put('/:id(\\d+)', async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = req.params.id;
     const currentUser = await usersRepository.findById(id);
 
     if (!currentUser) {
@@ -136,13 +133,13 @@ router.put('/:id(\\d+)', async (req, res) => {
     if (req.body?.status !== undefined) updates.status = req.body.status;
     if (req.body?.telefone !== undefined) updates.telefone = req.body.telefone;
     if (req.body?.cargo !== undefined) updates.cargo = req.body.cargo;
-    if (req.body?.empresaId !== undefined) updates.empresaId = parseOptionalInt(req.body.empresaId);
+    if (req.body?.empresaId !== undefined) updates.empresaId = parseOptionalId(req.body.empresaId);
 
     const updatedUser = await usersRepository.updateUser(id, updates);
 
     return sendSuccess(res, { data: toUserDTO(updatedUser), message: 'Usuário atualizado com sucesso' });
   } catch (error) {
-    if (error?.code === '23505') {
+    if (error?.code === '23505' || error?.code === 11000) {
       return sendError(res, { message: 'Email já cadastrado' }, 400);
     }
 
@@ -154,7 +151,7 @@ router.put('/:id(\\d+)', async (req, res) => {
 router.delete('/:id(\\d+)', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const deleted = await usersRepository.deleteUser(id);
+    const deleted = await usersRepository.deleteUser(req.params.id);
 
     if (!deleted) {
       return sendError(res, { message: 'Usuário não encontrado' }, 404);

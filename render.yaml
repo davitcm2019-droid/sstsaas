@@ -14,7 +14,7 @@ services:
         generateValue: true
       - key: CORS_ORIGIN
         value: https://sst-saas-frontend.onrender.com
-      - key: DATABASE_URL
+      - key: MONGO_URI
         fromDatabase:
           name: sst-saas-db
           property: connectionString
@@ -37,4 +37,5 @@ services:
 databases:
   - name: sst-saas-db
     plan: free
+    engine: mongodb
     ipAllowList: []

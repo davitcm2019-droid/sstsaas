@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { config } = require('../config');
-const { pool } = require('../db/pool');
+const usersRepository = require('../repositories/usersRepository');
 const { sendError } = require('../utils/response');
 
 const authenticateToken = async (req, res, next) => {
@@ -24,26 +24,7 @@ const authenticateToken = async (req, res, next) => {
   }
 
   try {
-    const result = await pool.query(
-      `
-        SELECT
-          id,
-          nome,
-          email,
-          perfil,
-          status,
-          telefone,
-          cargo,
-          empresa_id,
-          created_at,
-          updated_at
-        FROM usuarios
-        WHERE id = $1
-      `,
-      [payload.id]
-    );
-
-    const user = result.rows[0];
+    const user = await usersRepository.findById(payload.id);
     if (!user) {
       return sendError(res, { message: 'Usuário não autenticado', meta: { code: 'AUTH_USER_NOT_FOUND' } }, 401);
     }
@@ -60,8 +41,8 @@ const authenticateToken = async (req, res, next) => {
       status: user.status,
       telefone: user.telefone,
       cargo: user.cargo,
-      empresaId: user.empresa_id,
-      dataCadastro: user.created_at ? new Date(user.created_at).toISOString().split('T')[0] : null
+      empresaId: user.empresaId,
+      dataCadastro: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : null
     };
 
     return next();

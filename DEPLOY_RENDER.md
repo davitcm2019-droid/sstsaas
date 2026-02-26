@@ -4,9 +4,9 @@ Este repositório inclui um Blueprint (`render.yaml`) para criar **3 recursos** 
 
 - **Backend**: Web Service (Node/Express)
 - **Frontend**: Static Site (Vite/React)
-- **Banco**: Render Postgres (`sst-saas-db`)
+- **Banco**: Render MongoDB (`sst-saas-db`)
 
-O backend **usa PostgreSQL** para persistir **usuários e empresas** e executa **migrations automaticamente** no startup.
+O backend **usa MongoDB** para persistir **usuários e empresas** e inicializa a conexão ao subir.
 
 ## 1) Blueprint (mais simples)
 
@@ -24,13 +24,13 @@ O backend **usa PostgreSQL** para persistir **usuários e empresas** e executa *
   - `NODE_ENV=production`
   - `JWT_SECRET` gerado automaticamente (`generateValue: true`)
   - `CORS_ORIGIN` deve apontar para a URL do frontend
-  - `DATABASE_URL` injetado a partir do Postgres (`fromDatabase.connectionString`)
+  - `MONGO_URI` injetado a partir do MongoDB (`fromDatabase.connectionString`)
 - Frontend (`sst-saas-frontend`)
   - `rootDir: frontend`
   - build: `npm ci && npm run build`
   - publish: `dist`
   - rewrite `/* → /index.html` (necessário para React Router)
-- Postgres (`sst-saas-db`)
+- MongoDB (`sst-saas-db`)
   - `plan: free`
   - `ipAllowList: []` (bloqueia acesso externo; mantém acesso interno para serviços do Render na mesma região)
 
@@ -38,7 +38,7 @@ O backend **usa PostgreSQL** para persistir **usuários e empresas** e executa *
 
 Se preferir criar recursos manualmente:
 
-1) Crie o Postgres: **New + → PostgreSQL**  
+1) Crie o MongoDB: **New + → MongoDB**  
 2) Copie a **Internal Database URL** do banco  
 3) Crie o backend: **New + → Web Service** (Root Directory: `backend`)  
 4) Configure as variáveis do backend (aba *Environment*)  
@@ -46,23 +46,18 @@ Se preferir criar recursos manualmente:
 
 ## 3) Banco de dados no Render (configuração correta)
 
-### URLs do Render Postgres
+### URLs do Render MongoDB
 
-Cada banco no Render tem:
+CADA banco no Render tem:
 
 - **Internal Database URL**: para conexões a partir de serviços do Render na **mesma região** (recomendado).
-- **External Database URL**: para conectar de fora (psql/local/pgAdmin/etc).
+- **External Database URL**: para conectar de fora (mongo shell, Compass, etc).
 
 ### Recomendação de segurança
 
 - Use sempre o **Internal Database URL** no backend do Render.
 - Mantenha `ipAllowList: []` para evitar acesso externo.
 - Se precisar acessar externamente para debug, libere apenas seu IP no allow list (CIDR) e use a **External Database URL**.
-
-### Migrations
-
-- O backend executa migrations automaticamente ao iniciar.
-- Se `DATABASE_URL` estiver inválida ou o banco estiver indisponível, o serviço não sobe.
 
 ## 4) Variáveis de ambiente (Render Dashboard)
 
@@ -86,4 +81,3 @@ Cada banco no Render tem:
 - Falha de conexão no Postgres no Render: garanta `NODE_ENV=production` ou `DATABASE_SSL=true`.
 - CORS bloqueando: ajuste `CORS_ORIGIN` para a URL real do frontend (sem barra no final).
 - Frontend 404 ao dar refresh em rotas (`/login`, `/dashboard`): falta o rewrite `/* → /index.html` no static site.
-

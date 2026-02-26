@@ -70,8 +70,8 @@ Todas as respostas seguem o formato:
 
 ## Notas
 
-- O backend já usa PostgreSQL para persistir usuários e empresas; as migrations são executadas no startup.
-- O `render.yaml` provisiona o banco (`sst-saas-db`) e passa a `DATABASE_URL` ao backend.
+- O backend já usa MongoDB para persistir usuários e empresas; a conexão é inicializada no momento em que o servidor sobe.
+- O `render.yaml` provisiona o banco (`sst-saas-db`) e injeta `MONGO_URI` no backend, que também aceita `DATABASE_URL` para compatibilidade.
 
 ## Validação do login
 

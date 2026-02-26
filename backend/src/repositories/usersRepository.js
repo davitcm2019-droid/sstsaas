@@ -1,90 +1,86 @@
-const { pool } = require('../db/pool');
+const mongoose = require('mongoose');
 
 const normalizeEmail = (email = '') => String(email).trim().toLowerCase();
 
-const mapRowToUser = (row) => {
-  if (!row) return null;
+const userSchema = new mongoose.Schema(
+  {
+    nome: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    senha_hash: { type: String, required: true },
+    perfil: {
+      type: String,
+      enum: ['visualizador', 'tecnico_seguranca', 'administrador'],
+      default: 'visualizador'
+    },
+    status: { type: String, default: 'ativo' },
+    telefone: { type: String, default: '' },
+    cargo: { type: String, default: '' },
+    empresaId: { type: String, default: null }
+  },
+  {
+    timestamps: true
+  }
+);
 
+const User = mongoose.models.Usuario || mongoose.model('Usuario', userSchema);
+
+const mapDocToUser = (doc) => {
+  if (!doc) return null;
   return {
-    id: row.id,
-    nome: row.nome,
-    email: row.email,
-    senha: row.senha_hash,
-    perfil: row.perfil,
-    status: row.status,
-    telefone: row.telefone,
-    cargo: row.cargo,
-    empresaId: row.empresa_id,
-    dataCadastro: row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
+    id: doc._id?.toString(),
+    nome: doc.nome,
+    email: doc.email,
+    senha: doc.senha_hash,
+    perfil: doc.perfil,
+    status: doc.status,
+    telefone: doc.telefone,
+    cargo: doc.cargo,
+    empresaId: doc.empresaId,
+    dataCadastro: doc.createdAt ? new Date(doc.createdAt).toISOString().split('T')[0] : null,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt
   };
 };
 
 const countUsers = async () => {
-  const result = await pool.query('SELECT COUNT(*)::int AS count FROM usuarios');
-  return result.rows[0]?.count ?? 0;
+  return User.countDocuments();
+};
+
+const buildFilters = ({ perfil, status, search } = {}) => {
+  const filters = {};
+
+  if (perfil) {
+    filters.perfil = perfil;
+  }
+
+  if (status) {
+    filters.status = status;
+  }
+
+  if (search) {
+    const term = new RegExp(search.trim(), 'i');
+    filters.$or = [{ nome: term }, { email: term }];
+  }
+
+  return filters;
 };
 
 const findByEmail = async (email) => {
   const normalized = normalizeEmail(email);
-  const result = await pool.query(
-    `
-      SELECT id, nome, email, senha_hash, perfil, status, telefone, cargo, empresa_id, created_at, updated_at
-      FROM usuarios
-      WHERE email = $1
-    `,
-    [normalized]
-  );
-  return mapRowToUser(result.rows[0]);
+  const user = await User.findOne({ email: normalized }).lean();
+  return mapDocToUser(user);
 };
 
 const findById = async (id) => {
-  const result = await pool.query(
-    `
-      SELECT id, nome, email, senha_hash, perfil, status, telefone, cargo, empresa_id, created_at, updated_at
-      FROM usuarios
-      WHERE id = $1
-    `,
-    [id]
-  );
-  return mapRowToUser(result.rows[0]);
+  if (!id) return null;
+  const user = await User.findById(id).lean();
+  return mapDocToUser(user);
 };
 
 const listUsers = async ({ perfil, status, search } = {}) => {
-  const conditions = [];
-  const params = [];
-
-  if (perfil) {
-    params.push(perfil);
-    conditions.push(`perfil = $${params.length}`);
-  }
-
-  if (status) {
-    params.push(status);
-    conditions.push(`status = $${params.length}`);
-  }
-
-  if (search) {
-    const term = `%${String(search).trim().toLowerCase()}%`;
-    params.push(term);
-    params.push(term);
-    conditions.push(`(LOWER(nome) LIKE $${params.length - 1} OR LOWER(email) LIKE $${params.length})`);
-  }
-
-  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  const result = await pool.query(
-    `
-      SELECT id, nome, email, senha_hash, perfil, status, telefone, cargo, empresa_id, created_at, updated_at
-      FROM usuarios
-      ${whereClause}
-      ORDER BY id ASC
-    `,
-    params
-  );
-
-  return result.rows.map(mapRowToUser);
+  const filters = buildFilters({ perfil, status, search });
+  const users = await User.find(filters).sort({ createdAt: 1 }).lean();
+  return users.map(mapDocToUser);
 };
 
 const createUser = async ({
@@ -97,64 +93,40 @@ const createUser = async ({
   cargo = null,
   empresaId = null
 }) => {
-  const normalized = normalizeEmail(email);
-  const result = await pool.query(
-    `
-      INSERT INTO usuarios (nome, email, senha_hash, perfil, status, telefone, cargo, empresa_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id, nome, email, senha_hash, perfil, status, telefone, cargo, empresa_id, created_at, updated_at
-    `,
-    [nome, normalized, senhaHash, perfil, status, telefone, cargo, empresaId]
-  );
-
-  return mapRowToUser(result.rows[0]);
+  const normalizedEmail = normalizeEmail(email);
+  const user = new User({
+    nome,
+    email: normalizedEmail,
+    senha_hash: senhaHash,
+    perfil,
+    status,
+    telefone,
+    cargo,
+    empresaId
+  });
+  await user.save();
+  return mapDocToUser(user.toObject());
 };
 
 const updateUser = async (id, updates = {}) => {
-  const setClauses = [];
-  const params = [];
+  const mapped = {};
 
-  const fields = [
-    ['nome', 'nome'],
-    ['email', 'email', normalizeEmail],
-    ['senhaHash', 'senha_hash'],
-    ['perfil', 'perfil'],
-    ['status', 'status'],
-    ['telefone', 'telefone'],
-    ['cargo', 'cargo'],
-    ['empresaId', 'empresa_id']
-  ];
+  if (updates.nome !== undefined) mapped.nome = updates.nome;
+  if (updates.email !== undefined) mapped.email = normalizeEmail(updates.email);
+  if (updates.senhaHash !== undefined) mapped.senha_hash = updates.senhaHash;
+  if (updates.perfil !== undefined) mapped.perfil = updates.perfil;
+  if (updates.status !== undefined) mapped.status = updates.status;
+  if (updates.telefone !== undefined) mapped.telefone = updates.telefone;
+  if (updates.cargo !== undefined) mapped.cargo = updates.cargo;
+  if (updates.empresaId !== undefined) mapped.empresaId = updates.empresaId;
 
-  fields.forEach(([inputKey, column, mapper]) => {
-    if (updates[inputKey] === undefined) return;
-    const rawValue = updates[inputKey];
-    const value = mapper ? mapper(rawValue) : rawValue;
-    params.push(value);
-    setClauses.push(`${column} = $${params.length}`);
-  });
-
-  if (!setClauses.length) {
-    return findById(id);
-  }
-
-  params.push(id);
-
-  const result = await pool.query(
-    `
-      UPDATE usuarios
-      SET ${setClauses.join(', ')}
-      WHERE id = $${params.length}
-      RETURNING id, nome, email, senha_hash, perfil, status, telefone, cargo, empresa_id, created_at, updated_at
-    `,
-    params
-  );
-
-  return mapRowToUser(result.rows[0]);
+  const user = await User.findByIdAndUpdate(id, mapped, { new: true }).lean();
+  return mapDocToUser(user);
 };
 
 const deleteUser = async (id) => {
-  const result = await pool.query('DELETE FROM usuarios WHERE id = $1 RETURNING id', [id]);
-  return Boolean(result.rows[0]);
+  const result = await User.findByIdAndDelete(id);
+  return Boolean(result);
 };
 
 module.exports = {
@@ -167,4 +139,3 @@ module.exports = {
   updateUser,
   deleteUser
 };
-

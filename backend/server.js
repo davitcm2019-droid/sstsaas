@@ -6,7 +6,7 @@ require('dotenv').config();
 
 const { config } = require('./src/config');
 const { authenticateToken } = require('./src/middleware/auth');
-const { runMigrations } = require('./src/db/migrate');
+const { connectDb } = require('./src/db/mongo');
 const { sendSuccess, sendError } = require('./src/utils/response');
 
 const app = express();
@@ -92,7 +92,7 @@ app.use((err, req, res, next) => {
 
 const startServer = async () => {
   try {
-    await runMigrations();
+    await connectDb();
     app.listen(config.port, () => {
       console.log(`Servidor rodando na porta ${config.port}`);
     });

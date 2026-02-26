@@ -1,304 +1,96 @@
-const { pool } = require('../db/pool');
+const mongoose = require('mongoose');
 
-const mapRowToEmpresa = (row) => {
-  if (!row) return null;
+const empresaSchema = new mongoose.Schema(
+  {
+    nome: { type: String, required: true },
+    cnpj: { type: String, required: true, unique: true },
+    cnae: { type: String, required: true },
+    ramo: { type: String, default: '' },
+    endereco: { type: String, default: '' },
+    cidade: { type: String, default: '' },
+    estado: { type: String, default: '' },
+    cep: { type: String, default: '' },
+    telefone: { type: String, default: '' },
+    email: { type: String, default: '' },
+    responsavel: { type: String, default: '' },
+    status: { type: String, default: 'ativo' },
+    conformidade: { type: String, default: 'em_dia' },
+    pendencias: { type: Number, default: 0 },
+    alertas: { type: Number, default: 0 }
+  },
+  {
+    timestamps: true
+  }
+);
 
+const Empresa = mongoose.models.Empresa || mongoose.model('Empresa', empresaSchema);
+
+const mapDocToEmpresa = (doc) => {
+  if (!doc) return null;
   return {
-    id: row.id,
-    nome: row.nome,
-    cnpj: row.cnpj,
-    cnae: row.cnae,
-    ramo: row.ramo,
-    endereco: row.endereco,
-    cidade: row.cidade,
-    estado: row.estado,
-    cep: row.cep,
-    telefone: row.telefone,
-    email: row.email,
-    responsavel: row.responsavel,
-    status: row.status,
-    conformidade: row.conformidade,
-    pendencias: row.pendencias,
-    alertas: row.alertas,
-    dataCadastro: row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
+    id: doc._id?.toString(),
+    nome: doc.nome,
+    cnpj: doc.cnpj,
+    cnae: doc.cnae,
+    ramo: doc.ramo,
+    endereco: doc.endereco,
+    cidade: doc.cidade,
+    estado: doc.estado,
+    cep: doc.cep,
+    telefone: doc.telefone,
+    email: doc.email,
+    responsavel: doc.responsavel,
+    status: doc.status,
+    conformidade: doc.conformidade,
+    pendencias: doc.pendencias,
+    alertas: doc.alertas,
+    dataCadastro: doc.createdAt ? new Date(doc.createdAt).toISOString().split('T')[0] : null,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt
   };
 };
 
 const findById = async (id) => {
-  const result = await pool.query(
-    `
-      SELECT
-        id,
-        nome,
-        cnpj,
-        cnae,
-        ramo,
-        endereco,
-        cidade,
-        estado,
-        cep,
-        telefone,
-        email,
-        responsavel,
-        status,
-        conformidade,
-        pendencias,
-        alertas,
-        created_at,
-        updated_at
-      FROM empresas
-      WHERE id = $1
-    `,
-    [id]
-  );
-
-  return mapRowToEmpresa(result.rows[0]);
+  if (!id) return null;
+  const doc = await Empresa.findById(id).lean();
+  return mapDocToEmpresa(doc);
 };
 
 const findByCnpj = async (cnpj) => {
-  const result = await pool.query(
-    `
-      SELECT
-        id,
-        nome,
-        cnpj,
-        cnae,
-        ramo,
-        endereco,
-        cidade,
-        estado,
-        cep,
-        telefone,
-        email,
-        responsavel,
-        status,
-        conformidade,
-        pendencias,
-        alertas,
-        created_at,
-        updated_at
-      FROM empresas
-      WHERE cnpj = $1
-    `,
-    [String(cnpj)]
-  );
-
-  return mapRowToEmpresa(result.rows[0]);
+  if (!cnpj) return null;
+  const doc = await Empresa.findOne({ cnpj: String(cnpj).trim() }).lean();
+  return mapDocToEmpresa(doc);
 };
 
 const listEmpresas = async ({ cnae, status, conformidade, search } = {}) => {
-  const conditions = [];
-  const params = [];
+  const filters = {};
 
-  if (cnae) {
-    params.push(`%${String(cnae).trim()}%`);
-    conditions.push(`cnae ILIKE $${params.length}`);
-  }
-
-  if (status) {
-    params.push(status);
-    conditions.push(`status = $${params.length}`);
-  }
-
-  if (conformidade) {
-    params.push(conformidade);
-    conditions.push(`conformidade = $${params.length}`);
-  }
-
+  if (cnae) filters.cnae = new RegExp(cnae.trim(), 'i');
+  if (status) filters.status = status;
+  if (conformidade) filters.conformidade = conformidade;
   if (search) {
-    const term = `%${String(search).trim().toLowerCase()}%`;
-    params.push(term);
-    params.push(`%${String(search).trim()}%`);
-    params.push(term);
-    conditions.push(
-      `(LOWER(nome) LIKE $${params.length - 2} OR cnpj LIKE $${params.length - 1} OR LOWER(COALESCE(ramo, '')) LIKE $${params.length})`
-    );
+    const term = new RegExp(search.trim(), 'i');
+    filters.$or = [{ nome: term }, { ramo: term }, { cnpj: term }];
   }
 
-  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  const result = await pool.query(
-    `
-      SELECT
-        id,
-        nome,
-        cnpj,
-        cnae,
-        ramo,
-        endereco,
-        cidade,
-        estado,
-        cep,
-        telefone,
-        email,
-        responsavel,
-        status,
-        conformidade,
-        pendencias,
-        alertas,
-        created_at,
-        updated_at
-      FROM empresas
-      ${whereClause}
-      ORDER BY id ASC
-    `,
-    params
-  );
-
-  return result.rows.map(mapRowToEmpresa);
+  const empresas = await Empresa.find(filters).sort({ createdAt: 1 }).lean();
+  return empresas.map(mapDocToEmpresa);
 };
 
-const createEmpresa = async ({
-  nome,
-  cnpj,
-  cnae,
-  ramo = null,
-  endereco = null,
-  cidade = null,
-  estado = null,
-  cep = null,
-  telefone = null,
-  email = null,
-  responsavel = null,
-  status = 'ativo',
-  conformidade = 'em_dia',
-  pendencias = 0,
-  alertas = 0
-}) => {
-  const result = await pool.query(
-    `
-      INSERT INTO empresas (
-        nome,
-        cnpj,
-        cnae,
-        ramo,
-        endereco,
-        cidade,
-        estado,
-        cep,
-        telefone,
-        email,
-        responsavel,
-        status,
-        conformidade,
-        pendencias,
-        alertas
-      )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-      RETURNING
-        id,
-        nome,
-        cnpj,
-        cnae,
-        ramo,
-        endereco,
-        cidade,
-        estado,
-        cep,
-        telefone,
-        email,
-        responsavel,
-        status,
-        conformidade,
-        pendencias,
-        alertas,
-        created_at,
-        updated_at
-    `,
-    [
-      nome,
-      String(cnpj),
-      cnae,
-      ramo,
-      endereco,
-      cidade,
-      estado,
-      cep,
-      telefone,
-      email,
-      responsavel,
-      status,
-      conformidade,
-      pendencias,
-      alertas
-    ]
-  );
-
-  return mapRowToEmpresa(result.rows[0]);
+const createEmpresa = async (payload) => {
+  const doc = new Empresa(payload);
+  await doc.save();
+  return mapDocToEmpresa(doc.toObject());
 };
 
 const updateEmpresa = async (id, updates = {}) => {
-  const setClauses = [];
-  const params = [];
-
-  const fields = [
-    ['nome', 'nome'],
-    ['cnpj', 'cnpj', (value) => String(value)],
-    ['cnae', 'cnae'],
-    ['ramo', 'ramo'],
-    ['endereco', 'endereco'],
-    ['cidade', 'cidade'],
-    ['estado', 'estado'],
-    ['cep', 'cep'],
-    ['telefone', 'telefone'],
-    ['email', 'email'],
-    ['responsavel', 'responsavel'],
-    ['status', 'status'],
-    ['conformidade', 'conformidade'],
-    ['pendencias', 'pendencias'],
-    ['alertas', 'alertas']
-  ];
-
-  fields.forEach(([inputKey, column, mapper]) => {
-    if (updates[inputKey] === undefined) return;
-    const rawValue = updates[inputKey];
-    const value = mapper ? mapper(rawValue) : rawValue;
-    params.push(value);
-    setClauses.push(`${column} = $${params.length}`);
-  });
-
-  if (!setClauses.length) {
-    return findById(id);
-  }
-
-  params.push(id);
-
-  const result = await pool.query(
-    `
-      UPDATE empresas
-      SET ${setClauses.join(', ')}
-      WHERE id = $${params.length}
-      RETURNING
-        id,
-        nome,
-        cnpj,
-        cnae,
-        ramo,
-        endereco,
-        cidade,
-        estado,
-        cep,
-        telefone,
-        email,
-        responsavel,
-        status,
-        conformidade,
-        pendencias,
-        alertas,
-        created_at,
-        updated_at
-    `,
-    params
-  );
-
-  return mapRowToEmpresa(result.rows[0]);
+  const updated = await Empresa.findByIdAndUpdate(id, updates, { new: true }).lean();
+  return mapDocToEmpresa(updated);
 };
 
 const deleteEmpresa = async (id) => {
-  const result = await pool.query('DELETE FROM empresas WHERE id = $1 RETURNING id', [id]);
-  return Boolean(result.rows[0]);
+  const result = await Empresa.findByIdAndDelete(id);
+  return Boolean(result);
 };
 
 module.exports = {
@@ -309,4 +101,3 @@ module.exports = {
   updateEmpresa,
   deleteEmpresa
 };
-

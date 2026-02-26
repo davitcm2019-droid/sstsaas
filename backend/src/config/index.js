@@ -51,12 +51,17 @@ const nodeEnv = parseOptionalString('NODE_ENV', 'development');
 const isProduction = nodeEnv === 'production';
 const isRender = String(process.env.RENDER || '').trim().toLowerCase() === 'true';
 
+const databaseUrl = parseOptionalString('MONGO_URI') || parseOptionalString('DATABASE_URL');
+if (!databaseUrl) {
+  throw new Error('Missing required environment variable: MONGO_URI');
+}
+
 const config = {
   nodeEnv,
   isProduction,
   port: parseOptionalInt('PORT', isProduction ? 10000 : 5000),
   database: {
-    url: parseRequiredString('DATABASE_URL'),
+    url: databaseUrl,
     ssl: parseOptionalBool('DATABASE_SSL', isProduction || isRender)
   },
   jwt: {
