@@ -60,6 +60,8 @@ export const empresasService = {
   create: (data) => api.post('/empresas', data),
   update: (id, data) => api.put(`/empresas/${id}`, data),
   delete: (id) => api.delete(`/empresas/${id}`),
+  getImportTemplate: () => api.get('/empresas/import-template'),
+  importSpreadsheet: (data) => api.post('/empresas/import', data),
 };
 
 // Servicos de CIPAs
