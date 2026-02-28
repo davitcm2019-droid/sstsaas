@@ -15,8 +15,8 @@ const { sendSuccess, sendError } = require('../utils/response');
 const router = express.Router();
 
 const resolveEmpresaFromId = async (empresaIdRaw) => {
-  const id = parseInt(empresaIdRaw, 10);
-  if (Number.isNaN(id)) {
+  const id = String(empresaIdRaw || '').trim();
+  if (!id) {
     const error = new Error('empresaId inválido');
     error.status = 400;
     throw error;
@@ -146,11 +146,11 @@ router.get('/inspections', requirePermission('inspections:read'), (req, res) => 
     let filteredInspections = [...inspections];
 
     if (empresaId) {
-      filteredInspections = getInspectionsByEmpresa(parseInt(empresaId, 10));
+      filteredInspections = getInspectionsByEmpresa(empresaId);
     }
 
     if (inspectorId) {
-      filteredInspections = getInspectionsByInspector(parseInt(inspectorId, 10));
+      filteredInspections = getInspectionsByInspector(inspectorId);
     }
 
     if (status) {

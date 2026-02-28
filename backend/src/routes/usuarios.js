@@ -72,7 +72,7 @@ router.post('/', async (req, res) => {
       return sendError(res, { message: 'Perfil inválido' }, 400);
     }
 
-  const createdUser = await usersRepository.createUser({
+    const createdUser = await usersRepository.createUser({
       nome,
       email: normalizedEmail,
       senhaHash: await hashPassword(senha),
@@ -148,9 +148,8 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/usuarios/:id - Deletar usuário
-router.delete('/:id(\\d+)', async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
     const deleted = await usersRepository.deleteUser(req.params.id);
 
     if (!deleted) {

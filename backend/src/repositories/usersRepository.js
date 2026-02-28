@@ -73,6 +73,7 @@ const findByEmail = async (email) => {
 
 const findById = async (id) => {
   if (!id) return null;
+  if (!mongoose.Types.ObjectId.isValid(id)) return null;
   const user = await User.findById(id).lean();
   return mapDocToUser(user);
 };
@@ -109,6 +110,7 @@ const createUser = async ({
 };
 
 const updateUser = async (id, updates = {}) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) return null;
   const mapped = {};
 
   if (updates.nome !== undefined) mapped.nome = updates.nome;
@@ -125,6 +127,7 @@ const updateUser = async (id, updates = {}) => {
 };
 
 const deleteUser = async (id) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) return false;
   const result = await User.findByIdAndDelete(id);
   return Boolean(result);
 };

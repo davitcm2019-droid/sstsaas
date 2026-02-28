@@ -17,7 +17,7 @@ const getEmpresaNome = async (empresaId) => {
 };
 
 const sanitizeTreinamento = async (data = {}) => {
-  const empresaId = data.empresaId ? parseInt(data.empresaId, 10) : null;
+  const empresaId = data.empresaId ? String(data.empresaId) : null;
   return {
     titulo: data.titulo || '',
     descricao: data.descricao || '',
@@ -148,4 +148,3 @@ router.delete('/:id(\\d+)', (req, res) => {
 });
 
 module.exports = router;
-

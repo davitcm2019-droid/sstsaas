@@ -28,19 +28,6 @@ const parseOptionalInt = (name, fallback) => {
   return parsed;
 };
 
-const parseOptionalBool = (name, fallback) => {
-  const raw = process.env[name];
-  if (typeof raw !== 'string' || raw.trim() === '') {
-    return fallback;
-  }
-
-  const normalized = raw.trim().toLowerCase();
-  if (['true', '1', 'yes', 'y'].includes(normalized)) return true;
-  if (['false', '0', 'no', 'n'].includes(normalized)) return false;
-
-  throw new Error(`Invalid boolean environment variable: ${name}`);
-};
-
 const parseCorsOrigins = (rawOrigins) =>
   rawOrigins
     .split(',')
@@ -61,8 +48,7 @@ const config = {
   isProduction,
   port: parseOptionalInt('PORT', isProduction ? 10000 : 5000),
   database: {
-    url: databaseUrl,
-    ssl: parseOptionalBool('DATABASE_SSL', isProduction || isRender)
+    url: databaseUrl
   },
   jwt: {
     secret: parseRequiredString('JWT_SECRET'),

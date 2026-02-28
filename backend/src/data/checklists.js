@@ -171,14 +171,16 @@ const createInspection = (inspectionData) => {
 };
 
 const getInspectionsByEmpresa = (empresaId) => {
+  const normalizedId = String(empresaId);
   return inspections
-    .filter((inspection) => inspection.empresaId === parseInt(empresaId, 10))
+    .filter((inspection) => String(inspection.empresaId) === normalizedId)
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 };
 
 const getInspectionsByInspector = (inspectorId) => {
+  const normalizedId = String(inspectorId);
   return inspections
-    .filter((inspection) => inspection.inspectorId === parseInt(inspectorId, 10))
+    .filter((inspection) => String(inspection.inspectorId) === normalizedId)
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 };
 

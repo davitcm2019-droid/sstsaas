@@ -21,8 +21,8 @@ const parseNumber = (value, fallback = 0) => {
 };
 
 const sanitizePayload = async (data = {}) => {
-  const empresaId = data.empresaId ? parseInt(data.empresaId, 10) : null;
-  const responsavelId = data.responsavelId ? parseInt(data.responsavelId, 10) : null;
+  const empresaId = data.empresaId ? String(data.empresaId) : null;
+  const responsavelId = data.responsavelId ? String(data.responsavelId) : null;
 
   return {
     titulo: data.titulo || '',
@@ -157,4 +157,3 @@ router.delete('/:id(\\d+)', (req, res) => {
 });
 
 module.exports = router;
-

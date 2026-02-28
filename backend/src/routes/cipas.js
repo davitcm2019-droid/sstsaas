@@ -76,7 +76,7 @@ router.get('/:id(\\d+)', (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const payload = { ...req.body };
-    const empresaId = payload.empresaId ? parseInt(payload.empresaId, 10) : null;
+    const empresaId = payload.empresaId ? String(payload.empresaId) : null;
     const nextId = cipas.length ? Math.max(...cipas.map((item) => item.id)) + 1 : 1;
 
     const novaCipa = {
@@ -116,7 +116,7 @@ router.put('/:id(\\d+)', async (req, res) => {
     const empresaId =
       payload.empresaId === undefined || payload.empresaId === null || payload.empresaId === ''
         ? cipas[index].empresaId
-        : parseInt(payload.empresaId, 10);
+        : String(payload.empresaId);
 
     const empresaNome =
       payload.empresaNome !== undefined
@@ -160,4 +160,3 @@ router.delete('/:id(\\d+)', (req, res) => {
 });
 
 module.exports = router;
-

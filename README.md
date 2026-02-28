@@ -71,7 +71,7 @@ Todas as respostas seguem o formato:
 ## Notas
 
 - O backend já usa MongoDB para persistir usuários e empresas; a conexão é inicializada no momento em que o servidor sobe.
-- O `render.yaml` provisiona o banco (`sst-saas-db`) e injeta `MONGO_URI` no backend, que também aceita `DATABASE_URL` para compatibilidade.
+- O `render.yaml` configura backend/frontend; o `MONGO_URI` deve ser preenchido manualmente no serviço backend.
 
 ## Validação do login
 

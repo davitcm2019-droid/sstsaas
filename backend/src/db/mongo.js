@@ -7,11 +7,7 @@ const connectDb = async () => {
       return mongoose.connection;
     }
 
-    await mongoose.connect(config.database.url, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      ssl: config.database.ssl
-    });
+    await mongoose.connect(config.database.url);
 
     return mongoose.connection;
   } catch (error) {

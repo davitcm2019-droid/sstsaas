@@ -52,6 +52,7 @@ const mapDocToEmpresa = (doc) => {
 
 const findById = async (id) => {
   if (!id) return null;
+  if (!mongoose.Types.ObjectId.isValid(id)) return null;
   const doc = await Empresa.findById(id).lean();
   return mapDocToEmpresa(doc);
 };
@@ -84,11 +85,13 @@ const createEmpresa = async (payload) => {
 };
 
 const updateEmpresa = async (id, updates = {}) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) return null;
   const updated = await Empresa.findByIdAndUpdate(id, updates, { new: true }).lean();
   return mapDocToEmpresa(updated);
 };
 
 const deleteEmpresa = async (id) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) return false;
   const result = await Empresa.findByIdAndDelete(id);
   return Boolean(result);
 };
