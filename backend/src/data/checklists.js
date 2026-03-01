@@ -157,20 +157,35 @@ const getChecklistsForCnae = (cnae) => {
   return inspectionChecklists.filter((checklist) => applicableNrs.has(checklist.nr));
 };
 
-const calculateScore = (items) => {
+const calculateScore = (items, checklistId = null) => {
+  const safeItems = Array.isArray(items) ? items : [];
   let totalScore = 0;
   let maxScore = 0;
 
-  items.forEach((item) => {
-    const checklistItem = inspectionChecklists
-      .flatMap((checklist) => checklist.items)
-      .find((ci) => ci.id === item.itemId);
+  const checklist =
+    checklistId !== null
+      ? inspectionChecklists.find((entry) => entry.id === Number.parseInt(checklistId, 10)) || null
+      : null;
 
-    if (checklistItem) {
-      maxScore += checklistItem.weight;
-      totalScore += item.score || 0;
-    }
-  });
+  if (checklist) {
+    const itemIds = new Set(safeItems.map((item) => String(item.itemId)));
+    maxScore = (checklist.items || []).reduce((sum, item) => sum + (Number(item.weight) || 0), 0);
+    totalScore = safeItems.reduce((sum, item) => {
+      if (!itemIds.has(String(item.itemId))) return sum;
+      return sum + (Number(item.score) || 0);
+    }, 0);
+  } else {
+    safeItems.forEach((item) => {
+      const checklistItem = inspectionChecklists
+        .flatMap((entry) => entry.items)
+        .find((entry) => String(entry.id) === String(item.itemId));
+
+      if (checklistItem) {
+        maxScore += Number(checklistItem.weight) || 0;
+        totalScore += Number(item.score) || 0;
+      }
+    });
+  }
 
   return {
     score: totalScore,
@@ -187,7 +202,7 @@ const createInspection = (inspectionData) => {
     ...inspectionData
   };
 
-  const scoreData = calculateScore(inspectionData.items || []);
+  const scoreData = calculateScore(inspectionData.items || [], inspectionData.checklistId);
   newInspection.score = scoreData.score;
   newInspection.maxScore = scoreData.maxScore;
 

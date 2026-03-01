@@ -5,6 +5,11 @@ import { checklistsService, empresasService } from '../services/api';
 import ChecklistModal from '../components/ChecklistModal';
 import FormModal from '../components/FormModal';
 
+const hasApplicableCnae = (value) => {
+  const normalized = String(value || '').trim().toUpperCase();
+  return normalized !== '' && normalized !== 'A_DEFINIR' && normalized !== 'N/A' && normalized !== 'NA';
+};
+
 const Checklists = () => {
   const [checklists, setChecklists] = useState([]);
   const [inspections, setInspections] = useState([]);
@@ -79,7 +84,9 @@ const Checklists = () => {
   const loadCategories = async () => {
     try {
       const params = {};
-      if (selectedEmpresa?.cnae) {
+      if (selectedEmpresa?.id) {
+        params.empresaId = selectedEmpresa.id;
+      } else if (hasApplicableCnae(selectedEmpresa?.cnae)) {
         params.cnae = selectedEmpresa.cnae;
       }
 
@@ -96,13 +103,17 @@ const Checklists = () => {
       setLoading(true);
 
       const checklistParams = { ...filters };
-      if (selectedEmpresa?.cnae) {
+      if (selectedEmpresa?.id) {
+        checklistParams.empresaId = selectedEmpresa.id;
+      } else if (hasApplicableCnae(selectedEmpresa?.cnae)) {
         checklistParams.cnae = selectedEmpresa.cnae;
       }
 
+      const inspectionParams = selectedEmpresa?.id ? { empresaId: selectedEmpresa.id } : {};
+
       const [checklistsRes, inspectionsRes] = await Promise.all([
         checklistsService.getAll(checklistParams),
-        checklistsService.getInspections()
+        checklistsService.getInspections(inspectionParams)
       ]);
 
       setChecklists(checklistsRes.data.data || []);
@@ -122,7 +133,9 @@ const Checklists = () => {
       setNewChecklistError(null);
 
       const params = {};
-      if (empresa?.cnae) {
+      if (empresa?.id) {
+        params.empresaId = empresa.id;
+      } else if (hasApplicableCnae(empresa?.cnae)) {
         params.cnae = empresa.cnae;
       }
 
