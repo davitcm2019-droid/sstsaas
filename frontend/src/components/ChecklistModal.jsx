@@ -35,6 +35,15 @@ const ChecklistModal = ({ isOpen, onClose, checklistId, empresaId, empresaNome }
   }, [isOpen, checklistId, empresaId, empresaNome, user]);
 
   useEffect(() => {
+    if (!isOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow || '';
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!isOpen || !checklistId) return;
     void loadChecklist();
   }, [isOpen, checklistId]);
@@ -171,11 +180,11 @@ const ChecklistModal = ({ isOpen, onClose, checklistId, empresaId, empresaNome }
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       <div className="absolute inset-0 bg-gray-900/60" onClick={onClose} />
 
-      <div className="relative z-10 mx-auto my-2 flex h-[calc(100vh-1rem)] w-[98%] max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-xl sm:my-6 sm:h-[88vh] sm:w-[95%]">
-        <div className="border-b border-gray-200 px-4 py-4 sm:px-6">
+      <div className="relative z-10 flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-xl sm:max-h-[92vh]">
+        <div className="shrink-0 border-b border-gray-200 px-4 py-4 sm:px-6">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
@@ -200,7 +209,7 @@ const ChecklistModal = ({ isOpen, onClose, checklistId, empresaId, empresaNome }
           {error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
           {loading ? (
             <div className="flex h-64 items-center justify-center">
               <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary-500"></div>
@@ -289,7 +298,7 @@ const ChecklistModal = ({ isOpen, onClose, checklistId, empresaId, empresaNome }
           )}
         </div>
 
-        <div className="border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+        <div className="shrink-0 border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-gray-500">
               <div className="flex items-center">
