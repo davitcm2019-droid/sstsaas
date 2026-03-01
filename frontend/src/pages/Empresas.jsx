@@ -77,7 +77,14 @@ const getDisplayCnae = (value) => {
   return value;
 };
 
-const normalizeCnaeCode = (value) => String(value || '').split('/')[0].trim();
+const normalizeCnaeCode = (value) => {
+  const raw = String(value || '').trim().toUpperCase();
+  if (!raw) return '';
+  const sectionMatch = raw.match(/^([A-U])(?:\b|[\s\-|])/);
+  if (sectionMatch) return sectionMatch[1];
+  if (/^[A-U]$/.test(raw)) return raw;
+  return raw.split('/')[0].trim();
+};
 
 const Empresas = () => {
   const [empresas, setEmpresas] = useState([]);
@@ -237,14 +244,14 @@ const Empresas = () => {
   const handleSaveCnae = async (empresaId) => {
     const cnae = normalizeCnaeCode(cnaeDrafts[empresaId]);
     if (!cnae) {
-      window.alert('Informe o CNAE para salvar.');
+      window.alert('Informe a secao CNAE para salvar.');
       return;
     }
 
     const cnaesLoaded = cnaeOptions.length > 0;
     const validCnae = cnaesLoaded ? cnaeOptions.some((item) => item.code === cnae) : true;
     if (!validCnae) {
-      window.alert('CNAE nao encontrado na lista geral. Selecione um codigo valido.');
+      window.alert('Secao CNAE nao encontrada na lista permitida. Selecione uma opcao valida.');
       return;
     }
 
@@ -340,7 +347,7 @@ const Empresas = () => {
                   <th className="px-4 py-2 text-left font-medium text-gray-600">Documento</th>
                   <th className="px-4 py-2 text-left font-medium text-gray-600">Status</th>
                   <th className="px-4 py-2 text-left font-medium text-gray-600">
-                    CNAE (selecione na lista geral apos upload)
+                    Seção CNAE (A-U)
                   </th>
                 </tr>
               </thead>
@@ -371,8 +378,8 @@ const Empresas = () => {
                       </div>
                       <p className="mt-1 text-xs text-gray-500">
                         {loadingCnaes
-                          ? 'Carregando lista geral de CNAEs...'
-                          : 'Digite ou selecione um CNAE da lista.'}
+                          ? 'Carregando secoes CNAE...'
+                          : 'Selecione a secao CNAE alinhada ao mapeamento NR.'}
                       </p>
                     </td>
                   </tr>
@@ -386,7 +393,7 @@ const Empresas = () => {
       <datalist id="cnae-catalog-options">
         {cnaeOptions.map((item) => (
           <option key={item.code} value={item.code}>
-            {item.description}
+            {item.divisionRange ? `${item.divisionRange} | ${item.description}` : item.description}
           </option>
         ))}
       </datalist>

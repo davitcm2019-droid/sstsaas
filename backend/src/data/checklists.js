@@ -50,29 +50,32 @@ const buildNrByCnaeSectionMap = () => {
   return map;
 };
 
-const buildCnaeCatalog = () => {
-  const list = [];
-  const cnaeData = safeReadJson(path.join(CHECKLISTS_DIR, 'listacnae.json'));
-  if (!Array.isArray(cnaeData?.cnaes)) return list;
+const CNAE_SECTION_CATALOG = [
+  { code: 'A', divisionRange: '01 .. 03', description: 'AGRICULTURA, PECUARIA, PRODUCAO FLORESTAL, PESCA E AQUICULTURA' },
+  { code: 'B', divisionRange: '05 .. 09', description: 'INDUSTRIAS EXTRATIVAS' },
+  { code: 'C', divisionRange: '10 .. 33', description: 'INDUSTRIAS DE TRANSFORMACAO' },
+  { code: 'D', divisionRange: '35 .. 35', description: 'ELETRICIDADE E GAS' },
+  { code: 'E', divisionRange: '36 .. 39', description: 'AGUA, ESGOTO, ATIVIDADES DE GESTAO DE RESIDUOS E DESCONTAMINACAO' },
+  { code: 'F', divisionRange: '41 .. 43', description: 'CONSTRUCAO' },
+  { code: 'G', divisionRange: '45 .. 47', description: 'COMERCIO; REPARACAO DE VEICULOS AUTOMOTORES E MOTOCICLETAS' },
+  { code: 'H', divisionRange: '49 .. 53', description: 'TRANSPORTE, ARMAZENAGEM E CORREIO' },
+  { code: 'I', divisionRange: '55 .. 56', description: 'ALOJAMENTO E ALIMENTACAO' },
+  { code: 'J', divisionRange: '58 .. 63', description: 'INFORMACAO E COMUNICACAO' },
+  { code: 'K', divisionRange: '64 .. 66', description: 'ATIVIDADES FINANCEIRAS, DE SEGUROS E SERVICOS RELACIONADOS' },
+  { code: 'L', divisionRange: '68 .. 68', description: 'ATIVIDADES IMOBILIARIAS' },
+  { code: 'M', divisionRange: '69 .. 75', description: 'ATIVIDADES PROFISSIONAIS, CIENTIFICAS E TECNICAS' },
+  { code: 'N', divisionRange: '77 .. 82', description: 'ATIVIDADES ADMINISTRATIVAS E SERVICOS COMPLEMENTARES' },
+  { code: 'O', divisionRange: '84 .. 84', description: 'ADMINISTRACAO PUBLICA, DEFESA E SEGURIDADE SOCIAL' },
+  { code: 'P', divisionRange: '85 .. 85', description: 'EDUCACAO' },
+  { code: 'Q', divisionRange: '86 .. 88', description: 'SAUDE HUMANA E SERVICOS SOCIAIS' },
+  { code: 'R', divisionRange: '90 .. 93', description: 'ARTES, CULTURA, ESPORTE E RECREACAO' },
+  { code: 'S', divisionRange: '94 .. 96', description: 'OUTRAS ATIVIDADES DE SERVICOS' },
+  { code: 'T', divisionRange: '97 .. 97', description: 'SERVICOS DOMESTICOS' },
+  { code: 'U', divisionRange: '99 .. 99', description: 'ORGANISMOS INTERNACIONAIS E OUTRAS INSTITUICOES EXTRATERRITORIAIS' }
+];
 
-  cnaeData.cnaes.forEach((secao) => {
-    secao?.divisoes?.forEach((divisao) => {
-      divisao?.grupos?.forEach((grupo) => {
-        grupo?.classes?.forEach((classe) => {
-          if (!classe?.codigo_classe || !classe?.descricao_classe) return;
-          list.push({
-            code: String(classe.codigo_classe),
-            description: String(classe.descricao_classe),
-            section: String(secao?.secao || ''),
-            sectionDescription: String(secao?.descricao_secao || '')
-          });
-        });
-      });
-    });
-  });
-
-  return list.sort((a, b) => a.code.localeCompare(b.code, 'pt-BR'));
-};
+const buildCnaeCatalog = () =>
+  [...CNAE_SECTION_CATALOG].sort((a, b) => a.code.localeCompare(b.code, 'pt-BR'));
 
 const cnaeSectionByCode = buildCnaeSectionMap();
 const nrCodesByCnaeSection = buildNrByCnaeSectionMap();
@@ -80,14 +83,18 @@ const cnaeCatalog = buildCnaeCatalog();
 
 const normalizeCnaeCode = (value) => {
   if (!value) return '';
-  const raw = String(value).trim();
+  const raw = String(value).trim().toUpperCase();
   if (raw === '') return '';
+  const sectionMatch = raw.match(/^([A-U])(?:\b|[\s\-|])/);
+  if (sectionMatch) return sectionMatch[1];
+  if (/^[A-U]$/.test(raw)) return raw;
   return raw.split('/')[0];
 };
 
 const getCnaeSection = (cnae) => {
   const normalized = normalizeCnaeCode(cnae);
   if (!normalized) return null;
+  if (nrCodesByCnaeSection.has(normalized)) return normalized;
   return cnaeSectionByCode.get(normalized) || null;
 };
 
@@ -230,7 +237,7 @@ const getCnaeCatalog = ({ search = '', limit } = {}) => {
 
   if (term) {
     result = result.filter((item) => {
-      const haystack = `${item.code} ${item.description} ${item.sectionDescription}`.toLowerCase();
+      const haystack = `${item.code} ${item.divisionRange} ${item.description}`.toLowerCase();
       return haystack.includes(term);
     });
   }
