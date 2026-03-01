@@ -178,6 +178,38 @@ export const checklistsService = {
   getInspectionStats: () => api.get('/checklists/inspections/stats'),
 };
 
+// Servicos de Levantamento Estruturado de Riscos
+export const riskSurveyService = {
+  getMetadata: () => api.get('/risk-survey/metadata'),
+  getDashboard: (params = {}) => api.get('/risk-survey/dashboard', { params }),
+  getAssessmentConfig: () => api.get('/risk-survey/config/assessment'),
+  updateAssessmentConfig: (data) => api.put('/risk-survey/config/assessment', data),
+  getReferences: (params = {}) => api.get('/risk-survey/references', { params }),
+  updateReference: (tipo, data) => api.put(`/risk-survey/references/${tipo}`, data),
+  listEnvironments: (params = {}) => api.get('/risk-survey/environments', { params }),
+  getEnvironment: (id) => api.get(`/risk-survey/environments/${id}`),
+  createEnvironment: (data) => api.post('/risk-survey/environments', data),
+  updateEnvironment: (id, data) => api.put(`/risk-survey/environments/${id}`, data),
+  deleteEnvironment: (id) => api.delete(`/risk-survey/environments/${id}`),
+  finalizeEnvironment: (id) => api.post(`/risk-survey/environments/${id}/finalize`),
+  getEnvironmentSnapshot: (id) => api.get(`/risk-survey/environments/${id}/snapshot`),
+  listActivitiesByEnvironment: (environmentId) => api.get(`/risk-survey/environments/${environmentId}/activities`),
+  getActivity: (id) => api.get(`/risk-survey/activities/${id}`),
+  createActivity: (data) => api.post('/risk-survey/activities', data),
+  updateActivity: (id, data) => api.put(`/risk-survey/activities/${id}`, data),
+  deleteActivity: (id) => api.delete(`/risk-survey/activities/${id}`),
+  listRisksByActivity: (activityId) => api.get(`/risk-survey/activities/${activityId}/risks`),
+  getRiskDetail: (id) => api.get(`/risk-survey/risks/${id}`),
+  createRisk: (data) => api.post('/risk-survey/risks', data),
+  updateRisk: (id, data) => api.put(`/risk-survey/risks/${id}`, data),
+  deleteRisk: (id) => api.delete(`/risk-survey/risks/${id}`),
+  upsertAssessment: (riskId, data) => api.put(`/risk-survey/risks/${riskId}/assessment`, data),
+  createMeasurement: (riskId, data) => api.post(`/risk-survey/risks/${riskId}/measurements`, data),
+  updateMeasurement: (id, data) => api.put(`/risk-survey/measurements/${id}`, data),
+  deleteMeasurement: (id) => api.delete(`/risk-survey/measurements/${id}`),
+  listAudit: (params = {}) => api.get('/risk-survey/audit', { params })
+};
+
 // Serviços de Incidentes
 export const incidentsService = {
   getAll: (params = {}) => api.get('/incidents', { params }),

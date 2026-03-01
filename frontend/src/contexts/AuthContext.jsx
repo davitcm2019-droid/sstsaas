@@ -110,8 +110,9 @@ export const AuthProvider = ({ children }) => {
 
     const permissions = {
       visualizador: ['visualizador'],
-      tecnico_seguranca: ['visualizador', 'tecnico_seguranca'],
-      administrador: ['visualizador', 'tecnico_seguranca', 'administrador']
+      auditor: ['visualizador', 'auditor'],
+      tecnico_seguranca: ['visualizador', 'auditor', 'tecnico_seguranca'],
+      administrador: ['visualizador', 'auditor', 'tecnico_seguranca', 'administrador']
     };
 
     return permissions[user.perfil]?.includes(requiredProfile) || false;
@@ -119,6 +120,7 @@ export const AuthProvider = ({ children }) => {
 
   const isAdmin = () => hasPermission('administrador');
   const isTecnico = () => hasPermission('tecnico_seguranca');
+  const isAuditor = () => hasPermission('auditor');
   const isVisualizador = () => hasPermission('visualizador');
 
   const value = {
@@ -131,10 +133,10 @@ export const AuthProvider = ({ children }) => {
     hasPermission,
     isAdmin,
     isTecnico,
+    isAuditor,
     isVisualizador,
     isAuthenticated: !!user
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-

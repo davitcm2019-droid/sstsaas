@@ -24,7 +24,7 @@ const Layout = ({ children }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isAdmin, isTecnico } = useAuth();
+  const { user, logout, isAdmin, isTecnico, isAuditor } = useAuth();
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home, permission: null },
@@ -36,11 +36,18 @@ const Layout = ({ children }) => {
     { name: 'Ações', href: '/acoes', icon: AlertTriangle, permission: null },
     { name: 'Agenda', href: '/agenda', icon: Calendar, permission: null },
     { name: 'Checklists', href: '/checklists', icon: ClipboardCheck, permission: 'tecnico_seguranca' },
+    { name: 'Levantamento de Riscos', href: '/levantamento-riscos', icon: AlertTriangle, permission: 'auditor' },
     { name: 'Incidentes', href: '/incidentes', icon: AlertTriangle, permission: null },
     { name: 'Documentos', href: '/documentos', icon: FileText, permission: null },
     { name: 'Relatórios', href: '/relatorios', icon: BarChart3, permission: null },
     { name: 'Usuários', href: '/usuarios', icon: Users, permission: 'administrador' },
-  ].filter(item => !item.permission || (item.permission === 'tecnico_seguranca' && isTecnico()) || (item.permission === 'administrador' && isAdmin()));
+  ].filter(
+    (item) =>
+      !item.permission ||
+      (item.permission === 'tecnico_seguranca' && isTecnico()) ||
+      (item.permission === 'auditor' && isAuditor()) ||
+      (item.permission === 'administrador' && isAdmin())
+  );
 
   const handleLogout = async () => {
     await logout();

@@ -186,6 +186,7 @@ const Usuarios = () => {
             >
               <option value="">Todos os perfis</option>
               <option value="administrador">Administrador</option>
+              <option value="auditor">Auditor</option>
               <option value="tecnico_seguranca">Técnico de Segurança</option>
               <option value="visualizador">Visualizador</option>
             </select>

@@ -19,6 +19,7 @@ import Agenda from './pages/Agenda';
 import Documentos from './pages/Documentos';
 import Relatorios from './pages/Relatorios';
 import Usuarios from './pages/Usuarios';
+import RiskSurvey from './pages/RiskSurvey';
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -91,6 +92,17 @@ const AppRoutes = () => {
           </Layout>
         </ProtectedRoute>
       } />
+
+      <Route
+        path="/levantamento-riscos"
+        element={
+          <ProtectedRoute requiredProfile="auditor">
+            <Layout>
+              <RiskSurvey />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
       
           <Route path="/incidentes" element={
             <ProtectedRoute>

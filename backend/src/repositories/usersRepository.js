@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema(
     senha_hash: { type: String, required: true },
     perfil: {
       type: String,
-      enum: ['visualizador', 'tecnico_seguranca', 'administrador'],
+      enum: ['visualizador', 'auditor', 'tecnico_seguranca', 'administrador'],
       default: 'visualizador'
     },
     status: { type: String, default: 'ativo' },

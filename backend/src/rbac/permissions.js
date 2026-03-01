@@ -1,13 +1,26 @@
 const ROLE_PERMISSIONS = {
   visualizador: ['companies:read', 'checklists:read', 'inspections:read'],
-  tecnico_seguranca: ['companies:read', 'companies:write', 'checklists:read', 'inspections:read', 'inspections:write'],
+  auditor: ['companies:read', 'checklists:read', 'inspections:read', 'riskSurvey:read'],
+  tecnico_seguranca: [
+    'companies:read',
+    'companies:write',
+    'checklists:read',
+    'inspections:read',
+    'inspections:write',
+    'riskSurvey:read',
+    'riskSurvey:write'
+  ],
   administrador: [
     'companies:read',
     'companies:write',
     'checklists:read',
     'inspections:read',
     'inspections:write',
-    'users:manage'
+    'users:manage',
+    'riskSurvey:read',
+    'riskSurvey:write',
+    'riskSurvey:finalize',
+    'riskSurvey:configure'
   ]
 };
 
@@ -20,4 +33,3 @@ module.exports = {
   ROLE_PERMISSIONS,
   hasPermission
 };
-

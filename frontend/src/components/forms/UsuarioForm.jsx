@@ -21,6 +21,7 @@ const perfilFromAcessos = ({ canChecklists, canUsers }) => {
 const acessosFromPerfil = (perfil) => {
   if (perfil === 'administrador') return { canChecklists: true, canUsers: true };
   if (perfil === 'tecnico_seguranca') return { canChecklists: true, canUsers: false };
+  if (perfil === 'auditor') return { canChecklists: false, canUsers: false };
   return { canChecklists: false, canUsers: false };
 };
 
@@ -194,6 +195,7 @@ const UsuarioForm = ({ usuario, onSave, onCancel }) => {
             className="input-field"
           >
             <option value="visualizador">Visualizador</option>
+            <option value="auditor">Auditor</option>
             <option value="tecnico_seguranca">Técnico de Segurança</option>
             <option value="administrador">Administrador</option>
           </select>

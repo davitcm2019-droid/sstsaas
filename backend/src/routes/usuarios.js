@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.use(requirePermission('users:manage'));
 
-const allowedPerfis = new Set(['visualizador', 'tecnico_seguranca', 'administrador']);
+const allowedPerfis = new Set(['visualizador', 'auditor', 'tecnico_seguranca', 'administrador']);
 
 const normalizeEmail = (email = '') => String(email).trim().toLowerCase();
 
