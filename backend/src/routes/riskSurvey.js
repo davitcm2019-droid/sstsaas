@@ -1558,15 +1558,66 @@ router.get('/activities/:id([a-fA-F0-9]{24})/risks', requirePermission('riskSurv
 router.post('/risks', requirePermission('riskSurvey:write'), async (req, res) => {
   try {
     const activityId = toId(req.body?.activityId, 'activityId');
-    const riskLibraryId = toId(req.body?.riskLibraryId, 'riskLibraryId');
     const activity = await RiskSurveyActivity.findById(activityId);
     if (!activity) return sendError(res, { message: 'Atividade nao encontrada' }, 404);
 
     const environment = await RiskSurveyEnvironment.findById(activity.environmentId);
     ensureEditableEnvironment(environment);
-    const library = await RiskLibrary.findById(riskLibraryId).lean();
-    if (!library || !library.ativo) {
-      return sendError(res, { message: 'Risco da biblioteca nao encontrado ou inativo' }, 400);
+
+    const providedRiskLibraryId = toText(req.body?.riskLibraryId);
+    const normalizedRiskType = normalizeRiskType(req.body?.riskType || req.body?.categoriaAgente);
+
+    let library = null;
+    if (providedRiskLibraryId) {
+      const riskLibraryId = toId(providedRiskLibraryId, 'riskLibraryId');
+      library = await RiskLibrary.findById(riskLibraryId).lean();
+      if (!library || !library.ativo) {
+        return sendError(res, { message: 'Risco da biblioteca nao encontrado ou inativo' }, 400);
+      }
+    } else {
+      const customTitle = toText(req.body?.tituloRisco || req.body?.perigo);
+      const customPerigo = toText(req.body?.perigo);
+      const customEvento = toText(req.body?.eventoPerigoso);
+      const customDano = toText(req.body?.danoPotencial);
+
+      if (!customTitle || !customPerigo || !customEvento || !customDano) {
+        return sendError(
+          res,
+          {
+            message:
+              'Informe os campos do novo risco (titulo, perigo, evento perigoso e dano potencial) ou selecione um risco da biblioteca'
+          },
+          400
+        );
+      }
+
+      library = await RiskLibrary.findOne({
+        tipo: normalizedRiskType,
+        titulo: customTitle
+      }).lean();
+
+      if (!library) {
+        const createdLibrary = await RiskLibrary.create({
+          tipo: normalizedRiskType,
+          titulo: customTitle,
+          perigo: customPerigo,
+          eventoPerigoso: customEvento,
+          danoPotencial: customDano,
+          permiteQuantitativa: true,
+          origem: 'personalizado',
+          ativo: true
+        });
+        library = createdLibrary.toObject();
+
+        await logAudit({
+          entityType: 'risk_library',
+          entityId: createdLibrary._id.toString(),
+          action: 'create_auto',
+          actor: req.user,
+          before: null,
+          after: mapRiskLibrary(library)
+        });
+      }
     }
 
     const payload = {
@@ -1577,8 +1628,8 @@ router.post('/risks', requirePermission('riskSurvey:write'), async (req, res) =>
       perigo: toText(req.body?.perigo || library.perigo),
       eventoPerigoso: toText(req.body?.eventoPerigoso || library.eventoPerigoso),
       danoPotencial: toText(req.body?.danoPotencial || library.danoPotencial),
-      riskType: normalizeRiskType(req.body?.riskType || library.tipo),
-      categoriaAgente: normalizeRiskType(req.body?.categoriaAgente || library.tipo),
+      riskType: normalizeRiskType(req.body?.riskType || library.tipo || normalizedRiskType),
+      categoriaAgente: normalizeRiskType(req.body?.categoriaAgente || library.tipo || normalizedRiskType),
       condicao: toText(req.body?.condicao, 'normal'),
       numeroExpostos: toNumber(req.body?.numeroExpostos, 1),
       grupoHomogeneo: Boolean(req.body?.grupoHomogeneo),

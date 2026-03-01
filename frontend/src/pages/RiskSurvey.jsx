@@ -17,6 +17,10 @@ const EMPTY_ACTIVITY = {
 const EMPTY_RISK = {
   riskType: 'fisico',
   riskLibraryId: '',
+  tituloRisco: '',
+  perigo: '',
+  eventoPerigoso: '',
+  danoPotencial: '',
   condicao: 'normal',
   numeroExpostos: 1,
   grupoHomogeneo: false,
@@ -106,6 +110,7 @@ const RiskSurvey = () => {
     () => filteredLibrary.find((item) => String(item.id) === String(riskForm.riskLibraryId)) || null,
     [filteredLibrary, riskForm.riskLibraryId]
   );
+  const isManualRisk = !riskForm.riskLibraryId;
 
   const isEnvironmentFinalized = selectedEnvironment?.surveyStatus === 'finalized';
   const computedScore = Number(assessmentForm.probabilidade) * Number(assessmentForm.severidade);
@@ -274,10 +279,19 @@ const RiskSurvey = () => {
     if (!selectedActivityId) return;
 
     try {
+      if (isManualRisk && (!riskForm.tituloRisco || !riskForm.perigo || !riskForm.eventoPerigoso || !riskForm.danoPotencial)) {
+        setError('Preencha título, perigo, evento perigoso e dano potencial para cadastrar um novo risco.');
+        return;
+      }
+
       await riskSurveyService.createRisk({
         activityId: selectedActivityId,
         riskType: riskForm.riskType,
         riskLibraryId: riskForm.riskLibraryId,
+        tituloRisco: riskForm.tituloRisco,
+        perigo: riskForm.perigo,
+        eventoPerigoso: riskForm.eventoPerigoso,
+        danoPotencial: riskForm.danoPotencial,
         condicao: riskForm.condicao,
         numeroExpostos: riskForm.numeroExpostos,
         grupoHomogeneo: riskForm.grupoHomogeneo,
@@ -539,15 +553,48 @@ const RiskSurvey = () => {
         </div>
       </FormModal>
 
-      <FormModal isOpen={riskModalOpen} onClose={() => setRiskModalOpen(false)} title="Novo Risco (Biblioteca)" onSubmit={onCreateRisk}>
+      <FormModal isOpen={riskModalOpen} onClose={() => setRiskModalOpen(false)} title="Novo Risco" onSubmit={onCreateRisk}>
         <div className="grid grid-cols-1 gap-3">
           <select className="input-field" value={riskForm.riskType} onChange={(event) => setRiskForm((prev) => ({ ...prev, riskType: event.target.value, riskLibraryId: '' }))}>
             {metadata?.riskTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
-          <select className="input-field" value={riskForm.riskLibraryId} onChange={(event) => setRiskForm((prev) => ({ ...prev, riskLibraryId: event.target.value }))} required>
+          <select className="input-field" value={riskForm.riskLibraryId} onChange={(event) => setRiskForm((prev) => ({ ...prev, riskLibraryId: event.target.value }))}>
             <option value="">Selecione um risco da biblioteca</option>
             {filteredLibrary.map((item) => <option key={item.id} value={item.id}>{item.titulo}</option>)}
           </select>
+          <p className="text-xs text-gray-500">Se não encontrar na biblioteca, preencha abaixo para cadastrar um novo risco.</p>
+          {isManualRisk && (
+            <>
+              <input
+                className="input-field"
+                placeholder="Título do risco"
+                value={riskForm.tituloRisco}
+                onChange={(event) => setRiskForm((prev) => ({ ...prev, tituloRisco: event.target.value }))}
+                required
+              />
+              <textarea
+                className="input-field"
+                placeholder="Perigo"
+                value={riskForm.perigo}
+                onChange={(event) => setRiskForm((prev) => ({ ...prev, perigo: event.target.value }))}
+                required
+              />
+              <textarea
+                className="input-field"
+                placeholder="Evento perigoso"
+                value={riskForm.eventoPerigoso}
+                onChange={(event) => setRiskForm((prev) => ({ ...prev, eventoPerigoso: event.target.value }))}
+                required
+              />
+              <textarea
+                className="input-field"
+                placeholder="Dano potencial"
+                value={riskForm.danoPotencial}
+                onChange={(event) => setRiskForm((prev) => ({ ...prev, danoPotencial: event.target.value }))}
+                required
+              />
+            </>
+          )}
           {selectedLibraryItem && <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">{selectedLibraryItem.perigo} • {selectedLibraryItem.eventoPerigoso}</div>}
           <select className="input-field" value={riskForm.condicao} onChange={(event) => setRiskForm((prev) => ({ ...prev, condicao: event.target.value }))}>
             {metadata?.riskConditionTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
