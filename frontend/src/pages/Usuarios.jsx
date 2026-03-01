@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { 
   Users, 
   Search, 
@@ -40,7 +40,7 @@ const Usuarios = () => {
       const response = await usuariosService.getAll(params);
       setUsuarios(response.data.data);
     } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
+      console.error('Erro ao carregar usuÃ¡rios:', error);
     } finally {
       setLoading(false);
     }
@@ -51,7 +51,9 @@ const Usuarios = () => {
       case 'administrador':
         return <span className="status-badge status-danger">Administrador</span>;
       case 'tecnico_seguranca':
-        return <span className="status-badge status-warning">Técnico de Segurança</span>;
+        return <span className="status-badge status-warning">TÃ©cnico de SeguranÃ§a</span>;
+      case 'auditor':
+        return <span className="status-badge status-info">Auditor</span>;
       case 'visualizador':
         return <span className="status-badge status-info">Visualizador</span>;
       default:
@@ -76,6 +78,8 @@ const Usuarios = () => {
         return <Shield className="h-5 w-5 text-red-500" />;
       case 'tecnico_seguranca':
         return <UserCheck className="h-5 w-5 text-yellow-500" />;
+      case 'auditor':
+        return <Eye className="h-5 w-5 text-indigo-500" />;
       case 'visualizador':
         return <Eye className="h-5 w-5 text-blue-500" />;
       default:
@@ -86,23 +90,25 @@ const Usuarios = () => {
   const getPerfilDescription = (perfil) => {
     switch (perfil) {
       case 'administrador':
-        return 'Acesso total ao sistema, pode gerenciar usuários e configurações';
+        return 'Acesso total ao sistema, pode gerenciar usuÃ¡rios e configuraÃ§Ãµes';
       case 'tecnico_seguranca':
-        return 'Pode criar e gerenciar tarefas, riscos e relatórios';
+        return 'Pode criar e gerenciar tarefas, riscos e relat?rios';
+      case 'auditor':
+        return 'Pode auditar levantamentos, consultar riscos e indicadores sem editar dados';
       case 'visualizador':
-        return 'Apenas visualização de dados, sem permissões de edição';
+        return 'Apenas visualizaÃ§Ã£o de dados, sem permissÃµes de ediÃ§Ã£o';
       default:
-        return 'Perfil não definido';
+        return 'Perfil nÃ£o definido';
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Tem certeza que deseja excluir este usuário?')) {
+    if (window.confirm('Tem certeza que deseja excluir este usuÃ¡rio?')) {
       try {
         await usuariosService.delete(id);
         loadUsuarios();
       } catch (error) {
-        console.error('Erro ao excluir usuário:', error);
+        console.error('Erro ao excluir usuÃ¡rio:', error);
       }
     }
   };
@@ -113,7 +119,7 @@ const Usuarios = () => {
       await usuariosService.update(id, { status: newStatus });
       loadUsuarios();
     } catch (error) {
-      console.error('Erro ao alterar status do usuário:', error);
+      console.error('Erro ao alterar status do usuÃ¡rio:', error);
     }
   };
 
@@ -149,7 +155,7 @@ const Usuarios = () => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold text-gray-900">Usuários</h1>
+          <h1 className="text-3xl font-semibold text-gray-900">UsuÃ¡rios</h1>
           <p className="mt-1 text-sm text-gray-500">
             Gerencie pessoas, perfis e acessos dentro do SST SaaS.
           </p>
@@ -159,7 +165,7 @@ const Usuarios = () => {
           className="btn-primary bg-emerald-500 hover:bg-emerald-600 focus:ring-emerald-300 flex items-center gap-2"
         >
           <Plus className="h-4 w-4" />
-          Novo Usuário
+          Novo UsuÃ¡rio
         </button>
       </div>
 
@@ -187,7 +193,7 @@ const Usuarios = () => {
               <option value="">Todos os perfis</option>
               <option value="administrador">Administrador</option>
               <option value="auditor">Auditor</option>
-              <option value="tecnico_seguranca">Técnico de Segurança</option>
+              <option value="tecnico_seguranca">TÃ©cnico de SeguranÃ§a</option>
               <option value="visualizador">Visualizador</option>
             </select>
             <select
@@ -247,7 +253,7 @@ const Usuarios = () => {
                     : 'text-emerald-600 hover:bg-emerald-50'
                 }`}
                 onClick={() => handleToggleStatus(usuario.id, usuario.status)}
-                title={usuario.status === 'ativo' ? 'Desativar usuário' : 'Ativar usuário'}
+                title={usuario.status === 'ativo' ? 'Desativar usuÃ¡rio' : 'Ativar usuÃ¡rio'}
               >
                 {usuario.status === 'ativo' ? (
                   <UserX className="h-4 w-4" />
@@ -258,7 +264,7 @@ const Usuarios = () => {
               <button
                 className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 transition"
                 onClick={() => handleDelete(usuario.id)}
-                title="Excluir usuário"
+                title="Excluir usuÃ¡rio"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -270,11 +276,11 @@ const Usuarios = () => {
       {usuarios.length === 0 && (
         <div className="text-center py-12">
           <Users className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum usuário encontrado</h3>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum usuÃ¡rio encontrado</h3>
           <p className="mt-1 text-sm text-gray-500">
             {searchTerm || Object.values(filters).some((f) => f)
               ? 'Tente ajustar os filtros de busca.'
-              : 'Comece criando um novo usuário.'}
+              : 'Comece criando um novo usuÃ¡rio.'}
           </p>
         </div>
       )}
@@ -283,13 +289,13 @@ const Usuarios = () => {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="bg-white border border-gray-100 rounded-2xl p-5 text-center shadow-sm">
           <div className="text-3xl font-semibold text-gray-900">{usuarios.length}</div>
-          <p className="text-sm text-gray-500 mt-1">Total de Usuários</p>
+          <p className="text-sm text-gray-500 mt-1">Total de UsuÃ¡rios</p>
         </div>
         <div className="bg-white border border-gray-100 rounded-2xl p-5 text-center shadow-sm">
           <div className="text-3xl font-semibold text-emerald-600">
             {usuarios.filter((u) => u.status === 'ativo').length}
           </div>
-          <p className="text-sm text-gray-500 mt-1">Usuários Ativos</p>
+          <p className="text-sm text-gray-500 mt-1">UsuÃ¡rios Ativos</p>
         </div>
         <div className="bg-white border border-gray-100 rounded-2xl p-5 text-center shadow-sm">
           <div className="text-3xl font-semibold text-red-600">
@@ -301,13 +307,13 @@ const Usuarios = () => {
           <div className="text-3xl font-semibold text-blue-600">
             {usuarios.filter((u) => u.perfil === 'tecnico_seguranca').length}
           </div>
-          <p className="text-sm text-gray-500 mt-1">Técnicos</p>
+          <p className="text-sm text-gray-500 mt-1">TÃ©cnicos</p>
         </div>
       </div>
 
       {/* Profile Information */}
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-900 mb-5">Informações sobre Perfis</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-5">InformaÃ§Ãµes sobre Perfis</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-2xl bg-red-50 p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -317,7 +323,7 @@ const Usuarios = () => {
               <h4 className="text-sm font-semibold text-gray-900">Administrador</h4>
             </div>
             <p className="text-sm text-gray-600">
-              Acesso total ao sistema, pode gerenciar usuários, empresas, tarefas e configurações.
+              Acesso total ao sistema, pode gerenciar usuÃ¡rios, empresas, tarefas e configuraÃ§Ãµes.
             </p>
           </div>
           <div className="rounded-2xl bg-yellow-50 p-4">
@@ -325,10 +331,10 @@ const Usuarios = () => {
               <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-white/70 shadow">
                 <UserCheck className="h-4 w-4 text-yellow-500" />
               </div>
-              <h4 className="text-sm font-semibold text-gray-900">Técnico de Segurança</h4>
+              <h4 className="text-sm font-semibold text-gray-900">TÃ©cnico de SeguranÃ§a</h4>
             </div>
             <p className="text-sm text-gray-600">
-              Pode criar e gerenciar tarefas, riscos, relatórios e visualizar dados das empresas.
+              Pode criar e gerenciar tarefas, riscos, relatÃ³rios e visualizar dados das empresas.
             </p>
           </div>
           <div className="rounded-2xl bg-blue-50 p-4">
@@ -339,7 +345,7 @@ const Usuarios = () => {
               <h4 className="text-sm font-semibold text-gray-900">Visualizador</h4>
             </div>
             <p className="text-sm text-gray-600">
-              Apenas visualização de dados e relatórios, sem permissões de edição ou criação.
+              Apenas visualizaÃ§Ã£o de dados e relatÃ³rios, sem permissÃµes de ediÃ§Ã£o ou criaÃ§Ã£o.
             </p>
           </div>
         </div>
@@ -348,7 +354,7 @@ const Usuarios = () => {
       <FormModal
         isOpen={showModal}
         onClose={handleModalClose}
-        title={selectedUsuario ? 'Editar Usuário' : 'Novo Usuário'}
+        title={selectedUsuario ? 'Editar UsuÃ¡rio' : 'Novo UsuÃ¡rio'}
         showFooter={false}
         asForm={false}
       >
@@ -366,3 +372,4 @@ const Usuarios = () => {
 };
 
 export default Usuarios;
+

@@ -20,6 +20,7 @@ import Documentos from './pages/Documentos';
 import Relatorios from './pages/Relatorios';
 import Usuarios from './pages/Usuarios';
 import RiskSurvey from './pages/RiskSurvey';
+import RiskSurveyEnvironments from './pages/RiskSurveyEnvironments';
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -99,6 +100,17 @@ const AppRoutes = () => {
           <ProtectedRoute requiredProfile="auditor">
             <Layout>
               <RiskSurvey />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/levantamento-riscos/ambientes"
+        element={
+          <ProtectedRoute requiredProfile="auditor">
+            <Layout>
+              <RiskSurveyEnvironments />
             </Layout>
           </ProtectedRoute>
         }

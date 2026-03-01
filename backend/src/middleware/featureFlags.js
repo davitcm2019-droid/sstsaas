@@ -9,8 +9,9 @@ const requireFeatureFlag = (flagName) => {
   return (req, res, next) => {
     const resolver = FEATURE_FLAG_MAP[flagName];
     const enabled = typeof resolver === 'function' ? resolver() : false;
+    const isAdmin = req.user?.perfil === 'administrador';
 
-    if (!enabled) {
+    if (!enabled && !isAdmin) {
       return sendError(
         res,
         {

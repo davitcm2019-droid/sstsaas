@@ -37,6 +37,12 @@ const Layout = ({ children }) => {
     { name: 'Agenda', href: '/agenda', icon: Calendar, permission: null },
     { name: 'Checklists', href: '/checklists', icon: ClipboardCheck, permission: 'tecnico_seguranca' },
     { name: 'Levantamento de Riscos', href: '/levantamento-riscos', icon: AlertTriangle, permission: 'auditor' },
+    {
+      name: 'Ambientes SST',
+      href: '/levantamento-riscos/ambientes',
+      icon: Building2,
+      permission: 'auditor'
+    },
     { name: 'Incidentes', href: '/incidentes', icon: AlertTriangle, permission: null },
     { name: 'Documentos', href: '/documentos', icon: FileText, permission: null },
     { name: 'Relatórios', href: '/relatorios', icon: BarChart3, permission: null },

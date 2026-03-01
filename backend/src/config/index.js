@@ -73,7 +73,7 @@ const config = {
     bcryptSaltRounds: parseOptionalInt('BCRYPT_SALT_ROUNDS', 10)
   },
   features: {
-    structuredRiskSurvey: parseOptionalBoolean('FEATURE_STRUCTURED_RISK_SURVEY', false)
+    structuredRiskSurvey: parseOptionalBoolean('FEATURE_STRUCTURED_RISK_SURVEY', true)
   }
 };
 
