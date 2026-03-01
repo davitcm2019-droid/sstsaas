@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Select from 'react-select';
-import { empresasService } from '../../services/api';
 import Cleave from 'cleave.js/react';
 import 'cleave.js/dist/addons/cleave-phone.br';
 import { cnpj } from 'cpf-cnpj-validator';
-import cnaeData from '../../checklists/listacnae.json';
+import { empresasService } from '../../services/api';
 
 const DEFAULT_FORM = {
   nome: '',
@@ -38,58 +37,88 @@ const selectStyles = {
   })
 };
 
+const normalizeCnaeSection = (value) => {
+  const raw = String(value || '').trim().toUpperCase();
+  if (!raw) return '';
+  const sectionMatch = raw.match(/^([A-U])(?:\b|[\s\-|])/);
+  if (sectionMatch) return sectionMatch[1];
+  if (/^[A-U]$/.test(raw)) return raw;
+  return '';
+};
+
 const EmpresaForm = ({ empresa, onSave, onCancel }) => {
   const [formData, setFormData] = useState({ ...DEFAULT_FORM });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [cnpjValid, setCnpjValid] = useState(true);
   const [selectedCnae, setSelectedCnae] = useState(null);
+  const [cnaeCatalog, setCnaeCatalog] = useState([]);
+  const [loadingCnaeCatalog, setLoadingCnaeCatalog] = useState(false);
 
-  const cnaeOptions = useMemo(() => {
-    const options = [];
-    cnaeData.cnaes.forEach((secao) => {
-      const secaoDescricao = secao.descricao_secao;
-      secao.divisoes.forEach((divisao) => {
-        divisao.grupos.forEach((grupo) => {
-          grupo.classes.forEach((classe) => {
-            options.push({
-              value: classe.codigo_classe,
-              label: `${classe.codigo_classe} - ${classe.descricao_classe}`,
-              secaoDescricao
-            });
-          });
-        });
-      });
-    });
-    return options;
+  const cnaeOptions = useMemo(
+    () =>
+      (cnaeCatalog || []).map((item) => ({
+        value: String(item.code || '').toUpperCase(),
+        label: `${String(item.code || '').toUpperCase()}${item.divisionRange ? ` (${item.divisionRange})` : ''} - ${item.description || ''}`,
+        secaoDescricao: item.description || ''
+      })),
+    [cnaeCatalog]
+  );
+
+  const loadCnaeCatalog = async () => {
+    try {
+      setLoadingCnaeCatalog(true);
+      const response = await empresasService.getCnaes();
+      setCnaeCatalog(response.data?.data || []);
+    } catch (catalogError) {
+      console.error('Erro ao carregar secoes CNAE:', catalogError);
+      setCnaeCatalog([]);
+    } finally {
+      setLoadingCnaeCatalog(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadCnaeCatalog();
   }, []);
 
   useEffect(() => {
-    if (empresa) {
-      const merged = { ...DEFAULT_FORM, ...empresa };
-      const match = cnaeOptions.find(option => option.value === merged.cnae);
-      if (match) {
-        merged.ramo = match.secaoDescricao;
-      }
-      setFormData(merged);
-      setSelectedCnae(match || null);
+    const merged = empresa ? { ...DEFAULT_FORM, ...empresa } : { ...DEFAULT_FORM };
+    const normalizedSection = normalizeCnaeSection(merged.cnae);
+    const match = normalizedSection
+      ? cnaeOptions.find((option) => option.value === normalizedSection)
+      : null;
+
+    if (match) {
+      merged.cnae = match.value;
+      merged.ramo = match.secaoDescricao;
+      setSelectedCnae(match);
     } else {
-      setFormData({ ...DEFAULT_FORM });
-      setSelectedCnae(null);
+      setSelectedCnae(
+        merged.cnae
+          ? {
+              value: merged.cnae,
+              label: `${merged.cnae} - Secao fora do catalogo atual`,
+              secaoDescricao: merged.ramo || ''
+            }
+          : null
+      );
     }
+
+    setFormData(merged);
   }, [empresa, cnaeOptions]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({
       ...prev,
       [name]: value
     }));
   };
 
-  const handleCnpjChange = (e) => {
-    const rawValue = e.target.rawValue;
-    setFormData(prev => ({ ...prev, cnpj: rawValue }));
+  const handleCnpjChange = (event) => {
+    const rawValue = event.target.rawValue;
+    setFormData((prev) => ({ ...prev, cnpj: rawValue }));
 
     if (rawValue.length === 14) {
       setCnpjValid(cnpj.isValid(rawValue));
@@ -101,33 +130,39 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
   const handleCnaeChange = (option) => {
     setSelectedCnae(option);
     setError(null);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       cnae: option?.value || '',
       ramo: option?.secaoDescricao || ''
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
     setError(null);
 
-    if (!formData.cnae) {
-      setError('Selecione um CNAE válido.');
+    const normalizedSection = normalizeCnaeSection(formData.cnae);
+    if (!normalizedSection) {
+      setError('Selecione uma secao CNAE valida (A-U).');
       setLoading(false);
       return;
     }
 
     try {
+      const payload = {
+        ...formData,
+        cnae: normalizedSection
+      };
+
       if (empresa) {
-        await empresasService.update(empresa.id, formData);
+        await empresasService.update(empresa.id, payload);
       } else {
-        await empresasService.create(formData);
+        await empresasService.create(payload);
       }
       onSave();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Erro ao salvar empresa');
+    } catch (submitError) {
+      setError(submitError.response?.data?.error || submitError.response?.data?.message || 'Erro ao salvar empresa');
     } finally {
       setLoading(false);
     }
@@ -135,12 +170,9 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Nome */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nome da Empresa *
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Nome da Empresa *</label>
           <input
             type="text"
             name="nome"
@@ -152,11 +184,8 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
           />
         </div>
 
-        {/* CNPJ */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            CNPJ *
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">CNPJ *</label>
           <Cleave
             options={{ delimiters: ['.', '.', '/', '-'], blocks: [2, 3, 3, 4, 2], numericOnly: true }}
             name="cnpj"
@@ -166,47 +195,37 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
             className={`input-field ${!cnpjValid ? 'border-red-500' : ''}`}
             placeholder="00.000.000/0000-00"
           />
-          {!cnpjValid && (
-            <p className="text-red-500 text-xs mt-1">CNPJ inválido</p>
-          )}
+          {!cnpjValid && <p className="mt-1 text-xs text-red-500">CNPJ invalido</p>}
         </div>
 
-        {/* CNAE */}
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            CNAE Principal *
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Secao CNAE *</label>
           <Select
             options={cnaeOptions}
             value={selectedCnae}
             onChange={handleCnaeChange}
-            placeholder="Selecione o CNAE principal"
+            placeholder={loadingCnaeCatalog ? 'Carregando secoes CNAE...' : 'Selecione a secao CNAE (A-U)'}
             isClearable
+            isLoading={loadingCnaeCatalog}
             classNamePrefix="cnae-select"
-            noOptionsMessage={() => 'Nenhum CNAE encontrado'}
+            noOptionsMessage={() => 'Nenhuma secao CNAE encontrada'}
             styles={selectStyles}
           />
         </div>
 
-        {/* Tipo de atividade */}
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Tipo de Atividade
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Tipo de Atividade</label>
           <input
             type="text"
             value={formData.ramo}
             readOnly
             className="input-field bg-gray-100"
-            placeholder="Selecione um CNAE para preencher automaticamente"
+            placeholder="Selecione uma secao CNAE para preencher automaticamente"
           />
         </div>
 
-        {/* Endere�o */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Endereço *
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Endereco *</label>
           <input
             type="text"
             name="endereco"
@@ -214,15 +233,12 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
             onChange={handleChange}
             required
             className="input-field"
-            placeholder="Rua, número, bairro"
+            placeholder="Rua, numero, bairro"
           />
         </div>
 
-        {/* Cidade */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Cidade *
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Cidade *</label>
           <input
             type="text"
             name="cidade"
@@ -234,32 +250,24 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
           />
         </div>
 
-        {/* Estado */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Estado *
-          </label>
-          <select
-            name="estado"
-            value={formData.estado}
-            onChange={handleChange}
-            required
-            className="input-field"
-          >
+          <label className="mb-1 block text-sm font-medium text-gray-700">Estado *</label>
+          <select name="estado" value={formData.estado} onChange={handleChange} required className="input-field">
             <option value="">Selecione o estado</option>
             {[
               'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
               'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
               'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-            ].map(uf => <option key={uf} value={uf}>{uf}</option>)}
+            ].map((uf) => (
+              <option key={uf} value={uf}>
+                {uf}
+              </option>
+            ))}
           </select>
         </div>
 
-        {/* CEP */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            CEP
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">CEP</label>
           <Cleave
             options={{ delimiters: ['-'], blocks: [5, 3], numericOnly: true }}
             name="cep"
@@ -270,11 +278,8 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
           />
         </div>
 
-        {/* Telefone */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Telefone
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Telefone</label>
           <Cleave
             options={{ phone: true, phoneRegionCode: 'BR' }}
             name="telefone"
@@ -285,11 +290,8 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
           />
         </div>
 
-        {/* Email */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
           <input
             type="email"
             name="email"
@@ -300,32 +302,21 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
           />
         </div>
 
-        {/* Respons�vel */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Responsável
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Responsavel</label>
           <input
             type="text"
             name="responsavel"
             value={formData.responsavel}
             onChange={handleChange}
             className="input-field"
-            placeholder="Nome do responsável"
+            placeholder="Nome do responsavel"
           />
         </div>
 
-        {/* Status */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Status
-          </label>
-          <select
-            name="status"
-            value={formData.status}
-            onChange={handleChange}
-            className="input-field"
-          >
+          <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+          <select name="status" value={formData.status} onChange={handleChange} className="input-field">
             <option value="ativa">Ativa</option>
             <option value="inativa">Inativa</option>
             <option value="suspensa">Suspensa</option>
@@ -333,21 +324,13 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
         </div>
       </div>
 
-      {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
+      {error && <div className="mt-2 text-sm text-red-600">{error}</div>}
 
-      <div className="flex justify-end gap-2 mt-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="btn-secondary"
-        >
+      <div className="mt-4 flex justify-end gap-2">
+        <button type="button" onClick={onCancel} className="btn-secondary">
           Cancelar
         </button>
-        <button
-          type="submit"
-          disabled={loading || !cnpjValid}
-          className="btn-primary"
-        >
+        <button type="submit" disabled={loading || !cnpjValid} className="btn-primary">
           {loading ? 'Salvando...' : 'Salvar'}
         </button>
       </div>
