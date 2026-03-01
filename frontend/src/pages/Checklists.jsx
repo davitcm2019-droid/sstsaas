@@ -31,11 +31,11 @@ const Checklists = () => {
   const [newChecklistTemplates, setNewChecklistTemplates] = useState([]);
   const [newChecklistLoading, setNewChecklistLoading] = useState(false);
   const [newChecklistError, setNewChecklistError] = useState(null);
+  const [inspectionEmpresa, setInspectionEmpresa] = useState(null);
 
   const selectedEmpresa = useMemo(() => {
     if (!selectedEmpresaId) return null;
-    const id = parseInt(selectedEmpresaId, 10);
-    return empresas.find((empresa) => empresa.id === id) || null;
+    return empresas.find((empresa) => String(empresa.id) === String(selectedEmpresaId)) || null;
   }, [empresas, selectedEmpresaId]);
 
   const checklistNameById = useMemo(() => {
@@ -115,8 +115,7 @@ const Checklists = () => {
   };
 
   const loadChecklistTemplatesForEmpresa = async (empresaId) => {
-    const parsedId = parseInt(empresaId, 10);
-    const empresa = empresas.find((item) => item.id === parsedId) || null;
+    const empresa = empresas.find((item) => String(item.id) === String(empresaId)) || null;
 
     try {
       setNewChecklistLoading(true);
@@ -164,6 +163,7 @@ const Checklists = () => {
       return;
     }
 
+    setInspectionEmpresa(selectedEmpresa);
     setSelectedChecklist(checklist);
     setInspectionModalOpen(true);
   };
@@ -194,13 +194,20 @@ const Checklists = () => {
     const template = newChecklistTemplates.find(
       (item) => String(item.id) === String(newChecklistTemplateId)
     );
+    const empresa = empresas.find((item) => String(item.id) === String(newChecklistEmpresaId));
 
     if (!template) {
       setNewChecklistError('Checklist selecionado não encontrado.');
       return;
     }
 
+    if (!empresa) {
+      setNewChecklistError('Empresa selecionada nao encontrada.');
+      return;
+    }
+
     setSelectedEmpresaId(String(newChecklistEmpresaId));
+    setInspectionEmpresa(empresa);
     setSelectedChecklist(template);
     setNewChecklistOpen(false);
     setInspectionModalOpen(true);
@@ -215,6 +222,13 @@ const Checklists = () => {
     if (percentage >= 90) return 'text-green-600 bg-green-100';
     if (percentage >= 70) return 'text-yellow-600 bg-yellow-100';
     return 'text-red-600 bg-red-100';
+  };
+
+  const getInspectionPercent = (inspection) => {
+    const score = Number(inspection?.score) || 0;
+    const maxScore = Number(inspection?.maxScore) || 0;
+    if (maxScore <= 0) return 0;
+    return Math.round((score / maxScore) * 100);
   };
 
   const getStatusBadge = (status) => {
@@ -406,10 +420,10 @@ const Checklists = () => {
               <div className="flex items-center space-x-3">
                 <div
                   className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(
-                    Math.round((inspection.score / inspection.maxScore) * 100)
+                    getInspectionPercent(inspection)
                   )}`}
                 >
-                  {Math.round((inspection.score / inspection.maxScore) * 100)}%
+                  {getInspectionPercent(inspection)}%
                 </div>
                 {getStatusBadge(inspection.status)}
               </div>
@@ -449,8 +463,8 @@ const Checklists = () => {
           <div className="card text-center">
             <div className="text-2xl font-bold text-blue-600">
               {Math.round(
-                inspections.reduce((sum, inspection) => sum + (inspection.score / inspection.maxScore) * 100, 0) /
-                  inspections.length
+                inspections.reduce((sum, inspection) => sum + getInspectionPercent(inspection), 0) /
+                  Math.max(inspections.length, 1)
               )}
               %
             </div>
@@ -462,10 +476,15 @@ const Checklists = () => {
       {/* Inspection Modal */}
       <ChecklistModal
         isOpen={inspectionModalOpen}
-        onClose={() => setInspectionModalOpen(false)}
+        onClose={() => {
+          setInspectionModalOpen(false);
+          setSelectedChecklist(null);
+          setInspectionEmpresa(null);
+          void loadData();
+        }}
         checklistId={selectedChecklist?.id}
-        empresaId={selectedEmpresa?.id}
-        empresaNome={selectedEmpresa?.nome}
+        empresaId={inspectionEmpresa?.id ?? selectedEmpresa?.id}
+        empresaNome={inspectionEmpresa?.nome ?? selectedEmpresa?.nome}
       />
 
       {/* Preview Modal */}
@@ -571,4 +590,3 @@ const Checklists = () => {
 };
 
 export default Checklists;
-

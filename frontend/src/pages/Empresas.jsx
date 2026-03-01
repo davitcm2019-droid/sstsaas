@@ -77,6 +77,8 @@ const getDisplayCnae = (value) => {
   return value;
 };
 
+const normalizeCnaeCode = (value) => String(value || '').split('/')[0].trim();
+
 const Empresas = () => {
   const [empresas, setEmpresas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -88,11 +90,17 @@ const Empresas = () => {
   const [lastImported, setLastImported] = useState([]);
   const [cnaeDrafts, setCnaeDrafts] = useState({});
   const [savingCnaeId, setSavingCnaeId] = useState('');
+  const [cnaeOptions, setCnaeOptions] = useState([]);
+  const [loadingCnaes, setLoadingCnaes] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
     loadEmpresas();
   }, [searchTerm, filters]);
+
+  useEffect(() => {
+    loadCnaes();
+  }, []);
 
   const loadEmpresas = async () => {
     try {
@@ -104,6 +112,19 @@ const Empresas = () => {
       console.error('Erro ao carregar empresas:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCnaes = async () => {
+    try {
+      setLoadingCnaes(true);
+      const response = await empresasService.getCnaes();
+      setCnaeOptions(response.data?.data || []);
+    } catch (error) {
+      console.error('Erro ao carregar catalogo de CNAEs:', error);
+      setCnaeOptions([]);
+    } finally {
+      setLoadingCnaes(false);
     }
   };
 
@@ -190,7 +211,7 @@ const Empresas = () => {
       setLastImported(imported);
       setCnaeDrafts(
         imported.reduce((acc, item) => {
-          acc[item.id] = item.cnae && item.cnae !== 'A_DEFINIR' ? item.cnae : '';
+          acc[item.id] = item.cnae && item.cnae !== 'A_DEFINIR' ? normalizeCnaeCode(item.cnae) : '';
           return acc;
         }, {})
       );
@@ -214,9 +235,16 @@ const Empresas = () => {
   };
 
   const handleSaveCnae = async (empresaId) => {
-    const cnae = String(cnaeDrafts[empresaId] || '').trim();
+    const cnae = normalizeCnaeCode(cnaeDrafts[empresaId]);
     if (!cnae) {
       window.alert('Informe o CNAE para salvar.');
+      return;
+    }
+
+    const cnaesLoaded = cnaeOptions.length > 0;
+    const validCnae = cnaesLoaded ? cnaeOptions.some((item) => item.code === cnae) : true;
+    if (!validCnae) {
+      window.alert('CNAE nao encontrado na lista geral. Selecione um codigo valido.');
       return;
     }
 
@@ -311,7 +339,9 @@ const Empresas = () => {
                   <th className="px-4 py-2 text-left font-medium text-gray-600">Nome</th>
                   <th className="px-4 py-2 text-left font-medium text-gray-600">Documento</th>
                   <th className="px-4 py-2 text-left font-medium text-gray-600">Status</th>
-                  <th className="px-4 py-2 text-left font-medium text-gray-600">CNAE (definir apos upload)</th>
+                  <th className="px-4 py-2 text-left font-medium text-gray-600">
+                    CNAE (selecione na lista geral apos upload)
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -326,6 +356,7 @@ const Empresas = () => {
                           className="input-field h-9 min-w-[170px]"
                           placeholder={getDisplayCnae(empresa.cnae)}
                           value={cnaeDrafts[empresa.id] || ''}
+                          list="cnae-catalog-options"
                           onChange={(event) =>
                             setCnaeDrafts((prev) => ({ ...prev, [empresa.id]: event.target.value }))
                           }
@@ -338,6 +369,11 @@ const Empresas = () => {
                           {savingCnaeId === empresa.id ? 'Salvando...' : 'Salvar'}
                         </button>
                       </div>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {loadingCnaes
+                          ? 'Carregando lista geral de CNAEs...'
+                          : 'Digite ou selecione um CNAE da lista.'}
+                      </p>
                     </td>
                   </tr>
                 ))}
@@ -346,6 +382,14 @@ const Empresas = () => {
           </div>
         </div>
       )}
+
+      <datalist id="cnae-catalog-options">
+        {cnaeOptions.map((item) => (
+          <option key={item.code} value={item.code}>
+            {item.description}
+          </option>
+        ))}
+      </datalist>
 
       <div className="card">
         <div className="flex flex-col gap-4 sm:flex-row">

@@ -61,6 +61,7 @@ export const empresasService = {
   update: (id, data) => api.put(`/empresas/${id}`, data),
   delete: (id) => api.delete(`/empresas/${id}`),
   getImportTemplate: () => api.get('/empresas/import-template'),
+  getCnaes: (params = {}) => api.get('/empresas/cnaes', { params }),
   importSpreadsheet: (data) => api.post('/empresas/import', data),
 };
 

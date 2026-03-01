@@ -1,131 +1,99 @@
-import { useState, useEffect } from 'react';
-import { 
-  X, 
-  CheckCircle, 
-  AlertCircle, 
-  Save, 
-  Send,
-  Clock,
-  User,
-  Building2
-} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Building2, Save, User, X } from 'lucide-react';
 import { checklistsService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+
+const emptyInspection = ({ empresaId, empresaNome, checklistId, user }) => ({
+  empresaId,
+  empresaNome,
+  checklistId,
+  status: 'in_progress',
+  items: [],
+  observations: '',
+  inspectorId: user?.id ?? null,
+  inspectorName: user?.nome ?? ''
+});
 
 const ChecklistModal = ({ isOpen, onClose, checklistId, empresaId, empresaNome }) => {
   const { user } = useAuth();
   const [checklist, setChecklist] = useState(null);
-  const [inspection, setInspection] = useState({
-    empresaId,
-    empresaNome,
-    checklistId,
-    status: 'in_progress',
-    items: [],
-    observations: '',
-    inspectorId: user?.id ?? null,
-    inspectorName: user?.nome ?? ''
-  });
+  const [inspection, setInspection] = useState(
+    emptyInspection({ empresaId, empresaNome, checklistId, user })
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
-    setInspection({
-      empresaId,
-      empresaNome,
-      checklistId,
-      status: 'in_progress',
-      items: [],
-      observations: '',
-      inspectorId: user?.id ?? null,
-      inspectorName: user?.nome ?? ''
-    });
+    setChecklist(null);
+    setError('');
+    setSubmitAttempted(false);
+    setLoading(true);
+    setInspection(emptyInspection({ empresaId, empresaNome, checklistId, user }));
   }, [isOpen, checklistId, empresaId, empresaNome, user]);
 
   useEffect(() => {
-    if (isOpen && checklistId) {
-      loadChecklist();
-    }
+    if (!isOpen || !checklistId) return;
+    void loadChecklist();
   }, [isOpen, checklistId]);
 
   const loadChecklist = async () => {
     try {
       setLoading(true);
+      setError('');
       const response = await checklistsService.getById(checklistId);
-      setChecklist(response.data.data);
-      
-      // Inicializar itens da inspeção
-      const initialItems = response.data.data.items.map(item => ({
+      const payload = response.data?.data;
+      if (!payload?.items) {
+        throw new Error('Checklist sem itens para inspecao.');
+      }
+
+      setChecklist(payload);
+      const initialItems = payload.items.map((item) => ({
         itemId: item.id,
         answer: null,
         score: 0,
         observations: ''
       }));
-      setInspection(prev => ({ ...prev, items: initialItems }));
-    } catch (error) {
-      console.error('Erro ao carregar checklist:', error);
+      setInspection((prev) => ({ ...prev, items: initialItems }));
+    } catch (loadError) {
+      console.error('Erro ao carregar checklist:', loadError);
+      setChecklist(null);
+      setError('Nao foi possivel carregar o checklist. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAnswerChange = (itemId, answer) => {
-    setInspection(prev => ({
-      ...prev,
-      items: prev.items.map(item => {
-        if (item.itemId === itemId) {
-          const checklistItem = checklist.items.find(ci => ci.id === itemId);
-          let score = 0;
-          
-          if (checklistItem) {
-            const option = checklistItem.options.find(opt => opt.value === answer);
-            score = option ? option.score : 0;
-          }
-          
-          return { ...item, answer, score };
-        }
-        return item;
-      })
-    }));
-  };
+  const answersByItemId = useMemo(
+    () => new Map((inspection.items || []).map((item) => [String(item.itemId), item])),
+    [inspection.items]
+  );
 
-  const handleObservationsChange = (itemId, observations) => {
-    setInspection(prev => ({
-      ...prev,
-      items: prev.items.map(item => 
-        item.itemId === itemId 
-          ? { ...item, observations }
-          : item
-      )
-    }));
-  };
+  const requiredItems = useMemo(
+    () => (checklist?.items || []).filter((item) => item.required !== false),
+    [checklist?.items]
+  );
 
-  const calculateScore = () => {
-    const totalScore = inspection.items.reduce((sum, item) => sum + item.score, 0);
-    const maxScore = checklist ? checklist.items.reduce((sum, item) => sum + item.weight, 0) : 0;
-    return { score: totalScore, maxScore, percentage: maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0 };
-  };
+  const answeredRequiredCount = useMemo(
+    () =>
+      requiredItems.filter((item) => {
+        const answer = answersByItemId.get(String(item.id))?.answer;
+        return answer !== null && answer !== undefined;
+      }).length,
+    [requiredItems, answersByItemId]
+  );
 
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-      const scoreData = calculateScore();
-      
-      const inspectionData = {
-        ...inspection,
-        score: scoreData.score,
-        maxScore: scoreData.maxScore,
-        status: 'completed'
-      };
-
-      await checklistsService.createInspection(checklistId, inspectionData);
-      onClose();
-    } catch (error) {
-      console.error('Erro ao salvar inspeção:', error);
-    } finally {
-      setSaving(false);
-    }
-  };
+  const scoreData = useMemo(() => {
+    const totalScore = (inspection.items || []).reduce((sum, item) => sum + (Number(item.score) || 0), 0);
+    const maxScore = (checklist?.items || []).reduce((sum, item) => sum + (Number(item.weight) || 1), 0);
+    return {
+      score: totalScore,
+      maxScore,
+      percentage: maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0
+    };
+  }, [inspection.items, checklist?.items]);
 
   const getScoreColor = (percentage) => {
     if (percentage >= 90) return 'text-green-600 bg-green-100';
@@ -133,158 +101,186 @@ const ChecklistModal = ({ isOpen, onClose, checklistId, empresaId, empresaNome }
     return 'text-red-600 bg-red-100';
   };
 
+  const isRequiredItemAnswered = (itemId) => {
+    const answer = answersByItemId.get(String(itemId))?.answer;
+    return answer !== null && answer !== undefined;
+  };
+
+  const handleAnswerChange = (itemId, answer) => {
+    setError('');
+    setInspection((prev) => ({
+      ...prev,
+      items: prev.items.map((item) => {
+        if (String(item.itemId) !== String(itemId)) return item;
+
+        const checklistItem = (checklist?.items || []).find((ci) => String(ci.id) === String(itemId));
+        const option = checklistItem?.options?.find((opt) => opt.value === answer);
+        const score = option ? Number(option.score) || 0 : 0;
+
+        return { ...item, answer, score };
+      })
+    }));
+  };
+
+  const handleObservationsChange = (itemId, observations) => {
+    setInspection((prev) => ({
+      ...prev,
+      items: prev.items.map((item) =>
+        String(item.itemId) === String(itemId) ? { ...item, observations } : item
+      )
+    }));
+  };
+
+  const handleSave = async () => {
+    if (!checklistId || !empresaId) {
+      setError('Selecione empresa e checklist antes de salvar.');
+      return;
+    }
+
+    const missingRequired = requiredItems.some((item) => !isRequiredItemAnswered(item.id));
+    if (missingRequired) {
+      setSubmitAttempted(true);
+      setError('Responda todos os itens obrigatorios antes de finalizar.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError('');
+
+      const inspectionData = {
+        ...inspection,
+        empresaId,
+        empresaNome,
+        checklistId,
+        score: scoreData.score,
+        maxScore: scoreData.maxScore,
+        status: 'completed'
+      };
+
+      await checklistsService.createInspection(checklistId, inspectionData);
+      onClose();
+    } catch (saveError) {
+      console.error('Erro ao salvar inspecao:', saveError);
+      setError(saveError?.response?.data?.message || 'Falha ao salvar a inspecao.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!isOpen) return null;
 
-  const scoreData = calculateScore();
-
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-gray-500 bg-opacity-75" onClick={onClose} />
-      
-      <div className="relative mx-auto mt-16 flex h-[80vh] w-full max-w-4xl flex-col bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              {checklist?.name || 'Checklist de Inspeção'}
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {empresaNome} • {checklist?.description}
-            </p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(scoreData.percentage)}`}>
-              {scoreData.percentage}% ({scoreData.score}/{scoreData.maxScore})
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-gray-900/60" onClick={onClose} />
+
+      <div className="relative z-10 mx-auto my-2 flex h-[calc(100vh-1rem)] w-[98%] max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-xl sm:my-6 sm:h-[88vh] sm:w-[95%]">
+        <div className="border-b border-gray-200 px-4 py-4 sm:px-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
+                {checklist?.name || 'Checklist de Inspecao'}
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                {empresaNome || '-'} | {checklist?.description || 'Sem descricao'}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                Itens obrigatorios respondidos: {answeredRequiredCount}/{requiredItems.length}
+              </p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-6 w-6" />
-            </button>
+            <div className="flex items-center gap-2">
+              <div className={`rounded-full px-3 py-1 text-sm font-medium ${getScoreColor(scoreData.percentage)}`}>
+                {scoreData.percentage}% ({scoreData.score}/{scoreData.maxScore})
+              </div>
+              <button onClick={onClose} className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
+          {error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+            <div className="flex h-64 items-center justify-center">
+              <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary-500"></div>
+            </div>
+          ) : !checklist ? (
+            <div className="rounded-md bg-yellow-50 p-4 text-sm text-yellow-800">
+              Nao foi possivel exibir o checklist.
             </div>
           ) : (
-            <div className="space-y-6">
-              {checklist?.items.map((item, index) => {
-                const inspectionItem = inspection.items.find(i => i.itemId === item.id);
-                
+            <div className="space-y-5">
+              {(checklist.items || []).map((item, index) => {
+                const inspectionItem = answersByItemId.get(String(item.id));
+                const requiredMissing = submitAttempted && item.required !== false && !isRequiredItemAnswered(item.id);
+                const options = Array.isArray(item.options) ? item.options : [];
+
                 return (
-                  <div key={item.id} className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-medium text-gray-900">
-                          {index + 1}. {item.question}
-                        </h3>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {item.observations}
-                        </p>
-                        <div className="flex items-center mt-2 text-sm text-gray-500">
-                          <span className="font-medium">Peso:</span>
-                          <span className="ml-1">{item.weight} pontos</span>
-                          {item.required && (
-                            <span className="ml-2 text-red-600">• Obrigatório</span>
-                          )}
-                        </div>
+                  <div
+                    key={item.id}
+                    className={`rounded-lg border p-4 ${
+                      requiredMissing ? 'border-red-300 bg-red-50/30' : 'border-gray-200 bg-gray-50'
+                    }`}
+                  >
+                    <div className="mb-3">
+                      <h3 className="text-base font-medium text-gray-900">
+                        {index + 1}. {item.question}
+                      </h3>
+                      {!!item.observations && <p className="mt-1 text-sm text-gray-600">{item.observations}</p>}
+                      <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                        <span>Peso: {Number(item.weight) || 1}</span>
+                        {item.required !== false && <span className="rounded bg-red-100 px-2 py-0.5 text-red-700">Obrigatorio</span>}
                       </div>
                     </div>
 
-                    {/* Answer Options */}
-                    <div className="space-y-2">
-                      {item.type === 'boolean' ? (
-                        <div className="flex space-x-4">
-                          {item.options.map((option) => (
-                            <label
-                              key={option.value}
-                              className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors ${
-                                inspectionItem?.answer === option.value
-                                  ? 'border-primary-500 bg-primary-50'
-                                  : 'border-gray-200 hover:border-gray-300'
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name={`item_${item.id}`}
-                                value={option.value}
-                                checked={inspectionItem?.answer === option.value}
-                                onChange={(e) => handleAnswerChange(item.id, e.target.value === 'true')}
-                                className="sr-only"
-                              />
-                              <div className="flex items-center">
-                                <div className={`w-4 h-4 rounded-full border-2 mr-3 ${
+                    {item.type === 'boolean' || item.type === 'scale' ? (
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {options.map((option) => (
+                          <label
+                            key={String(option.value)}
+                            className={`flex cursor-pointer items-center rounded-lg border-2 p-3 transition-colors ${
+                              inspectionItem?.answer === option.value
+                                ? 'border-primary-500 bg-primary-50'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`item_${item.id}`}
+                              checked={inspectionItem?.answer === option.value}
+                              onChange={() => handleAnswerChange(item.id, option.value)}
+                              className="sr-only"
+                            />
+                            <div className="flex items-center">
+                              <div
+                                className={`mr-3 h-4 w-4 rounded-full border-2 ${
                                   inspectionItem?.answer === option.value
                                     ? 'border-primary-500 bg-primary-500'
                                     : 'border-gray-300'
-                                }`}>
-                                  {inspectionItem?.answer === option.value && (
-                                    <div className="w-2 h-2 bg-white rounded-full mx-auto mt-0.5"></div>
-                                  )}
-                                </div>
-                                <span className="font-medium">{option.label}</span>
-                                <span className="ml-2 text-sm text-gray-500">
-                                  ({option.score} pts)
-                                </span>
+                                }`}
+                              >
+                                {inspectionItem?.answer === option.value && (
+                                  <div className="mx-auto mt-0.5 h-2 w-2 rounded-full bg-white"></div>
+                                )}
                               </div>
-                            </label>
-                          ))}
-                        </div>
-                      ) : item.type === 'scale' ? (
-                        <div className="space-y-2">
-                          {item.options.map((option) => (
-                            <label
-                              key={option.value}
-                              className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors ${
-                                inspectionItem?.answer === option.value
-                                  ? 'border-primary-500 bg-primary-50'
-                                  : 'border-gray-200 hover:border-gray-300'
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name={`item_${item.id}`}
-                                value={option.value}
-                                checked={inspectionItem?.answer === option.value}
-                                onChange={(e) => handleAnswerChange(item.id, parseInt(e.target.value))}
-                                className="sr-only"
-                              />
-                              <div className="flex items-center">
-                                <div className={`w-4 h-4 rounded-full border-2 mr-3 ${
-                                  inspectionItem?.answer === option.value
-                                    ? 'border-primary-500 bg-primary-500'
-                                    : 'border-gray-300'
-                                }`}>
-                                  {inspectionItem?.answer === option.value && (
-                                    <div className="w-2 h-2 bg-white rounded-full mx-auto mt-0.5"></div>
-                                  )}
-                                </div>
-                                <span className="font-medium">{option.label}</span>
-                                <span className="ml-2 text-sm text-gray-500">
-                                  ({option.score} pts)
-                                </span>
-                              </div>
-                            </label>
-                          ))}
-                        </div>
-                      ) : null}
-
-                      {/* Observations */}
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Observações
-                        </label>
-                        <textarea
-                          value={inspectionItem?.observations || ''}
-                          onChange={(e) => handleObservationsChange(item.id, e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                          rows={2}
-                          placeholder="Adicione observações sobre este item..."
-                        />
+                              <span className="font-medium text-gray-800">{option.label}</span>
+                              <span className="ml-2 text-xs text-gray-500">({Number(option.score) || 0} pts)</span>
+                            </div>
+                          </label>
+                        ))}
                       </div>
+                    ) : null}
+
+                    <div className="mt-4">
+                      <label className="mb-1 block text-sm font-medium text-gray-700">Observacoes</label>
+                      <textarea
+                        value={inspectionItem?.observations || ''}
+                        onChange={(event) => handleObservationsChange(item.id, event.target.value)}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                        rows={2}
+                        placeholder="Adicione observacoes sobre este item..."
+                      />
                     </div>
                   </div>
                 );
@@ -293,37 +289,33 @@ const ChecklistModal = ({ isOpen, onClose, checklistId, empresaId, empresaNome }
           )}
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
+        <div className="border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-gray-500">
               <div className="flex items-center">
-                <User className="h-4 w-4 mr-1" />
-                Inspetor: {inspection.inspectorName}
+                <User className="mr-1 h-4 w-4" />
+                Inspetor: {inspection.inspectorName || '-'}
               </div>
-              <div className="flex items-center mt-1">
-                <Building2 className="h-4 w-4 mr-1" />
-                Empresa: {inspection.empresaNome}
+              <div className="mt-1 flex items-center">
+                <Building2 className="mr-1 h-4 w-4" />
+                Empresa: {inspection.empresaNome || '-'}
               </div>
             </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={onClose}
-                className="btn-secondary"
-              >
+            <div className="flex items-center gap-2">
+              <button onClick={onClose} className="btn-secondary">
                 Cancelar
               </button>
               <button
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || loading || !checklist}
                 className="btn-primary flex items-center"
               >
                 {saving ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
                 ) : (
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="mr-2 h-4 w-4" />
                 )}
-                {saving ? 'Salvando...' : 'Salvar Inspeção'}
+                {saving ? 'Salvando...' : 'Salvar inspecao'}
               </button>
             </div>
           </div>

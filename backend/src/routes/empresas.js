@@ -2,6 +2,7 @@ const express = require('express');
 const empresasRepository = require('../repositories/empresasRepository');
 const { requirePermission } = require('../middleware/rbac');
 const { sendSuccess, sendError } = require('../utils/response');
+const { getCnaeCatalog } = require('../data/checklists');
 
 const router = express.Router();
 
@@ -99,6 +100,19 @@ router.get('/import-template', requirePermission('companies:read'), (req, res) =
     data: templateFields,
     message: 'Modelo de importacao carregado com sucesso'
   });
+});
+
+// GET /api/empresas/cnaes - Lista geral de CNAEs para selecao
+router.get('/cnaes', requirePermission('companies:read'), (req, res) => {
+  try {
+    const cnaes = getCnaeCatalog({ search: req.query?.search, limit: req.query?.limit });
+    return sendSuccess(res, {
+      data: cnaes,
+      meta: { total: cnaes.length }
+    });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao buscar CNAEs', meta: { details: error.message } }, 500);
+  }
 });
 
 // POST /api/empresas/import - Importar empresas via planilha

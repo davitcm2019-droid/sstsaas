@@ -50,8 +50,33 @@ const buildNrByCnaeSectionMap = () => {
   return map;
 };
 
+const buildCnaeCatalog = () => {
+  const list = [];
+  const cnaeData = safeReadJson(path.join(CHECKLISTS_DIR, 'listacnae.json'));
+  if (!Array.isArray(cnaeData?.cnaes)) return list;
+
+  cnaeData.cnaes.forEach((secao) => {
+    secao?.divisoes?.forEach((divisao) => {
+      divisao?.grupos?.forEach((grupo) => {
+        grupo?.classes?.forEach((classe) => {
+          if (!classe?.codigo_classe || !classe?.descricao_classe) return;
+          list.push({
+            code: String(classe.codigo_classe),
+            description: String(classe.descricao_classe),
+            section: String(secao?.secao || ''),
+            sectionDescription: String(secao?.descricao_secao || '')
+          });
+        });
+      });
+    });
+  });
+
+  return list.sort((a, b) => a.code.localeCompare(b.code, 'pt-BR'));
+};
+
 const cnaeSectionByCode = buildCnaeSectionMap();
 const nrCodesByCnaeSection = buildNrByCnaeSectionMap();
+const cnaeCatalog = buildCnaeCatalog();
 
 const normalizeCnaeCode = (value) => {
   if (!value) return '';
@@ -184,9 +209,29 @@ const getInspectionsByInspector = (inspectorId) => {
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 };
 
+const getCnaeCatalog = ({ search = '', limit } = {}) => {
+  let result = cnaeCatalog;
+  const term = String(search || '').trim().toLowerCase();
+
+  if (term) {
+    result = result.filter((item) => {
+      const haystack = `${item.code} ${item.description} ${item.sectionDescription}`.toLowerCase();
+      return haystack.includes(term);
+    });
+  }
+
+  const parsedLimit = Number.parseInt(limit, 10);
+  if (!Number.isNaN(parsedLimit) && parsedLimit > 0) {
+    return result.slice(0, parsedLimit);
+  }
+
+  return result;
+};
+
 module.exports = {
   inspectionChecklists,
   inspections,
+  getCnaeCatalog,
   getApplicableNrCodes,
   getCnaeSection,
   getChecklistsForCnae,
