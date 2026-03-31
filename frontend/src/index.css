@@ -865,6 +865,153 @@
     scrollbar-color: rgba(100, 116, 139, 0.24) transparent;
   }
 
+  .agenda-calendar {
+    width: 100%;
+    border: 0;
+    background: transparent;
+  }
+
+  .agenda-calendar .react-calendar__navigation {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .agenda-calendar .react-calendar__navigation button {
+    min-height: 2.9rem;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 999px;
+    color: var(--text-strong);
+    background: rgba(255, 255, 255, 0.72);
+    transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
+  }
+
+  .agenda-calendar .react-calendar__navigation button:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.94);
+    border-color: rgba(140, 240, 69, 0.35);
+  }
+
+  .agenda-calendar .react-calendar__navigation__label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    text-transform: capitalize;
+  }
+
+  .agenda-calendar .react-calendar__month-view__weekdays {
+    margin-bottom: 0.8rem;
+    text-align: center;
+  }
+
+  .agenda-calendar .react-calendar__month-view__weekdays__weekday {
+    padding: 0.65rem 0;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-soft);
+  }
+
+  .agenda-calendar .react-calendar__month-view__weekdays__weekday abbr {
+    text-decoration: none;
+  }
+
+  .agenda-calendar .react-calendar__month-view__days {
+    gap: 0.65rem 0;
+  }
+
+  .agenda-calendar .react-calendar__tile {
+    display: flex;
+    min-height: 6.25rem;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0.8rem;
+    border: 1px solid transparent;
+    border-radius: 1.2rem;
+    text-align: left;
+    background: rgba(248, 250, 252, 0.78);
+    transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .agenda-calendar .react-calendar__tile:hover {
+    transform: translateY(-1px);
+    border-color: rgba(148, 163, 184, 0.22);
+    background: rgba(255, 255, 255, 0.96);
+  }
+
+  .agenda-calendar .react-calendar__tile--now {
+    border-color: rgba(140, 240, 69, 0.32);
+    background: rgba(140, 240, 69, 0.08);
+  }
+
+  .agenda-calendar .react-calendar__tile--active,
+  .agenda-calendar .react-calendar__tile--hasActive {
+    color: var(--text-strong);
+    background: transparent;
+  }
+
+  .agenda-calendar .agenda-calendar__tile--selected {
+    border-color: rgba(140, 240, 69, 0.45);
+    background: rgba(140, 240, 69, 0.12);
+    box-shadow: 0 12px 28px rgba(140, 240, 69, 0.14);
+  }
+
+  .agenda-calendar .agenda-calendar__tile--busy {
+    border-color: rgba(148, 163, 184, 0.16);
+    background: rgba(255, 255, 255, 0.92);
+  }
+
+  .agenda-calendar .react-calendar__tile abbr {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-strong);
+  }
+
+  .agenda-calendar .react-calendar__month-view__days__day--neighboringMonth {
+    background: rgba(248, 250, 252, 0.34);
+  }
+
+  .agenda-calendar .react-calendar__month-view__days__day--neighboringMonth abbr {
+    color: rgba(100, 116, 139, 0.45);
+  }
+
+  .agenda-calendar__tile-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.65rem;
+  }
+
+  .agenda-calendar__dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .agenda-calendar__dot,
+  .agenda-legend-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+  }
+
+  .agenda-calendar__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.55rem;
+    height: 1.55rem;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--text-body);
+    background: rgba(148, 163, 184, 0.12);
+  }
+
   .table-shell table {
     width: 100%;
     border-collapse: collapse;
@@ -1420,5 +1567,18 @@
 
   .table-shell {
     overflow-x: auto;
+  }
+
+  .agenda-calendar .react-calendar__tile {
+    min-height: 5rem;
+    padding: 0.65rem;
+  }
+
+  .agenda-calendar .react-calendar__navigation {
+    gap: 0.5rem;
+  }
+
+  .agenda-calendar .react-calendar__navigation__label {
+    font-size: 1rem;
   }
 }
