@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { createSearchRegex } = require('../utils/regex');
 
 const normalizeEmail = (email = '') => String(email).trim().toLowerCase();
 
@@ -58,8 +59,10 @@ const buildFilters = ({ perfil, status, search } = {}) => {
   }
 
   if (search) {
-    const term = new RegExp(search.trim(), 'i');
-    filters.$or = [{ nome: term }, { email: term }];
+    const term = createSearchRegex(search);
+    if (term) {
+      filters.$or = [{ nome: term }, { email: term }];
+    }
   }
 
   return filters;

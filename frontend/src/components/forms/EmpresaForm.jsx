@@ -319,7 +319,6 @@ const EmpresaForm = ({ empresa, onSave, onCancel }) => {
           <select name="status" value={formData.status} onChange={handleChange} className="input-field">
             <option value="ativa">Ativa</option>
             <option value="inativa">Inativa</option>
-            <option value="suspensa">Suspensa</option>
           </select>
         </div>
       </div>

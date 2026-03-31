@@ -11,10 +11,13 @@ import {
   Filter
 } from 'lucide-react';
 import { tarefasService, checklistsService, empresasService, eventosService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import FormModal from '../components/FormModal';
 import 'react-calendar/dist/Calendar.css';
 
 const Agenda = () => {
+  const { hasPermission } = useAuth();
+  const canWriteEvents = hasPermission('events:write');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [tarefas, setTarefas] = useState([]);
   const [inspecoes, setInspecoes] = useState([]);
@@ -151,19 +154,6 @@ const Agenda = () => {
     return events;
   };
 
-  const getEventTypeColor = (tipo) => {
-    switch (tipo) {
-      case 'tarefa':
-        return 'bg-blue-500';
-      case 'inspecao':
-        return 'bg-green-500';
-      case 'evento':
-        return 'bg-purple-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
-
   const getPriorityColor = (prioridade) => {
     switch (prioridade) {
       case 'alta':
@@ -238,6 +228,7 @@ const Agenda = () => {
 
   const handleEventSubmit = async (e) => {
     e.preventDefault();
+    if (!canWriteEvents) return;
     setEventLoading(true);
     setEventError(null);
 
@@ -245,7 +236,7 @@ const Agenda = () => {
       await eventosService.create({
         titulo: eventForm.titulo,
         descricao: eventForm.descricao,
-        empresaId: eventForm.empresaId ? parseInt(eventForm.empresaId) : undefined,
+        empresaId: eventForm.empresaId || undefined,
         responsavel: eventForm.responsavel,
         prioridade: eventForm.prioridade,
         dataEvento: eventForm.dataEvento,
@@ -373,7 +364,7 @@ const Agenda = () => {
   const dayTimeline = buildDayTimeline(selectedDateEvents, selectedDate);
 
   const handleCompleteEvento = async (evento) => {
-    if (!evento?.id || evento.status === 'concluido') return;
+    if (!canWriteEvents || !evento?.id || evento.status === 'concluido') return;
     try {
       await eventosService.update(evento.id, {
         ...evento,
@@ -401,7 +392,11 @@ const Agenda = () => {
           <Filter className="h-4 w-4 mr-2" />
           Filtros
         </button>
-        <button className="btn-primary flex items-center" onClick={openEventModal}>
+        <button
+          className={`btn-primary flex items-center ${canWriteEvents ? '' : 'opacity-60 cursor-not-allowed'}`}
+          onClick={openEventModal}
+          disabled={!canWriteEvents}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Novo Evento
         </button>
@@ -838,13 +833,15 @@ const Agenda = () => {
                         </span>
                       </div>
                       <div className="mt-3">
-                        <button
-                          className="btn-secondary text-green-700 hover:bg-green-50"
-                          disabled={evento.status === 'concluido'}
-                          onClick={() => handleCompleteEvento(evento)}
-                        >
-                          Marcar como concluído
-                        </button>
+                        {canWriteEvents && (
+                          <button
+                            className="btn-secondary text-green-700 hover:bg-green-50"
+                            disabled={evento.status === 'concluido'}
+                            onClick={() => handleCompleteEvento(evento)}
+                          >
+                            Marcar como concluido
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -904,6 +901,8 @@ const Agenda = () => {
 };
 
 export default Agenda;
+
+
 
 
 

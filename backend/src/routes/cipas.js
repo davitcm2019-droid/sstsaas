@@ -1,159 +1,121 @@
 const express = require('express');
-const { cipas } = require('../data/mockData');
+const { Cipa } = require('../models/legacyEntities');
+const { requirePermission } = require('../middleware/rbac');
 const lookupsRepository = require('../repositories/lookupsRepository');
+const { createSearchRegex } = require('../utils/regex');
+const { isValidObjectId, mapMongoEntity, normalizeRefId } = require('../utils/mongoEntity');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
 
-const toLower = (value = '') => String(value).toLowerCase();
-
-const getEmpresaNome = async (empresaId) => {
-  return lookupsRepository.getEmpresaNomeById(empresaId);
-};
-
 const sanitizeMembros = (membros) => {
-  if (!Array.isArray(membros)) {
-    return [];
-  }
-
+  if (!Array.isArray(membros)) return [];
   return membros.map((membro) => ({
-    nome: membro?.nome || '',
-    cargo: membro?.cargo || '',
-    setor: membro?.setor || ''
+    nome: String(membro?.nome || '').trim(),
+    cargo: String(membro?.cargo || '').trim(),
+    setor: String(membro?.setor || '').trim()
   }));
 };
 
-// GET /api/cipas
-router.get('/', (req, res) => {
+const sanitizePayload = async (payload = {}, current = null) => {
+  const empresaId = payload.empresaId !== undefined ? normalizeRefId(payload.empresaId) : current?.empresaId || null;
+
+  return {
+    empresaId,
+    empresaNome:
+      payload.empresaNome !== undefined
+        ? String(payload.empresaNome || '').trim()
+        : empresaId
+          ? await lookupsRepository.getEmpresaNomeById(empresaId)
+          : current?.empresaNome || '',
+    gestao: String(payload.gestao ?? current?.gestao ?? '').trim(),
+    dataInicio: String(payload.dataInicio ?? current?.dataInicio ?? '').trim(),
+    dataFim: String(payload.dataFim ?? current?.dataFim ?? '').trim(),
+    presidente: String(payload.presidente ?? current?.presidente ?? '').trim(),
+    vicePresidente: String(payload.vicePresidente ?? current?.vicePresidente ?? '').trim(),
+    secretario: String(payload.secretario ?? current?.secretario ?? '').trim(),
+    membros: sanitizeMembros(payload.membros !== undefined ? payload.membros : current?.membros),
+    status: String(payload.status ?? current?.status ?? 'ativa').trim() || 'ativa',
+    observacoes: String(payload.observacoes ?? current?.observacoes ?? '').trim()
+  };
+};
+
+router.get('/', requirePermission('cipas:read'), async (req, res) => {
   try {
     const { status, gestao, search } = req.query;
-    let results = [...cipas];
+    const filters = {};
 
-    if (status) {
-      results = results.filter((cipa) => cipa.status === status);
-    }
-
-    if (gestao) {
-      results = results.filter((cipa) => cipa.gestao === gestao);
-    }
-
+    if (status) filters.status = String(status);
+    if (gestao) filters.gestao = String(gestao);
     if (search) {
-      const term = toLower(search);
-      results = results.filter((cipa) => {
-        return (
-          toLower(cipa.empresaNome).includes(term) ||
-          toLower(cipa.gestao).includes(term) ||
-          toLower(cipa.presidente).includes(term) ||
-          toLower(cipa.vicePresidente).includes(term) ||
-          toLower(cipa.secretario).includes(term)
-        );
-      });
+      const term = createSearchRegex(search);
+      if (term) {
+        filters.$or = [
+          { empresaNome: term },
+          { gestao: term },
+          { presidente: term },
+          { vicePresidente: term },
+          { secretario: term }
+        ];
+      }
     }
 
-    return sendSuccess(res, { data: results, meta: { total: results.length } });
+    const rows = await Cipa.find(filters).sort({ createdAt: -1 }).lean();
+    return sendSuccess(res, { data: rows.map(mapMongoEntity), meta: { total: rows.length } });
   } catch (error) {
     return sendError(res, { message: 'Erro ao listar CIPAs', meta: { details: error.message } }, 500);
   }
 });
 
-// GET /api/cipas/:id
-router.get('/:id(\\d+)', (req, res) => {
+router.get('/:id', requirePermission('cipas:read'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    const cipa = cipas.find((item) => item.id === id);
-
-    if (!cipa) {
-      return sendError(res, { message: 'CIPA não encontrada' }, 404);
-    }
-
-    return sendSuccess(res, { data: cipa });
+    if (!isValidObjectId(req.params.id)) return sendError(res, { message: 'CIPA nao encontrada' }, 404);
+    const cipa = await Cipa.findById(req.params.id).lean();
+    if (!cipa) return sendError(res, { message: 'CIPA nao encontrada' }, 404);
+    return sendSuccess(res, { data: mapMongoEntity(cipa) });
   } catch (error) {
     return sendError(res, { message: 'Erro ao buscar CIPA', meta: { details: error.message } }, 500);
   }
 });
 
-// POST /api/cipas
-router.post('/', async (req, res) => {
+router.post('/', requirePermission('cipas:write'), async (req, res) => {
   try {
-    const payload = { ...req.body };
-    const empresaId = payload.empresaId ? String(payload.empresaId) : null;
-    const nextId = cipas.length ? Math.max(...cipas.map((item) => item.id)) + 1 : 1;
+    const payload = await sanitizePayload(req.body);
+    if (!payload.empresaId || !payload.gestao || !payload.dataInicio || !payload.dataFim || !payload.presidente) {
+      return sendError(res, { message: 'empresaId, gestao, dataInicio, dataFim e presidente sao obrigatorios' }, 400);
+    }
 
-    const novaCipa = {
-      id: nextId,
-      empresaId,
-      empresaNome: payload.empresaNome || (await getEmpresaNome(empresaId)),
-      gestao: payload.gestao || '',
-      dataInicio: payload.dataInicio || '',
-      dataFim: payload.dataFim || '',
-      presidente: payload.presidente || '',
-      vicePresidente: payload.vicePresidente || '',
-      secretario: payload.secretario || '',
-      status: payload.status || 'ativa',
-      membros: sanitizeMembros(payload.membros),
-      observacoes: payload.observacoes || ''
-    };
-
-    cipas.push(novaCipa);
-
-    return sendSuccess(res, { data: novaCipa, message: 'CIPA criada com sucesso' }, 201);
+    const created = await Cipa.create(payload);
+    return sendSuccess(res, { data: mapMongoEntity(created.toObject()), message: 'CIPA criada com sucesso' }, 201);
   } catch (error) {
     return sendError(res, { message: 'Erro ao criar CIPA', meta: { details: error.message } }, 500);
   }
 });
 
-// PUT /api/cipas/:id
-router.put('/:id(\\d+)', async (req, res) => {
+router.put('/:id', requirePermission('cipas:write'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    const index = cipas.findIndex((item) => item.id === id);
+    if (!isValidObjectId(req.params.id)) return sendError(res, { message: 'CIPA nao encontrada' }, 404);
+    const current = await Cipa.findById(req.params.id).lean();
+    if (!current) return sendError(res, { message: 'CIPA nao encontrada' }, 404);
 
-    if (index === -1) {
-      return sendError(res, { message: 'CIPA não encontrada' }, 404);
+    const payload = await sanitizePayload(req.body, current);
+    if (!payload.empresaId || !payload.gestao || !payload.dataInicio || !payload.dataFim || !payload.presidente) {
+      return sendError(res, { message: 'empresaId, gestao, dataInicio, dataFim e presidente sao obrigatorios' }, 400);
     }
 
-    const payload = { ...req.body };
-    const empresaId =
-      payload.empresaId === undefined || payload.empresaId === null || payload.empresaId === ''
-        ? cipas[index].empresaId
-        : String(payload.empresaId);
-
-    const empresaNome =
-      payload.empresaNome !== undefined
-        ? payload.empresaNome
-        : (await getEmpresaNome(empresaId)) || cipas[index].empresaNome;
-
-    const updatedCipa = {
-      ...cipas[index],
-      ...payload,
-      empresaId,
-      empresaNome,
-      membros: sanitizeMembros(payload.membros !== undefined ? payload.membros : cipas[index].membros),
-      status: payload.status || cipas[index].status,
-      observacoes: payload.observacoes !== undefined ? payload.observacoes : cipas[index].observacoes
-    };
-
-    cipas[index] = updatedCipa;
-
-    return sendSuccess(res, { data: updatedCipa, message: 'CIPA atualizada com sucesso' });
+    const updated = await Cipa.findByIdAndUpdate(req.params.id, payload, { new: true }).lean();
+    return sendSuccess(res, { data: mapMongoEntity(updated), message: 'CIPA atualizada com sucesso' });
   } catch (error) {
     return sendError(res, { message: 'Erro ao atualizar CIPA', meta: { details: error.message } }, 500);
   }
 });
 
-// DELETE /api/cipas/:id
-router.delete('/:id(\\d+)', (req, res) => {
+router.delete('/:id', requirePermission('cipas:write'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    const index = cipas.findIndex((item) => item.id === id);
-
-    if (index === -1) {
-      return sendError(res, { message: 'CIPA não encontrada' }, 404);
-    }
-
-    cipas.splice(index, 1);
-
-    return sendSuccess(res, { data: null, message: 'CIPA excluída com sucesso' });
+    if (!isValidObjectId(req.params.id)) return sendError(res, { message: 'CIPA nao encontrada' }, 404);
+    const deleted = await Cipa.findByIdAndDelete(req.params.id);
+    if (!deleted) return sendError(res, { message: 'CIPA nao encontrada' }, 404);
+    return sendSuccess(res, { data: null, message: 'CIPA excluida com sucesso' });
   } catch (error) {
     return sendError(res, { message: 'Erro ao excluir CIPA', meta: { details: error.message } }, 500);
   }

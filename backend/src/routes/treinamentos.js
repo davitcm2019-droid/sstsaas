@@ -1,147 +1,114 @@
 const express = require('express');
-const { treinamentos } = require('../data/mockData');
+const { Training } = require('../models/legacyEntities');
+const { requirePermission } = require('../middleware/rbac');
 const lookupsRepository = require('../repositories/lookupsRepository');
+const { createSearchRegex } = require('../utils/regex');
+const { isValidObjectId, mapMongoEntity, normalizeRefId } = require('../utils/mongoEntity');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
 
-const toLower = (value = '') => String(value).toLowerCase();
-
 const normalizeNumber = (value, fallback = 0) => {
-  const parsed = parseInt(value, 10);
+  const parsed = Number.parseInt(value, 10);
   return Number.isNaN(parsed) ? fallback : parsed;
 };
 
-const getEmpresaNome = async (empresaId) => {
-  return lookupsRepository.getEmpresaNomeById(empresaId);
-};
+const sanitizePayload = async (data = {}, current = null) => {
+  const empresaId = data.empresaId !== undefined ? normalizeRefId(data.empresaId) : current?.empresaId || null;
 
-const sanitizeTreinamento = async (data = {}) => {
-  const empresaId = data.empresaId ? String(data.empresaId) : null;
   return {
-    titulo: data.titulo || '',
-    descricao: data.descricao || '',
+    titulo: String(data.titulo ?? current?.titulo ?? '').trim(),
+    descricao: String(data.descricao ?? current?.descricao ?? '').trim(),
     empresaId,
-    empresaNome: data.empresaNome || (await getEmpresaNome(empresaId)),
-    tipo: data.tipo || 'obrigatorio',
-    duracao: normalizeNumber(data.duracao, 0),
-    instrutor: data.instrutor || '',
-    dataInicio: data.dataInicio || '',
-    dataFim: data.dataFim || '',
-    local: data.local || '',
-    maxParticipantes: normalizeNumber(data.maxParticipantes, 0),
-    participantes: normalizeNumber(data.participantes, 0),
-    status: data.status || 'agendado',
-    observacoes: data.observacoes || ''
+    empresaNome:
+      data.empresaNome !== undefined
+        ? String(data.empresaNome || '').trim()
+        : empresaId
+          ? await lookupsRepository.getEmpresaNomeById(empresaId)
+          : current?.empresaNome || '',
+    tipo: String(data.tipo ?? current?.tipo ?? 'obrigatorio').trim() || 'obrigatorio',
+    duracao: normalizeNumber(data.duracao ?? current?.duracao, 0),
+    instrutor: String(data.instrutor ?? current?.instrutor ?? '').trim(),
+    dataInicio: String(data.dataInicio ?? current?.dataInicio ?? '').trim(),
+    dataFim: String(data.dataFim ?? current?.dataFim ?? '').trim(),
+    local: String(data.local ?? current?.local ?? '').trim(),
+    maxParticipantes: normalizeNumber(data.maxParticipantes ?? current?.maxParticipantes, 0),
+    participantes: normalizeNumber(data.participantes ?? current?.participantes, 0),
+    status: String(data.status ?? current?.status ?? 'agendado').trim() || 'agendado',
+    observacoes: String(data.observacoes ?? current?.observacoes ?? '').trim()
   };
 };
 
-// GET /api/treinamentos
-router.get('/', (req, res) => {
+router.get('/', requirePermission('trainings:read'), async (req, res) => {
   try {
     const { status, tipo, search } = req.query;
-    let results = [...treinamentos];
+    const filters = {};
 
-    if (status) {
-      results = results.filter((item) => item.status === status);
-    }
-
-    if (tipo) {
-      results = results.filter((item) => item.tipo === tipo);
-    }
-
+    if (status) filters.status = String(status);
+    if (tipo) filters.tipo = String(tipo);
     if (search) {
-      const term = toLower(search);
-      results = results.filter((item) => {
-        return (
-          toLower(item.titulo).includes(term) ||
-          toLower(item.instrutor).includes(term) ||
-          toLower(item.empresaNome).includes(term) ||
-          toLower(item.local).includes(term)
-        );
-      });
+      const term = createSearchRegex(search);
+      if (term) {
+        filters.$or = [{ titulo: term }, { instrutor: term }, { empresaNome: term }, { local: term }];
+      }
     }
 
-    return sendSuccess(res, { data: results, meta: { total: results.length } });
+    const rows = await Training.find(filters).sort({ createdAt: -1 }).lean();
+    return sendSuccess(res, { data: rows.map(mapMongoEntity), meta: { total: rows.length } });
   } catch (error) {
     return sendError(res, { message: 'Erro ao listar treinamentos', meta: { details: error.message } }, 500);
   }
 });
 
-// GET /api/treinamentos/:id
-router.get('/:id(\\d+)', (req, res) => {
+router.get('/:id', requirePermission('trainings:read'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    const treinamento = treinamentos.find((item) => item.id === id);
-
-    if (!treinamento) {
-      return sendError(res, { message: 'Treinamento não encontrado' }, 404);
-    }
-
-    return sendSuccess(res, { data: treinamento });
+    if (!isValidObjectId(req.params.id)) return sendError(res, { message: 'Treinamento nao encontrado' }, 404);
+    const training = await Training.findById(req.params.id).lean();
+    if (!training) return sendError(res, { message: 'Treinamento nao encontrado' }, 404);
+    return sendSuccess(res, { data: mapMongoEntity(training) });
   } catch (error) {
     return sendError(res, { message: 'Erro ao buscar treinamento', meta: { details: error.message } }, 500);
   }
 });
 
-// POST /api/treinamentos
-router.post('/', async (req, res) => {
+router.post('/', requirePermission('trainings:write'), async (req, res) => {
   try {
-    const sanitized = await sanitizeTreinamento(req.body);
-    const nextId = treinamentos.length ? Math.max(...treinamentos.map((item) => item.id)) + 1 : 1;
+    const payload = await sanitizePayload(req.body);
+    if (!payload.titulo || !payload.empresaId || !payload.tipo || !payload.instrutor || !payload.dataInicio || !payload.dataFim || !payload.local) {
+      return sendError(res, { message: 'titulo, empresaId, tipo, instrutor, dataInicio, dataFim e local sao obrigatorios' }, 400);
+    }
 
-    const novoTreinamento = {
-      id: nextId,
-      ...sanitized
-    };
-
-    treinamentos.push(novoTreinamento);
-
-    return sendSuccess(res, { data: novoTreinamento, message: 'Treinamento criado com sucesso' }, 201);
+    const created = await Training.create(payload);
+    return sendSuccess(res, { data: mapMongoEntity(created.toObject()), message: 'Treinamento criado com sucesso' }, 201);
   } catch (error) {
     return sendError(res, { message: 'Erro ao criar treinamento', meta: { details: error.message } }, 500);
   }
 });
 
-// PUT /api/treinamentos/:id
-router.put('/:id(\\d+)', async (req, res) => {
+router.put('/:id', requirePermission('trainings:write'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    const index = treinamentos.findIndex((item) => item.id === id);
+    if (!isValidObjectId(req.params.id)) return sendError(res, { message: 'Treinamento nao encontrado' }, 404);
+    const current = await Training.findById(req.params.id).lean();
+    if (!current) return sendError(res, { message: 'Treinamento nao encontrado' }, 404);
 
-    if (index === -1) {
-      return sendError(res, { message: 'Treinamento não encontrado' }, 404);
+    const payload = await sanitizePayload(req.body, current);
+    if (!payload.titulo || !payload.empresaId || !payload.tipo || !payload.instrutor || !payload.dataInicio || !payload.dataFim || !payload.local) {
+      return sendError(res, { message: 'titulo, empresaId, tipo, instrutor, dataInicio, dataFim e local sao obrigatorios' }, 400);
     }
 
-    const sanitized = await sanitizeTreinamento({
-      ...treinamentos[index],
-      ...req.body
-    });
-
-    treinamentos[index] = {
-      id,
-      ...sanitized
-    };
-
-    return sendSuccess(res, { data: treinamentos[index], message: 'Treinamento atualizado com sucesso' });
+    const updated = await Training.findByIdAndUpdate(req.params.id, payload, { new: true }).lean();
+    return sendSuccess(res, { data: mapMongoEntity(updated), message: 'Treinamento atualizado com sucesso' });
   } catch (error) {
     return sendError(res, { message: 'Erro ao atualizar treinamento', meta: { details: error.message } }, 500);
   }
 });
 
-// DELETE /api/treinamentos/:id
-router.delete('/:id(\\d+)', (req, res) => {
+router.delete('/:id', requirePermission('trainings:write'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    const index = treinamentos.findIndex((item) => item.id === id);
-
-    if (index === -1) {
-      return sendError(res, { message: 'Treinamento não encontrado' }, 404);
-    }
-
-    treinamentos.splice(index, 1);
-
-    return sendSuccess(res, { data: null, message: 'Treinamento excluído com sucesso' });
+    if (!isValidObjectId(req.params.id)) return sendError(res, { message: 'Treinamento nao encontrado' }, 404);
+    const deleted = await Training.findByIdAndDelete(req.params.id);
+    if (!deleted) return sendError(res, { message: 'Treinamento nao encontrado' }, 404);
+    return sendSuccess(res, { data: null, message: 'Treinamento excluido com sucesso' });
   } catch (error) {
     return sendError(res, { message: 'Erro ao excluir treinamento', meta: { details: error.message } }, 500);
   }

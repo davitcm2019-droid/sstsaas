@@ -1,184 +1,76 @@
+import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import Empresas from './pages/Empresas';
-import EmpresaDetalhes from './pages/EmpresaDetalhes';
-import EmpresaSstDashboard from './pages/EmpresaSstDashboard';
-import SstDashboard from './pages/SstDashboard';
-import Tarefas from './pages/Tarefas';
-import Checklists from './pages/Checklists';
-import Incidentes from './pages/Incidentes';
-import Cipa from './pages/Cipa';
-import Treinamentos from './pages/Treinamentos';
-import Acoes from './pages/Acoes';
-import Agenda from './pages/Agenda';
-import Documentos from './pages/Documentos';
-import Relatorios from './pages/Relatorios';
-import Usuarios from './pages/Usuarios';
-import RiskSurvey from './pages/RiskSurvey';
-import RiskSurveyEnvironments from './pages/RiskSurveyEnvironments';
+
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Empresas = lazy(() => import('./pages/Empresas'));
+const EmpresaDetalhes = lazy(() => import('./pages/EmpresaDetalhes'));
+const EmpresaSstDashboard = lazy(() => import('./pages/EmpresaSstDashboard'));
+const SstDashboard = lazy(() => import('./pages/SstDashboard'));
+const Tarefas = lazy(() => import('./pages/Tarefas'));
+const Checklists = lazy(() => import('./pages/Checklists'));
+const Incidentes = lazy(() => import('./pages/Incidentes'));
+const Cipa = lazy(() => import('./pages/Cipa'));
+const Treinamentos = lazy(() => import('./pages/Treinamentos'));
+const Acoes = lazy(() => import('./pages/Acoes'));
+const Agenda = lazy(() => import('./pages/Agenda'));
+const Documentos = lazy(() => import('./pages/Documentos'));
+const Relatorios = lazy(() => import('./pages/Relatorios'));
+const Usuarios = lazy(() => import('./pages/Usuarios'));
+const RiskSurvey = lazy(() => import('./pages/RiskSurvey'));
+const RiskSurveyEnvironments = lazy(() => import('./pages/RiskSurveyEnvironments'));
+
+const PageLoader = () => (
+  <div className="flex min-h-screen items-center justify-center bg-gray-50">
+    <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary-500" />
+  </div>
+);
+
+const renderPage = (Component) => (
+  <Suspense fallback={<PageLoader />}>
+    <Component />
+  </Suspense>
+);
+
+const renderProtectedPage = (Component, requiredPermission = null, withLayout = true) => {
+  const content = withLayout ? <Layout>{renderPage(Component)}</Layout> : renderPage(Component);
+  return <ProtectedRoute requiredPermission={requiredPermission}>{content}</ProtectedRoute>;
+};
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
 
   return (
     <Routes>
-      {/* Rotas públicas */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      
-      {/* Redirecionamento */}
-      <Route 
-        path="/" 
-        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} 
-      />
-      
-      {/* Rotas protegidas */}
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <Layout>
-            <Dashboard />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/empresas" element={
-        <ProtectedRoute>
-          <Layout>
-            <Empresas />
-          </Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/sst" element={
-        <ProtectedRoute>
-          <Layout>
-            <SstDashboard />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/empresas/:id" element={
-        <ProtectedRoute>
-          <Layout>
-            <EmpresaDetalhes />
-          </Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/empresas/:id/sst" element={
-        <ProtectedRoute>
-          <Layout>
-            <EmpresaSstDashboard />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/tarefas" element={
-        <ProtectedRoute>
-          <Layout>
-            <Tarefas />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/checklists" element={
-        <ProtectedRoute requiredProfile="tecnico_seguranca">
-          <Layout>
-            <Checklists />
-          </Layout>
-        </ProtectedRoute>
-      } />
+      <Route path="/login" element={renderPage(Login)} />
+      <Route path="/register" element={renderPage(Register)} />
 
       <Route
-        path="/levantamento-riscos"
-        element={
-          <ProtectedRoute requiredProfile="auditor">
-            <Layout>
-              <RiskSurvey />
-            </Layout>
-          </ProtectedRoute>
-        }
+        path="/"
+        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />}
       />
 
-      <Route
-        path="/levantamento-riscos/ambientes"
-        element={
-          <ProtectedRoute requiredProfile="auditor">
-            <Layout>
-              <RiskSurveyEnvironments />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      
-          <Route path="/incidentes" element={
-            <ProtectedRoute>
-              <Layout>
-                <Incidentes />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/cipa" element={
-            <ProtectedRoute>
-              <Layout>
-                <Cipa />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/treinamentos" element={
-            <ProtectedRoute>
-              <Layout>
-                <Treinamentos />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/acoes" element={
-            <ProtectedRoute>
-              <Layout>
-                <Acoes />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/agenda" element={
-        <ProtectedRoute>
-          <Layout>
-            <Agenda />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/documentos" element={
-        <ProtectedRoute>
-          <Layout>
-            <Documentos />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/relatorios" element={
-        <ProtectedRoute>
-          <Layout>
-            <Relatorios />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/usuarios" element={
-        <ProtectedRoute requiredProfile="administrador">
-          <Layout>
-            <Usuarios />
-          </Layout>
-        </ProtectedRoute>
-      } />
+      <Route path="/dashboard" element={renderProtectedPage(Dashboard)} />
+      <Route path="/empresas" element={renderProtectedPage(Empresas, 'companies:read')} />
+      <Route path="/sst" element={renderProtectedPage(SstDashboard, 'checklists:read')} />
+      <Route path="/empresas/:id" element={renderProtectedPage(EmpresaDetalhes, 'companies:read')} />
+      <Route path="/empresas/:id/sst" element={renderProtectedPage(EmpresaSstDashboard, 'checklists:read')} />
+      <Route path="/tarefas" element={renderProtectedPage(Tarefas, 'tasks:read')} />
+      <Route path="/checklists" element={renderProtectedPage(Checklists, 'checklists:read')} />
+      <Route path="/levantamento-riscos" element={renderProtectedPage(RiskSurvey, 'riskSurvey:read')} />
+      <Route path="/levantamento-riscos/ambientes" element={renderProtectedPage(RiskSurveyEnvironments, 'riskSurvey:read')} />
+      <Route path="/incidentes" element={renderProtectedPage(Incidentes, 'incidents:read')} />
+      <Route path="/cipa" element={renderProtectedPage(Cipa, 'cipas:read')} />
+      <Route path="/treinamentos" element={renderProtectedPage(Treinamentos, 'trainings:read')} />
+      <Route path="/acoes" element={renderProtectedPage(Acoes, 'actions:read')} />
+      <Route path="/agenda" element={renderProtectedPage(Agenda, 'events:read')} />
+      <Route path="/documentos" element={renderProtectedPage(Documentos, 'documents:read')} />
+      <Route path="/relatorios" element={renderProtectedPage(Relatorios, 'reports:read')} />
+      <Route path="/usuarios" element={renderProtectedPage(Usuarios, 'users:manage')} />
     </Routes>
   );
 };

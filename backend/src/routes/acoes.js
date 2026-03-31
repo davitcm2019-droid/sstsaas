@@ -1,158 +1,128 @@
 const express = require('express');
-const { acoes } = require('../data/mockData');
+const { Acao } = require('../models/legacyEntities');
+const { requirePermission } = require('../middleware/rbac');
 const lookupsRepository = require('../repositories/lookupsRepository');
+const { createSearchRegex } = require('../utils/regex');
+const { isValidObjectId, mapMongoEntity, normalizeRefId } = require('../utils/mongoEntity');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
 
-const toLower = (value = '') => String(value).toLowerCase();
-
-const getEmpresaNome = async (empresaId) => {
-  return lookupsRepository.getEmpresaNomeById(empresaId);
-};
-
-const getResponsavelNome = async (responsavelId) => {
-  return lookupsRepository.getUsuarioNomeById(responsavelId);
-};
-
 const parseNumber = (value, fallback = 0) => {
-  const parsed = parseFloat(value);
+  const parsed = Number.parseFloat(value);
   return Number.isNaN(parsed) ? fallback : parsed;
 };
 
-const sanitizePayload = async (data = {}) => {
-  const empresaId = data.empresaId ? String(data.empresaId) : null;
-  const responsavelId = data.responsavelId ? String(data.responsavelId) : null;
+const sanitizePayload = async (data = {}, current = null) => {
+  const empresaId = data.empresaId !== undefined ? normalizeRefId(data.empresaId) : current?.empresaId || null;
+  const responsavelId =
+    data.responsavelId !== undefined ? normalizeRefId(data.responsavelId) : current?.responsavelId || null;
 
   return {
-    titulo: data.titulo || '',
-    descricao: data.descricao || '',
+    titulo: String(data.titulo ?? current?.titulo ?? '').trim(),
+    descricao: String(data.descricao ?? current?.descricao ?? '').trim(),
     empresaId,
-    empresaNome: data.empresaNome || (await getEmpresaNome(empresaId)),
+    empresaNome:
+      data.empresaNome !== undefined
+        ? String(data.empresaNome || '').trim()
+        : empresaId
+          ? await lookupsRepository.getEmpresaNomeById(empresaId)
+          : current?.empresaNome || '',
     responsavelId,
-    responsavelNome: data.responsavelNome || (await getResponsavelNome(responsavelId)),
-    tipo: data.tipo || 'preventiva',
-    prioridade: data.prioridade || 'media',
-    status: data.status || 'pendente',
-    dataInicio: data.dataInicio || '',
-    dataFim: data.dataFim || '',
-    custo: parseNumber(data.custo, 0),
-    observacoes: data.observacoes || ''
+    responsavelNome:
+      data.responsavelNome !== undefined
+        ? String(data.responsavelNome || '').trim()
+        : responsavelId
+          ? await lookupsRepository.getUsuarioNomeById(responsavelId)
+          : current?.responsavelNome || '',
+    tipo: String(data.tipo ?? current?.tipo ?? 'preventiva').trim() || 'preventiva',
+    prioridade: String(data.prioridade ?? current?.prioridade ?? 'media').trim() || 'media',
+    status: String(data.status ?? current?.status ?? 'pendente').trim() || 'pendente',
+    dataInicio: String(data.dataInicio ?? current?.dataInicio ?? '').trim(),
+    dataFim: String(data.dataFim ?? current?.dataFim ?? '').trim(),
+    custo: parseNumber(data.custo ?? current?.custo, 0),
+    observacoes: String(data.observacoes ?? current?.observacoes ?? '').trim()
   };
 };
 
-// GET /api/acoes
-router.get('/', (req, res) => {
+router.get('/', requirePermission('actions:read'), async (req, res) => {
   try {
     const { status, tipo, prioridade, search } = req.query;
-    let results = [...acoes];
+    const filters = {};
 
-    if (status) {
-      results = results.filter((acao) => acao.status === status);
-    }
-
-    if (tipo) {
-      results = results.filter((acao) => acao.tipo === tipo);
-    }
-
-    if (prioridade) {
-      results = results.filter((acao) => acao.prioridade === prioridade);
-    }
-
+    if (status) filters.status = String(status);
+    if (tipo) filters.tipo = String(tipo);
+    if (prioridade) filters.prioridade = String(prioridade);
     if (search) {
-      const term = toLower(search);
-      results = results.filter((acao) => {
-        return (
-          toLower(acao.titulo).includes(term) ||
-          toLower(acao.descricao).includes(term) ||
-          toLower(acao.empresaNome).includes(term) ||
-          toLower(acao.responsavelNome).includes(term)
-        );
-      });
+      const term = createSearchRegex(search);
+      if (term) {
+        filters.$or = [
+          { titulo: term },
+          { descricao: term },
+          { empresaNome: term },
+          { responsavelNome: term }
+        ];
+      }
     }
 
-    return sendSuccess(res, { data: results, meta: { total: results.length } });
+    const rows = await Acao.find(filters).sort({ createdAt: -1 }).lean();
+    return sendSuccess(res, { data: rows.map(mapMongoEntity), meta: { total: rows.length } });
   } catch (error) {
-    return sendError(res, { message: 'Erro ao listar ações', meta: { details: error.message } }, 500);
+    return sendError(res, { message: 'Erro ao listar acoes', meta: { details: error.message } }, 500);
   }
 });
 
-// GET /api/acoes/:id
-router.get('/:id(\\d+)', (req, res) => {
+router.get('/:id', requirePermission('actions:read'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    const acao = acoes.find((item) => item.id === id);
-
-    if (!acao) {
-      return sendError(res, { message: 'Ação não encontrada' }, 404);
-    }
-
-    return sendSuccess(res, { data: acao });
+    if (!isValidObjectId(req.params.id)) return sendError(res, { message: 'Acao nao encontrada' }, 404);
+    const acao = await Acao.findById(req.params.id).lean();
+    if (!acao) return sendError(res, { message: 'Acao nao encontrada' }, 404);
+    return sendSuccess(res, { data: mapMongoEntity(acao) });
   } catch (error) {
-    return sendError(res, { message: 'Erro ao buscar ação', meta: { details: error.message } }, 500);
+    return sendError(res, { message: 'Erro ao buscar acao', meta: { details: error.message } }, 500);
   }
 });
 
-// POST /api/acoes
-router.post('/', async (req, res) => {
+router.post('/', requirePermission('actions:write'), async (req, res) => {
   try {
-    const sanitized = await sanitizePayload(req.body);
-    const nextId = acoes.length ? Math.max(...acoes.map((item) => item.id)) + 1 : 1;
+    const payload = await sanitizePayload(req.body);
+    if (!payload.titulo || !payload.descricao || !payload.empresaId || !payload.responsavelId) {
+      return sendError(res, { message: 'titulo, descricao, empresaId e responsavelId sao obrigatorios' }, 400);
+    }
 
-    const novaAcao = {
-      id: nextId,
-      ...sanitized
-    };
-
-    acoes.push(novaAcao);
-
-    return sendSuccess(res, { data: novaAcao, message: 'Ação criada com sucesso' }, 201);
+    const created = await Acao.create(payload);
+    return sendSuccess(res, { data: mapMongoEntity(created.toObject()), message: 'Acao criada com sucesso' }, 201);
   } catch (error) {
-    return sendError(res, { message: 'Erro ao criar ação', meta: { details: error.message } }, 500);
+    return sendError(res, { message: 'Erro ao criar acao', meta: { details: error.message } }, 500);
   }
 });
 
-// PUT /api/acoes/:id
-router.put('/:id(\\d+)', async (req, res) => {
+router.put('/:id', requirePermission('actions:write'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    const index = acoes.findIndex((item) => item.id === id);
+    if (!isValidObjectId(req.params.id)) return sendError(res, { message: 'Acao nao encontrada' }, 404);
+    const current = await Acao.findById(req.params.id).lean();
+    if (!current) return sendError(res, { message: 'Acao nao encontrada' }, 404);
 
-    if (index === -1) {
-      return sendError(res, { message: 'Ação não encontrada' }, 404);
+    const payload = await sanitizePayload(req.body, current);
+    if (!payload.titulo || !payload.descricao || !payload.empresaId || !payload.responsavelId) {
+      return sendError(res, { message: 'titulo, descricao, empresaId e responsavelId sao obrigatorios' }, 400);
     }
 
-    const sanitized = await sanitizePayload({
-      ...acoes[index],
-      ...req.body
-    });
-
-    acoes[index] = {
-      id,
-      ...sanitized
-    };
-
-    return sendSuccess(res, { data: acoes[index], message: 'Ação atualizada com sucesso' });
+    const updated = await Acao.findByIdAndUpdate(req.params.id, payload, { new: true }).lean();
+    return sendSuccess(res, { data: mapMongoEntity(updated), message: 'Acao atualizada com sucesso' });
   } catch (error) {
-    return sendError(res, { message: 'Erro ao atualizar ação', meta: { details: error.message } }, 500);
+    return sendError(res, { message: 'Erro ao atualizar acao', meta: { details: error.message } }, 500);
   }
 });
 
-// DELETE /api/acoes/:id
-router.delete('/:id(\\d+)', (req, res) => {
+router.delete('/:id', requirePermission('actions:write'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    const index = acoes.findIndex((item) => item.id === id);
-
-    if (index === -1) {
-      return sendError(res, { message: 'Ação não encontrada' }, 404);
-    }
-
-    acoes.splice(index, 1);
-
-    return sendSuccess(res, { data: null, message: 'Ação excluída com sucesso' });
+    if (!isValidObjectId(req.params.id)) return sendError(res, { message: 'Acao nao encontrada' }, 404);
+    const deleted = await Acao.findByIdAndDelete(req.params.id);
+    if (!deleted) return sendError(res, { message: 'Acao nao encontrada' }, 404);
+    return sendSuccess(res, { data: null, message: 'Acao excluida com sucesso' });
   } catch (error) {
-    return sendError(res, { message: 'Erro ao excluir ação', meta: { details: error.message } }, 500);
+    return sendError(res, { message: 'Erro ao excluir acao', meta: { details: error.message } }, 500);
   }
 });
 

@@ -77,7 +77,7 @@ const IncidentForm = ({ incident, onSave, onCancel }) => {
     const payload = {
       titulo: formData.titulo,
       descricao: formData.descricao,
-      empresaId: formData.empresaId ? parseInt(formData.empresaId) : undefined,
+      empresaId: formData.empresaId || undefined,
       empresaNome: selectedEmpresa?.nome,
       local: formData.local,
       tipo: formData.tipo,

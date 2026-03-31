@@ -1,47 +1,96 @@
-# Deploy no Render — SST SaaS (MongoDB Atlas)
+# Deploy no Render - SST SaaS
 
-Este repositório usa:
-- Backend Node/Express (`backend`)
-- Frontend React/Vite (`frontend`)
-- Banco externo MongoDB Atlas (via `MONGO_URI`)
+Este projeto foi preparado para subir no Render com dois servicos:
+- `sst-saas-backend` - Web Service Node/Express
+- `sst-saas-frontend` - Static Site React/Vite
 
-## 1) Blueprint (render.yaml)
+O banco continua externo, via MongoDB Atlas em `MONGO_URI`.
 
-O `render.yaml` cria dois serviços:
-- `sst-saas-backend` (Web Service)
-- `sst-saas-frontend` (Static Site)
+## O que o `render.yaml` faz
 
-No backend, `MONGO_URI` está com `sync: false`, então você precisa preencher manualmente no Render.
+- cria backend e frontend
+- usa plano `free` no backend por padrao
+- desliga preview environments
+- aplica rewrite SPA no frontend
+- inclui `shared/**` no `buildFilter`, para que mudancas em permissoes compartilhadas redeployem backend e frontend
+- gera `JWT_SECRET` automaticamente
 
-## 2) Variáveis obrigatórias
+## Passo a passo
 
-### Backend
+### 1) Subir o codigo para o GitHub
+
+O Render vai ler o `render.yaml` diretamente do repositorio.
+
+### 2) Importar Blueprint
+
+No Render:
+1. `New +`
+2. `Blueprint`
+3. selecione o repositorio
+4. confirme o arquivo `render.yaml`
+5. clique em `Apply`
+
+### 3) Configurar a unica variavel manual obrigatoria
+
+No servico `sst-saas-backend`, preencha:
+
 - `MONGO_URI`
-- `JWT_SECRET`
-- `CORS_ORIGIN` (URL do frontend em produção)
 
-### Frontend
-- `VITE_API_URL` (URL do backend sem `/api`)
-
-## 3) MONGO_URI (Atlas)
+Ela esta com `sync: false` no blueprint para nao ficar versionada.
 
 Exemplo:
 
 `mongodb+srv://usuario:senha@cluster.mongodb.net/sstsaas?retryWrites=true&w=majority&appName=Cluster0`
 
-Regras práticas:
-- Use o nome do banco na URI (`/sstsaas`).
-- Se senha tiver caracteres especiais, faça URL-encode.
-- Em Atlas -> **Network Access**, libere o IP do Render (ou `0.0.0.0/0` temporariamente).
-- Em Atlas -> **Database Access**, confirme usuário com permissão de leitura/escrita.
+Regras praticas:
+- use o nome do banco na URI, por exemplo `/sstsaas`
+- se a senha tiver caracteres especiais, faca URL-encode
+- no Atlas, libere acesso de rede para o Render
+- no Atlas, confirme um usuario com permissao de leitura e escrita
 
-## 4) Troubleshooting
+### 4) Validar o deploy
 
-- Erro `Missing required environment variable: MONGO_URI`:
-  - variável não configurada no serviço backend.
+Backend:
+- healthcheck em `/api/health`
+- URL esperada: `https://sst-saas-backend.onrender.com/api/health`
 
-- Erro de conexão com Atlas (`ServerSelectionError`):
-  - IP não liberado no Atlas ou credencial incorreta.
+Frontend:
+- URL esperada: `https://sst-saas-frontend.onrender.com`
 
-- Frontend abre, mas API falha:
-  - `VITE_API_URL` inválida ou `CORS_ORIGIN` incorreta.
+### 5) Criar administrador
+
+Como o cadastro publico agora cria apenas `visualizador`, promova um admin pelo Shell do backend no Render ou por one-off job:
+
+```bash
+npm run admin:create -- --nome "Admin" --email admin@local.test --senha "SenhaForte123"
+```
+
+## Variaveis finais
+
+### Backend
+- `NODE_ENV=production`
+- `JWT_SECRET` gerada automaticamente
+- `CORS_ORIGIN=https://sst-saas-frontend.onrender.com`
+- `MONGO_URI` configurada manualmente
+
+### Frontend
+- `VITE_API_URL=https://sst-saas-backend.onrender.com`
+
+## Observacoes operacionais
+
+- O backend esta em `plan: free`. Para producao com menor cold start, troque para `starter` ou superior.
+- Preview environments foram desabilitados porque o backend depende de `MONGO_URI` manual e o projeto nao precisa de ambiente efemero neste momento.
+- Se voce renomear os servicos no Render, atualize tambem `CORS_ORIGIN` e `VITE_API_URL` no `render.yaml`.
+
+## Troubleshooting
+
+- `Missing required environment variable: MONGO_URI`
+  - a variavel nao foi preenchida no backend
+
+- `ServerSelectionError` ou timeout no Mongo
+  - IP/regra de rede do Atlas nao liberada
+  - credencial incorreta
+
+- frontend abre, mas chamadas para API falham
+  - `VITE_API_URL` incorreta
+  - `CORS_ORIGIN` do backend nao bate com a URL real do frontend

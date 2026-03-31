@@ -60,10 +60,10 @@ const badgeByClass = {
 };
 
 const RiskSurvey = () => {
-  const { user } = useAuth();
-  const isAdmin = user?.perfil === 'administrador';
-  const canWrite = user?.perfil === 'tecnico_seguranca' || isAdmin;
-  const canFinalize = isAdmin;
+  const { hasPermission } = useAuth();
+  const canConfigure = hasPermission('riskSurvey:configure');
+  const canWrite = hasPermission('riskSurvey:write');
+  const canFinalize = hasPermission('riskSurvey:finalize');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -372,7 +372,7 @@ const RiskSurvey = () => {
             ))}
           </select>
           <Link className="btn-secondary" to="/levantamento-riscos/ambientes">Caracterização de Ambientes</Link>
-          {isAdmin && (
+          {canConfigure && (
             <button className="btn-secondary" onClick={() => riskSurveyService.runLegacyMigration().then(() => loadDashboard())}>
               Migrar legado
             </button>

@@ -1,94 +1,83 @@
 const express = require('express');
-const { auditLogs, getAuditLogsByEntity, getAuditLogsByUser } = require('../data/auditLog');
+const { AuditLog } = require('../models/legacyEntities');
+const { requirePermission } = require('../middleware/rbac');
+const { mapMongoEntity } = require('../utils/mongoEntity');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
 
-// GET /api/audit - Listar logs de auditoria
-router.get('/', (req, res) => {
+const parseLimit = (value, fallback = 50) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) || parsed <= 0 ? fallback : parsed;
+};
+
+router.get('/', requirePermission('audit:read'), async (req, res) => {
   try {
     const { entityType, entityId, userId, action, limit = 50 } = req.query;
-    let filteredLogs = [...auditLogs];
+    const filters = {};
 
-    if (entityType) {
-      filteredLogs = filteredLogs.filter((log) => log.entityType === entityType);
-    }
+    if (entityType) filters.entityType = String(entityType);
+    if (entityId) filters.entityId = String(entityId);
+    if (userId) filters.userId = String(userId);
+    if (action) filters.action = String(action);
 
-    if (entityId) {
-      filteredLogs = filteredLogs.filter((log) => log.entityId === parseInt(entityId, 10));
-    }
+    const rows = await AuditLog.find(filters)
+      .sort({ timestamp: -1 })
+      .limit(parseLimit(limit))
+      .lean();
 
-    if (userId) {
-      filteredLogs = filteredLogs.filter((log) => log.userId === parseInt(userId, 10));
-    }
-
-    if (action) {
-      filteredLogs = filteredLogs.filter((log) => log.action === action);
-    }
-
-    filteredLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    const parsedLimit = parseInt(limit, 10);
-    if (!Number.isNaN(parsedLimit) && parsedLimit > 0) {
-      filteredLogs = filteredLogs.slice(0, parsedLimit);
-    }
-
-    return sendSuccess(res, { data: filteredLogs, meta: { total: filteredLogs.length } });
+    return sendSuccess(res, { data: rows.map(mapMongoEntity), meta: { total: rows.length } });
   } catch (error) {
     return sendError(res, { message: 'Erro ao buscar logs de auditoria', meta: { details: error.message } }, 500);
   }
 });
 
-// GET /api/audit/entity/:type/:id - Buscar logs por entidade
-router.get('/entity/:type/:id(\\d+)', (req, res) => {
+router.get('/entity/:type/:id', requirePermission('audit:read'), async (req, res) => {
   try {
-    const { type, id } = req.params;
-    const logs = getAuditLogsByEntity(type, id);
+    const rows = await AuditLog.find({ entityType: req.params.type, entityId: String(req.params.id) })
+      .sort({ timestamp: -1 })
+      .lean();
 
-    return sendSuccess(res, { data: logs, meta: { total: logs.length } });
+    return sendSuccess(res, { data: rows.map(mapMongoEntity), meta: { total: rows.length } });
   } catch (error) {
     return sendError(res, { message: 'Erro ao buscar logs da entidade', meta: { details: error.message } }, 500);
   }
 });
 
-// GET /api/audit/user/:id - Buscar logs por usuário
-router.get('/user/:id(\\d+)', (req, res) => {
+router.get('/user/:id', requirePermission('audit:read'), async (req, res) => {
   try {
-    const { id } = req.params;
-    const logs = getAuditLogsByUser(id);
-
-    return sendSuccess(res, { data: logs, meta: { total: logs.length } });
+    const rows = await AuditLog.find({ userId: String(req.params.id) }).sort({ timestamp: -1 }).lean();
+    return sendSuccess(res, { data: rows.map(mapMongoEntity), meta: { total: rows.length } });
   } catch (error) {
-    return sendError(res, { message: 'Erro ao buscar logs do usuário', meta: { details: error.message } }, 500);
+    return sendError(res, { message: 'Erro ao buscar logs do usuario', meta: { details: error.message } }, 500);
   }
 });
 
-// GET /api/audit/stats - Estatísticas de auditoria
-router.get('/stats', (req, res) => {
+router.get('/stats', requirePermission('audit:read'), async (req, res) => {
   try {
+    const rows = await AuditLog.find({}).lean();
     const stats = {
-      totalLogs: auditLogs.length,
+      totalLogs: rows.length,
       actions: {
-        created: auditLogs.filter((log) => log.action === 'created').length,
-        updated: auditLogs.filter((log) => log.action === 'updated').length,
-        deleted: auditLogs.filter((log) => log.action === 'deleted').length
+        created: rows.filter((log) => log.action === 'created').length,
+        updated: rows.filter((log) => log.action === 'updated').length,
+        deleted: rows.filter((log) => log.action === 'deleted').length
       },
-      entities: {
-        empresa: auditLogs.filter((log) => log.entityType === 'empresa').length,
-        tarefa: auditLogs.filter((log) => log.entityType === 'tarefa').length,
-        risco: auditLogs.filter((log) => log.entityType === 'risco').length,
-        usuario: auditLogs.filter((log) => log.entityType === 'usuario').length
-      },
-      recentActivity: [...auditLogs]
+      entities: {},
+      recentActivity: rows
+        .map(mapMongoEntity)
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         .slice(0, 10)
     };
 
+    rows.forEach((log) => {
+      stats.entities[log.entityType] = (stats.entities[log.entityType] || 0) + 1;
+    });
+
     return sendSuccess(res, { data: stats });
   } catch (error) {
-    return sendError(res, { message: 'Erro ao buscar estatísticas de auditoria', meta: { details: error.message } }, 500);
+    return sendError(res, { message: 'Erro ao buscar estatisticas de auditoria', meta: { details: error.message } }, 500);
   }
 });
 
 module.exports = router;
-

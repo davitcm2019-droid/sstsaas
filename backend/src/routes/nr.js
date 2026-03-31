@@ -1,11 +1,12 @@
 const express = require('express');
 const { nrs, getNrsByCnae, getChecklistByNr, calculateCompliance } = require('../data/nrData');
+const { requirePermission } = require('../middleware/rbac');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
 
 // GET /api/nr - Listar todas as NRs
-router.get('/', (req, res) => {
+router.get('/', requirePermission('nr:read'), (req, res) => {
   try {
     return sendSuccess(res, { data: nrs, meta: { total: nrs.length } });
   } catch (error) {
@@ -14,7 +15,7 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/nr/cnae/:cnae - Buscar NRs aplicáveis por CNAE
-router.get('/cnae/:cnae', (req, res) => {
+router.get('/cnae/:cnae', requirePermission('nr:read'), (req, res) => {
   try {
     const { cnae } = req.params;
     const nrsAplicaveis = getNrsByCnae(cnae);
@@ -26,7 +27,7 @@ router.get('/cnae/:cnae', (req, res) => {
 });
 
 // GET /api/nr/:codigo/checklist - Buscar checklist por NR
-router.get('/:codigo/checklist', (req, res) => {
+router.get('/:codigo/checklist', requirePermission('nr:read'), (req, res) => {
   try {
     const { codigo } = req.params;
     const checklist = getChecklistByNr(codigo);
@@ -38,7 +39,7 @@ router.get('/:codigo/checklist', (req, res) => {
 });
 
 // GET /api/nr/compliance/:empresaId - Calcular conformidade da empresa
-router.get('/compliance/:empresaId(\\d+)', (req, res) => {
+router.get('/compliance/:empresaId', requirePermission('nr:read'), (req, res) => {
   try {
     const { empresaId } = req.params;
     const { cnae } = req.query;
@@ -55,4 +56,3 @@ router.get('/compliance/:empresaId(\\d+)', (req, res) => {
 });
 
 module.exports = router;
-

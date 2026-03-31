@@ -5,12 +5,10 @@ import {
   ArrowLeft, 
   Edit, 
   AlertTriangle, 
-  CheckCircle, 
   Clock,
   Phone,
   Mail,
   MapPin,
-  Calendar,
   User,
   FileText,
   Shield
@@ -81,7 +79,10 @@ const EmpresaDetalhes = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('pt-BR');
   };
 
   if (loading) {
@@ -249,15 +250,15 @@ const EmpresaDetalhes = () => {
             </div>
 
             <div className="card">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Auditorias</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Cadastro</h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Última Auditoria:</span>
-                  <span className="font-medium">{formatDate(empresa.ultimaAuditoria)}</span>
+                  <span className="text-gray-500">Status:</span>
+                  <span className="font-medium capitalize">{empresa.status || '-'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Próxima Auditoria:</span>
-                  <span className="font-medium">{formatDate(empresa.proximaAuditoria)}</span>
+                  <span className="text-gray-500">Atualizado em:</span>
+                  <span className="font-medium">{formatDate(empresa.updatedAt)}</span>
                 </div>
               </div>
             </div>
@@ -371,3 +372,4 @@ const EmpresaDetalhes = () => {
 };
 
 export default EmpresaDetalhes;
+

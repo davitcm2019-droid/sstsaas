@@ -8,7 +8,7 @@ import {
   Clock,
   FileText
 } from 'lucide-react';
-import { empresasService, tarefasService, alertasService, eventosService, incidentsService } from '../services/api';
+import { empresasService, tarefasService, eventosService, incidentsService } from '../services/api';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -32,17 +32,15 @@ const Dashboard = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const [empresasRes, tarefasRes, alertasRes, eventosRes, incidentsRes] = await Promise.all([
+      const [empresasRes, tarefasRes, eventosRes, incidentsRes] = await Promise.all([
         empresasService.getAll(),
         tarefasService.getAll(),
-        alertasService.getActive(),
         eventosService.getAll(),
         incidentsService.getAll()
       ]);
 
       const empresas = empresasRes.data.data || [];
       const tarefas = tarefasRes.data.data || [];
-      const alertas = alertasRes.data.data || [];
       const eventos = eventosRes.data.data || [];
       const incidents = incidentsRes.data.data || [];
 

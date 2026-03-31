@@ -1,9 +1,17 @@
+previews:
+  generation: off
+
 services:
   # Backend API
   - type: web
     name: sst-saas-backend
     runtime: node
+    plan: free
     rootDir: backend
+    buildFilter:
+      paths:
+        - backend/**
+        - shared/**
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /api/health
@@ -22,6 +30,10 @@ services:
     name: sst-saas-frontend
     runtime: static
     rootDir: frontend
+    buildFilter:
+      paths:
+        - frontend/**
+        - shared/**
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
     routes:

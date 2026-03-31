@@ -213,7 +213,6 @@ const UsuarioForm = ({ usuario, onSave, onCancel }) => {
           >
             <option value="ativo">Ativo</option>
             <option value="inativo">Inativo</option>
-            <option value="suspenso">Suspenso</option>
           </select>
         </div>
 

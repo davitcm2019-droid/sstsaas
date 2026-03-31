@@ -70,14 +70,14 @@ const TreinamentoForm = ({ treinamento, onSave, onCancel }) => {
     try {
       const payload = {
         ...formData,
-        empresaId: formData.empresaId ? parseInt(formData.empresaId, 10) : null,
+        empresaId: formData.empresaId || null,
         duracao: formData.duracao ? parseInt(formData.duracao, 10) : 0,
         maxParticipantes: formData.maxParticipantes ? parseInt(formData.maxParticipantes, 10) : 0,
         participantes: formData.participantes ? parseInt(formData.participantes, 10) : 0
       };
 
       if (payload.empresaId) {
-        const empresaSelecionada = empresas.find((empresa) => empresa.id === payload.empresaId);
+        const empresaSelecionada = empresas.find((empresa) => String(empresa.id) === String(payload.empresaId));
         if (empresaSelecionada) {
           payload.empresaNome = empresaSelecionada.nome;
         }

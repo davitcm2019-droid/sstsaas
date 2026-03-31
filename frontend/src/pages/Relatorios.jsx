@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
 import { 
-  BarChart3, 
-  TrendingUp, 
   Download, 
-  Calendar,
   Building2,
   CheckSquare,
   AlertTriangle,
@@ -19,9 +16,7 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell,
-  LineChart,
-  Line
+  Cell
 } from 'recharts';
 import { empresasService, tarefasService, riscosService, alertasService } from '../services/api';
 
@@ -99,8 +94,6 @@ const Relatorios = () => {
     const vencimento = new Date(t.dataVencimento);
     return vencimento < hoje && t.status !== 'concluido';
   });
-
-  const COLORS = ['#8FFC45', '#10B981', '#3B82F6', '#F59E0B', '#EF4444'];
 
   if (loading) {
     return (

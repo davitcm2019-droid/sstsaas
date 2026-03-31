@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { createSearchRegex } = require('../utils/regex');
 
 const empresaSchema = new mongoose.Schema(
   {
@@ -66,12 +67,17 @@ const findByCnpj = async (cnpj) => {
 const listEmpresas = async ({ cnae, status, conformidade, search } = {}) => {
   const filters = {};
 
-  if (cnae) filters.cnae = new RegExp(cnae.trim(), 'i');
+  if (cnae) {
+    const cnaeTerm = createSearchRegex(cnae);
+    if (cnaeTerm) filters.cnae = cnaeTerm;
+  }
   if (status) filters.status = status;
   if (conformidade) filters.conformidade = conformidade;
   if (search) {
-    const term = new RegExp(search.trim(), 'i');
-    filters.$or = [{ nome: term }, { ramo: term }, { cnpj: term }];
+    const term = createSearchRegex(search);
+    if (term) {
+      filters.$or = [{ nome: term }, { ramo: term }, { cnpj: term }];
+    }
   }
 
   const empresas = await Empresa.find(filters).sort({ createdAt: 1 }).lean();

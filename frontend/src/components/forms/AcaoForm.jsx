@@ -71,20 +71,20 @@ const AcaoForm = ({ acao, onSave, onCancel }) => {
     try {
       const payload = {
         ...formData,
-        empresaId: formData.empresaId ? parseInt(formData.empresaId, 10) : null,
-        responsavelId: formData.responsavelId ? parseInt(formData.responsavelId, 10) : null,
+        empresaId: formData.empresaId || null,
+        responsavelId: formData.responsavelId || null,
         custo: formData.custo ? parseFloat(formData.custo) : 0
       };
 
       if (payload.empresaId) {
-        const empresaSelecionada = empresas.find((empresa) => empresa.id === payload.empresaId);
+        const empresaSelecionada = empresas.find((empresa) => String(empresa.id) === String(payload.empresaId));
         if (empresaSelecionada) {
           payload.empresaNome = empresaSelecionada.nome;
         }
       }
 
       if (payload.responsavelId) {
-        const responsavelSelecionado = usuarios.find((usuario) => usuario.id === payload.responsavelId);
+        const responsavelSelecionado = usuarios.find((usuario) => String(usuario.id) === String(payload.responsavelId));
         if (responsavelSelecionado) {
           payload.responsavelNome = responsavelSelecionado.nome;
         }

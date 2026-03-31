@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  Home, 
-  Building2, 
-  CheckSquare, 
-  BarChart3, 
-  Users, 
-  Menu, 
+import {
+  Home,
+  Building2,
+  CheckSquare,
+  BarChart3,
+  Users,
+  Menu,
   X,
   Shield,
-  Bell,
   AlertTriangle,
   ClipboardCheck,
   FileText,
@@ -24,36 +23,25 @@ const Layout = ({ children }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isAdmin, isTecnico, isAuditor } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home, permission: null },
-    { name: 'Empresas', href: '/empresas', icon: Building2, permission: null },
-    { name: 'Dashboard SST', href: '/sst', icon: Shield, permission: null },
-    { name: 'Tarefas', href: '/tarefas', icon: CheckSquare, permission: null },
-    { name: 'CIPA', href: '/cipa', icon: Users, permission: null },
-    { name: 'Treinamentos', href: '/treinamentos', icon: ClipboardCheck, permission: null },
-    { name: 'Ações', href: '/acoes', icon: AlertTriangle, permission: null },
-    { name: 'Agenda', href: '/agenda', icon: Calendar, permission: null },
-    { name: 'Checklists', href: '/checklists', icon: ClipboardCheck, permission: 'tecnico_seguranca' },
-    { name: 'Levantamento de Riscos', href: '/levantamento-riscos', icon: AlertTriangle, permission: 'auditor' },
-    {
-      name: 'Ambientes SST',
-      href: '/levantamento-riscos/ambientes',
-      icon: Building2,
-      permission: 'auditor'
-    },
-    { name: 'Incidentes', href: '/incidentes', icon: AlertTriangle, permission: null },
-    { name: 'Documentos', href: '/documentos', icon: FileText, permission: null },
-    { name: 'Relatórios', href: '/relatorios', icon: BarChart3, permission: null },
-    { name: 'Usuários', href: '/usuarios', icon: Users, permission: 'administrador' },
-  ].filter(
-    (item) =>
-      !item.permission ||
-      (item.permission === 'tecnico_seguranca' && isTecnico()) ||
-      (item.permission === 'auditor' && isAuditor()) ||
-      (item.permission === 'administrador' && isAdmin())
-  );
+    { name: 'Dashboard', href: '/dashboard', icon: Home },
+    { name: 'Empresas', href: '/empresas', icon: Building2, permission: 'companies:read' },
+    { name: 'Dashboard SST', href: '/sst', icon: Shield, permission: 'checklists:read' },
+    { name: 'Tarefas', href: '/tarefas', icon: CheckSquare, permission: 'tasks:read' },
+    { name: 'CIPA', href: '/cipa', icon: Users, permission: 'cipas:read' },
+    { name: 'Treinamentos', href: '/treinamentos', icon: ClipboardCheck, permission: 'trainings:read' },
+    { name: 'Acoes', href: '/acoes', icon: AlertTriangle, permission: 'actions:read' },
+    { name: 'Agenda', href: '/agenda', icon: Calendar, permission: 'events:read' },
+    { name: 'Checklists', href: '/checklists', icon: ClipboardCheck, permission: 'checklists:read' },
+    { name: 'Levantamento de Riscos', href: '/levantamento-riscos', icon: AlertTriangle, permission: 'riskSurvey:read' },
+    { name: 'Ambientes SST', href: '/levantamento-riscos/ambientes', icon: Building2, permission: 'riskSurvey:read' },
+    { name: 'Incidentes', href: '/incidentes', icon: AlertTriangle, permission: 'incidents:read' },
+    { name: 'Documentos', href: '/documentos', icon: FileText, permission: 'documents:read' },
+    { name: 'Relatorios', href: '/relatorios', icon: BarChart3, permission: 'reports:read' },
+    { name: 'Usuarios', href: '/usuarios', icon: Users, permission: 'users:manage' }
+  ].filter((item) => !item.permission || hasPermission(item.permission));
 
   const handleLogout = async () => {
     await logout();
@@ -64,7 +52,6 @@ const Layout = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Sidebar Mobile */}
       <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
         <div className="relative flex w-64 flex-col bg-white shadow-xl">
@@ -73,10 +60,7 @@ const Layout = ({ children }) => {
               <Shield className="h-8 w-8 text-primary-500" />
               <span className="ml-2 text-xl font-bold text-gray-900">SST SaaS</span>
             </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
+            <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-gray-600">
               <X className="h-6 w-6" />
             </button>
           </div>
@@ -103,7 +87,6 @@ const Layout = ({ children }) => {
         </div>
       </div>
 
-      {/* Sidebar Desktop */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
           <div className="flex h-16 items-center px-4">
@@ -132,9 +115,7 @@ const Layout = ({ children }) => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="lg:pl-64">
-        {/* Top Bar */}
         <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
           <button
             type="button"
@@ -157,15 +138,13 @@ const Layout = ({ children }) => {
                   </div>
                   <span className="hidden lg:block">{user?.nome}</span>
                 </button>
-                
+
                 {userMenuOpen && (
                   <div className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                     <div className="px-4 py-2 text-sm text-gray-700 border-b">
                       <div className="font-medium">{user?.nome}</div>
                       <div className="text-gray-500">{user?.email}</div>
-                      <div className="text-xs text-gray-400 capitalize">
-                        {user?.perfil?.replace('_', ' ')}
-                      </div>
+                      <div className="text-xs text-gray-400 capitalize">{user?.perfil?.replace('_', ' ')}</div>
                     </div>
                     <button
                       onClick={handleLogout}
@@ -181,11 +160,8 @@ const Layout = ({ children }) => {
           </div>
         </div>
 
-        {/* Page Content */}
         <main className="py-6">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            {children}
-          </div>
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">{children}</div>
         </main>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-const ProtectedRoute = ({ children, requiredProfile = null }) => {
+const ProtectedRoute = ({ children, requiredPermission = null }) => {
   const { isAuthenticated, hasPermission, loading } = useAuth();
 
   if (loading) {
@@ -16,7 +16,7 @@ const ProtectedRoute = ({ children, requiredProfile = null }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredProfile && !hasPermission(requiredProfile)) {
+  if (requiredPermission && !hasPermission(requiredPermission)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-6 text-center">
@@ -25,16 +25,9 @@ const ProtectedRoute = ({ children, requiredProfile = null }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Acesso Negado
-          </h3>
-          <p className="text-sm text-gray-500 mb-4">
-            Você não tem permissão para acessar esta página.
-          </p>
-          <button
-            onClick={() => window.history.back()}
-            className="btn-primary"
-          >
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Acesso Negado</h3>
+          <p className="text-sm text-gray-500 mb-4">Voce nao tem permissao para acessar esta pagina.</p>
+          <button onClick={() => window.history.back()} className="btn-primary">
             Voltar
           </button>
         </div>

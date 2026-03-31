@@ -4,6 +4,7 @@ import { ClipboardCheck, Search, Plus, Eye, Play, Clock, Building2, User } from 
 import { checklistsService, empresasService } from '../services/api';
 import ChecklistModal from '../components/ChecklistModal';
 import FormModal from '../components/FormModal';
+import { useAuth } from '../contexts/AuthContext';
 
 const hasApplicableCnae = (value) => {
   const normalized = String(value || '').trim().toUpperCase();
@@ -11,6 +12,8 @@ const hasApplicableCnae = (value) => {
 };
 
 const Checklists = () => {
+  const { hasPermission } = useAuth();
+  const canInspect = hasPermission('inspections:write');
   const [checklists, setChecklists] = useState([]);
   const [inspections, setInspections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -157,6 +160,7 @@ const Checklists = () => {
   };
 
   const openNewChecklistModal = (preferredTemplateId = '') => {
+    if (!canInspect) return;
     const initialEmpresaId = selectedEmpresaId || '';
 
     setNewChecklistError(null);
@@ -171,6 +175,7 @@ const Checklists = () => {
   };
 
   const handleStartInspection = (checklist) => {
+    if (!canInspect) return;
     if (!selectedEmpresa) {
       openNewChecklistModal(checklist?.id);
       return;
@@ -281,7 +286,11 @@ const Checklists = () => {
           <h1 className="text-2xl font-bold text-gray-900">Checklists de Inspeção</h1>
           <p className="mt-1 text-sm text-gray-500">Gerencie checklists e realize inspeções de segurança</p>
         </div>
-        <button className="btn-primary flex items-center" onClick={() => openNewChecklistModal()}>
+        <button
+          className={`btn-primary flex items-center ${canInspect ? '' : 'opacity-60 cursor-not-allowed'}`}
+          disabled={!canInspect}
+          onClick={() => openNewChecklistModal()}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Novo Checklist
         </button>
@@ -391,7 +400,8 @@ const Checklists = () => {
 
               <div className="flex space-x-2">
                 <button
-                  className="flex-1 btn-primary flex items-center justify-center"
+                  className={`flex-1 btn-primary flex items-center justify-center ${canInspect ? '' : 'opacity-60 cursor-not-allowed'}`}
+                  disabled={!canInspect}
                   onClick={() => handleStartInspection(checklist)}
                 >
                   <Play className="h-4 w-4 mr-2" />
@@ -539,6 +549,11 @@ const Checklists = () => {
         error={newChecklistError}
       >
         <div className="space-y-4">
+          {!canInspect && (
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+              Seu perfil possui acesso de leitura aos checklists, mas nao pode iniciar inspecoes.
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Empresa *</label>
             <select

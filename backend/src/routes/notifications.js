@@ -1,130 +1,160 @@
 const express = require('express');
-const {
-  notifications,
-  notificationTypes,
-  getNotificationsByUser,
-  createNotification,
-  markAsRead,
-  generateSmartNotifications,
-  cleanExpiredNotifications
-} = require('../data/notifications');
+const { Notification } = require('../models/legacyEntities');
+const { notificationTypes } = require('../data/notifications');
+const { requirePermission } = require('../middleware/rbac');
+const { isValidObjectId, mapMongoEntity, normalizeRefId } = require('../utils/mongoEntity');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
 
-// GET /api/notifications - Listar notificações
-router.get('/', (req, res) => {
-  try {
-    const { userId, unreadOnly, type, limit } = req.query;
-    let filteredNotifications = [...notifications];
+const parseLimit = (value) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) || parsed <= 0 ? null : parsed;
+};
 
-    if (userId) {
-      filteredNotifications = getNotificationsByUser(parseInt(userId, 10), {
-        unreadOnly: unreadOnly === 'true',
-        type,
-        limit: limit ? parseInt(limit, 10) : undefined
-      });
-    }
+const mapNotification = (doc) => {
+  const mapped = mapMongoEntity(doc);
+  if (!mapped) return null;
+  return {
+    ...mapped,
+    createdAt: mapped.createdAt ? new Date(mapped.createdAt).toISOString() : new Date().toISOString()
+  };
+};
 
-    return sendSuccess(res, { data: filteredNotifications, meta: { total: filteredNotifications.length } });
-  } catch (error) {
-    return sendError(res, { message: 'Erro ao buscar notificações', meta: { details: error.message } }, 500);
-  }
+const sanitizePayload = (payload = {}, current = null) => ({
+  userId: payload.userId !== undefined ? normalizeRefId(payload.userId) : current?.userId || null,
+  title: String(payload.title ?? current?.title ?? '').trim(),
+  message: String(payload.message ?? current?.message ?? '').trim(),
+  type: String(payload.type ?? current?.type ?? '').trim(),
+  priority: String(payload.priority ?? current?.priority ?? 'medium').trim() || 'medium',
+  read: payload.read !== undefined ? Boolean(payload.read) : Boolean(current?.read),
+  expiresAt: String(payload.expiresAt ?? current?.expiresAt ?? '').trim()
 });
 
-// GET /api/notifications/user/:userId - Buscar notificações por usuário
-router.get('/user/:userId(\\d+)', (req, res) => {
-  try {
-    const userId = parseInt(req.params.userId, 10);
-    const { unreadOnly, type, limit } = req.query;
+const applyUserFilters = async ({ userId, unreadOnly, type, limit }) => {
+  const filters = {};
+  if (userId) filters.userId = String(userId);
+  if (unreadOnly === true) filters.read = false;
+  if (type) filters.type = String(type);
 
-    const userNotifications = getNotificationsByUser(userId, {
-      unreadOnly: unreadOnly === 'true',
-      type,
-      limit: limit ? parseInt(limit, 10) : undefined
+  let query = Notification.find(filters).sort({ createdAt: -1 });
+  const parsedLimit = parseLimit(limit);
+  if (parsedLimit) query = query.limit(parsedLimit);
+
+  const rows = await query.lean();
+  return rows.map(mapNotification);
+};
+
+router.get('/', requirePermission('notifications:read'), async (req, res) => {
+  try {
+    const rows = await applyUserFilters({
+      userId: req.query.userId,
+      unreadOnly: req.query.unreadOnly === 'true',
+      type: req.query.type,
+      limit: req.query.limit
     });
 
-    return sendSuccess(res, { data: userNotifications, meta: { total: userNotifications.length } });
+    return sendSuccess(res, { data: rows, meta: { total: rows.length } });
   } catch (error) {
-    return sendError(res, { message: 'Erro ao buscar notificações do usuário', meta: { details: error.message } }, 500);
+    return sendError(res, { message: 'Erro ao buscar notificacoes', meta: { details: error.message } }, 500);
   }
 });
 
-// GET /api/notifications/types - Listar tipos de notificação
-router.get('/types', (req, res) => {
+router.get('/user/:userId', requirePermission('notifications:read'), async (req, res) => {
+  try {
+    const rows = await applyUserFilters({
+      userId: req.params.userId,
+      unreadOnly: req.query.unreadOnly === 'true',
+      type: req.query.type,
+      limit: req.query.limit
+    });
+
+    return sendSuccess(res, { data: rows, meta: { total: rows.length } });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao buscar notificacoes do usuario', meta: { details: error.message } }, 500);
+  }
+});
+
+router.get('/types', requirePermission('notifications:read'), (req, res) => {
   try {
     return sendSuccess(res, { data: notificationTypes });
   } catch (error) {
-    return sendError(res, { message: 'Erro ao buscar tipos de notificação', meta: { details: error.message } }, 500);
+    return sendError(res, { message: 'Erro ao buscar tipos de notificacao', meta: { details: error.message } }, 500);
   }
 });
 
-// GET /api/notifications/stats - Estatísticas de notificações
-router.get('/stats', (req, res) => {
+router.get('/stats', requirePermission('notifications:read'), async (req, res) => {
   try {
+    const rows = await Notification.find({}).lean();
     const stats = {
-      total: notifications.length,
-      unread: notifications.filter((n) => !n.read).length,
-      read: notifications.filter((n) => n.read).length,
+      total: rows.length,
+      unread: rows.filter((item) => !item.read).length,
+      read: rows.filter((item) => item.read).length,
       porTipo: {},
-      recentes: [...notifications].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5)
+      recentes: rows
+        .map(mapNotification)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 5)
     };
 
-    notifications.forEach((notification) => {
+    rows.forEach((notification) => {
       stats.porTipo[notification.type] = (stats.porTipo[notification.type] || 0) + 1;
     });
 
     return sendSuccess(res, { data: stats });
   } catch (error) {
-    return sendError(res, { message: 'Erro ao buscar estatísticas de notificações', meta: { details: error.message } }, 500);
+    return sendError(res, { message: 'Erro ao buscar estatisticas de notificacoes', meta: { details: error.message } }, 500);
   }
 });
 
-// POST /api/notifications - Criar notificação
-router.post('/', (req, res) => {
+router.post('/', requirePermission('notifications:write'), async (req, res) => {
   try {
-    const newNotification = createNotification(req.body);
-    return sendSuccess(res, { data: newNotification, message: 'Notificação criada com sucesso' }, 201);
-  } catch (error) {
-    return sendError(res, { message: 'Erro ao criar notificação', meta: { details: error.message } }, 500);
-  }
-});
-
-// PUT /api/notifications/:id/read - Marcar notificação como lida
-router.put('/:id(\\d+)/read', (req, res) => {
-  try {
-    const id = parseInt(req.params.id, 10);
-    const notification = markAsRead(id);
-
-    if (!notification) {
-      return sendError(res, { message: 'Notificação não encontrada' }, 404);
+    const payload = sanitizePayload(req.body);
+    if (!payload.userId || !payload.type || !payload.message) {
+      return sendError(res, { message: 'userId, type e message sao obrigatorios' }, 400);
     }
 
-    return sendSuccess(res, { data: notification, message: 'Notificação marcada como lida' });
+    if (!payload.title) {
+      payload.title = notificationTypes[payload.type]?.name || 'Notificacao';
+    }
+
+    const created = await Notification.create(payload);
+    return sendSuccess(res, { data: mapNotification(created.toObject()), message: 'Notificacao criada com sucesso' }, 201);
   } catch (error) {
-    return sendError(res, { message: 'Erro ao marcar notificação como lida', meta: { details: error.message } }, 500);
+    return sendError(res, { message: 'Erro ao criar notificacao', meta: { details: error.message } }, 500);
   }
 });
 
-// POST /api/notifications/generate-smart - Gerar notificações inteligentes
-router.post('/generate-smart', (req, res) => {
+router.put('/:id/read', requirePermission('notifications:write'), async (req, res) => {
   try {
-    const smartNotifications = generateSmartNotifications();
-    return sendSuccess(res, { data: smartNotifications, message: 'Notificações inteligentes geradas' });
+    if (!isValidObjectId(req.params.id)) return sendError(res, { message: 'Notificacao nao encontrada' }, 404);
+    const updated = await Notification.findByIdAndUpdate(req.params.id, { read: true }, { new: true }).lean();
+    if (!updated) return sendError(res, { message: 'Notificacao nao encontrada' }, 404);
+    return sendSuccess(res, { data: mapNotification(updated), message: 'Notificacao marcada como lida' });
   } catch (error) {
-    return sendError(res, { message: 'Erro ao gerar notificações inteligentes', meta: { details: error.message } }, 500);
+    return sendError(res, { message: 'Erro ao marcar notificacao como lida', meta: { details: error.message } }, 500);
   }
 });
 
-// DELETE /api/notifications/cleanup - Limpar notificações expiradas
-router.delete('/cleanup', (req, res) => {
+router.post('/generate-smart', requirePermission('notifications:write'), async (req, res) => {
   try {
-    const removedCount = cleanExpiredNotifications();
-    return sendSuccess(res, { data: { removedCount }, message: `${removedCount} notificações expiradas removidas` });
+    return sendSuccess(res, { data: [], message: 'Nenhuma notificacao inteligente gerada' });
   } catch (error) {
-    return sendError(res, { message: 'Erro ao limpar notificações expiradas', meta: { details: error.message } }, 500);
+    return sendError(res, { message: 'Erro ao gerar notificacoes inteligentes', meta: { details: error.message } }, 500);
+  }
+});
+
+router.delete('/cleanup', requirePermission('notifications:write'), async (req, res) => {
+  try {
+    const now = new Date().toISOString();
+    const result = await Notification.deleteMany({ expiresAt: { $ne: '', $lt: now } });
+    return sendSuccess(res, {
+      data: { removedCount: result.deletedCount || 0 },
+      message: `${result.deletedCount || 0} notificacoes expiradas removidas`
+    });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao limpar notificacoes expiradas', meta: { details: error.message } }, 500);
   }
 });
 
 module.exports = router;
-

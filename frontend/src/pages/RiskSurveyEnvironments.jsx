@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import FormModal from '../components/FormModal';
 import { empresasService, riskSurveyService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const ENV_FORM_DEFAULT = {
   empresaId: '',
@@ -18,6 +19,8 @@ const CARGO_FORM_DEFAULT = {
 };
 
 const RiskSurveyEnvironments = () => {
+  const { hasPermission } = useAuth();
+  const canWrite = hasPermission('riskSurvey:write');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [metadata, setMetadata] = useState(null);
@@ -82,6 +85,7 @@ const RiskSurveyEnvironments = () => {
 
   const createEnvironment = async (event) => {
     event.preventDefault();
+    if (!canWrite) return;
     try {
       await riskSurveyService.createEnvironment(envForm);
       setEnvModalOpen(false);
@@ -94,7 +98,7 @@ const RiskSurveyEnvironments = () => {
 
   const createCargo = async (event) => {
     event.preventDefault();
-    if (!selectedEnvironmentId) return;
+    if (!selectedEnvironmentId || !canWrite) return;
     try {
       await riskSurveyService.createCargo({
         environmentId: selectedEnvironmentId,
@@ -124,7 +128,11 @@ const RiskSurveyEnvironments = () => {
           <p className="text-sm text-gray-500">Etapa 2: cadastre Ambiente antes de criar atividades e riscos.</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn-primary" onClick={() => setEnvModalOpen(true)}>
+          <button
+            className={`btn-primary ${canWrite ? '' : 'opacity-60 cursor-not-allowed'}`}
+            disabled={!canWrite}
+            onClick={() => setEnvModalOpen(true)}
+          >
             <Plus className="mr-2 inline h-4 w-4" />
             Novo ambiente
           </button>
@@ -159,7 +167,11 @@ const RiskSurveyEnvironments = () => {
         <div className="card">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-700">Cargos no Ambiente</h2>
-            <button className="btn-secondary px-3 py-1 text-xs" disabled={!selectedEnvironment} onClick={() => setCargoModalOpen(true)}>
+            <button
+              className={`btn-secondary px-3 py-1 text-xs ${canWrite ? '' : 'opacity-60 cursor-not-allowed'}`}
+              disabled={!selectedEnvironment || !canWrite}
+              onClick={() => setCargoModalOpen(true)}
+            >
               <Plus className="mr-1 inline h-3 w-3" />
               Novo cargo
             </button>

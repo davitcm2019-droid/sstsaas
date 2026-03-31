@@ -7,12 +7,23 @@ const sendSuccess = (res, { data = null, message = '', meta = {} } = {}, status 
   });
 };
 
+const sanitizeErrorMeta = (meta = {}, status = 500) => {
+  if (!meta || typeof meta !== 'object') return {};
+
+  const sanitized = { ...meta };
+  if (status >= 500) {
+    delete sanitized.details;
+  }
+
+  return sanitized;
+};
+
 const sendError = (res, { message = 'Erro interno', meta = {} } = {}, status = 500) => {
   return res.status(status).json({
     success: false,
     data: null,
     message,
-    meta
+    meta: sanitizeErrorMeta(meta, status)
   });
 };
 
@@ -20,4 +31,3 @@ module.exports = {
   sendSuccess,
   sendError
 };
-

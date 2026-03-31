@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 const { requirePermission } = require('../middleware/rbac');
 const { requireFeatureFlag } = require('../middleware/featureFlags');
+const { createSearchRegex } = require('../utils/regex');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
@@ -932,8 +933,10 @@ router.get('/library', requirePermission('riskSurvey:read'), async (req, res) =>
       filters.origem = toText(req.query.origem);
     }
     if (req.query?.search) {
-      const term = new RegExp(toText(req.query.search), 'i');
-      filters.$or = [{ titulo: term }, { perigo: term }, { eventoPerigoso: term }, { danoPotencial: term }];
+      const term = createSearchRegex(toText(req.query.search));
+      if (term) {
+        filters.$or = [{ titulo: term }, { perigo: term }, { eventoPerigoso: term }, { danoPotencial: term }];
+      }
     }
 
     const rows = await RiskLibrary.find(filters).sort({ tipo: 1, titulo: 1 }).lean();
@@ -1032,8 +1035,10 @@ router.get('/devices', requirePermission('riskSurvey:read'), async (req, res) =>
       filters.ativo = String(req.query.ativo).toLowerCase() === 'true';
     }
     if (req.query?.search) {
-      const term = new RegExp(toText(req.query.search), 'i');
-      filters.$or = [{ serialNumber: term }, { marca: term }, { modelo: term }];
+      const term = createSearchRegex(toText(req.query.search));
+      if (term) {
+        filters.$or = [{ serialNumber: term }, { marca: term }, { modelo: term }];
+      }
     }
     const rows = await MeasurementDevice.find(filters).sort({ createdAt: -1 }).lean();
     return sendSuccess(res, { data: rows.map(mapMeasurementDevice), meta: { total: rows.length } });
@@ -1122,8 +1127,10 @@ router.get('/environments', requirePermission('riskSurvey:read'), async (req, re
     if (req.query?.empresaId) filters.empresaId = String(req.query.empresaId);
     if (req.query?.surveyStatus) filters.surveyStatus = String(req.query.surveyStatus);
     if (req.query?.search) {
-      const term = new RegExp(toText(req.query.search), 'i');
-      filters.$or = [{ nome: term }, { unidade: term }, { setor: term }];
+      const term = createSearchRegex(toText(req.query.search));
+      if (term) {
+        filters.$or = [{ nome: term }, { unidade: term }, { setor: term }];
+      }
     }
 
     const rows = await RiskSurveyEnvironment.find(filters).sort({ createdAt: -1 }).lean();

@@ -79,7 +79,7 @@ const StackedBar = ({ okPercent, nonPercent, pendingPercent, unknownPercent }) =
 const EmpresaSstDashboard = () => {
   const { id } = useParams();
   const { hasPermission } = useAuth();
-  const canInspect = hasPermission('tecnico_seguranca');
+  const canInspect = hasPermission('inspections:write');
 
   const [empresa, setEmpresa] = useState(null);
   const [checklists, setChecklists] = useState([]);
@@ -375,7 +375,7 @@ const EmpresaSstDashboard = () => {
               <AlertTriangle className="h-5 w-5 text-red-600" />
             </div>
           </div>
-          <p className="mt-3 text-xs text-gray-500">Respostas "Não" nas inspeções</p>
+          <p className="mt-3 text-xs text-gray-500">Respostas &quot;Nao&quot; nas inspecoes</p>
         </div>
 
         <div className="card">
@@ -661,3 +661,4 @@ const EmpresaSstDashboard = () => {
 };
 
 export default EmpresaSstDashboard;
+

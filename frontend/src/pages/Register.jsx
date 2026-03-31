@@ -50,7 +50,11 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const { confirmarSenha, ...userData } = formData;
+      const userData = {
+        nome: formData.nome,
+        email: formData.email,
+        senha: formData.senha
+      };
       const result = await register(userData);
 
       if (result.success) {

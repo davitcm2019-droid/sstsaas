@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { hasPermission as roleHasPermission } from '../auth/permissions';
 import { authService } from '../services/api';
 
 const AuthContext = createContext();
@@ -32,7 +33,7 @@ export const AuthProvider = ({ children }) => {
             setToken(null);
           }
         } catch (error) {
-          console.error('Erro ao verificar autenticação:', error);
+          console.error('Erro ao verificar autenticacao:', error);
           localStorage.removeItem('token');
           setToken(null);
         }
@@ -40,7 +41,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     };
 
-    initAuth();
+    void initAuth();
   }, [token]);
 
   const login = async (email, senha) => {
@@ -86,7 +87,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Erro no registro:', error);
       return {
         success: false,
-        error: getApiMessage(error, 'Erro ao registrar usuário')
+        error: getApiMessage(error, 'Erro ao registrar usuario')
       };
     } finally {
       setLoading(false);
@@ -105,23 +106,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const hasPermission = (requiredProfile) => {
-    if (!user) return false;
-
-    const permissions = {
-      visualizador: ['visualizador'],
-      auditor: ['visualizador', 'auditor'],
-      tecnico_seguranca: ['visualizador', 'auditor', 'tecnico_seguranca'],
-      administrador: ['visualizador', 'auditor', 'tecnico_seguranca', 'administrador']
-    };
-
-    return permissions[user.perfil]?.includes(requiredProfile) || false;
-  };
-
-  const isAdmin = () => hasPermission('administrador');
-  const isTecnico = () => hasPermission('tecnico_seguranca');
-  const isAuditor = () => hasPermission('auditor');
-  const isVisualizador = () => hasPermission('visualizador');
+  const hasPermission = (permission) => roleHasPermission(user?.perfil, permission);
+  const hasRole = (role) => user?.perfil === role;
+  const isAdmin = () => hasRole('administrador');
+  const isTecnico = () => hasRole('tecnico_seguranca');
+  const isAuditor = () => hasRole('auditor');
+  const isVisualizador = () => hasRole('visualizador');
 
   const value = {
     user,
@@ -131,6 +121,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     hasPermission,
+    hasRole,
     isAdmin,
     isTecnico,
     isAuditor,

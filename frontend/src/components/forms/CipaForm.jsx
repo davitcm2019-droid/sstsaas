@@ -93,7 +93,7 @@ const CipaForm = ({ cipa, onSave, onCancel }) => {
     try {
       const payload = {
         ...formData,
-        empresaId: formData.empresaId ? parseInt(formData.empresaId, 10) : null,
+        empresaId: formData.empresaId || null,
         membros: Array.isArray(formData.membros)
           ? formData.membros.map(membro => ({
               nome: membro.nome || '',
@@ -104,7 +104,7 @@ const CipaForm = ({ cipa, onSave, onCancel }) => {
       };
 
       if (payload.empresaId) {
-        const empresaSelecionada = empresas.find(emp => emp.id === payload.empresaId);
+        const empresaSelecionada = empresas.find(emp => String(emp.id) === String(payload.empresaId));
         if (empresaSelecionada) {
           payload.empresaNome = empresaSelecionada.nome;
         }
