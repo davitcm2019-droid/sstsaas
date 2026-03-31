@@ -9,6 +9,7 @@ import {
   Shield,
   User
 } from 'lucide-react';
+import Select from 'react-select';
 import AgendaMonthCalendar from '../components/AgendaMonthCalendar';
 import FormModal from '../components/FormModal';
 import EmptyState from '../components/ui/EmptyState';
@@ -25,6 +26,90 @@ const getLocalDateKey = (value) => {
   if (Number.isNaN(date.getTime())) return null;
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 };
+
+const agendaFilterSelectStyles = {
+  control: (base, state) => ({
+    ...base,
+    minHeight: '3rem',
+    borderRadius: '999px',
+    borderColor: state.isFocused ? 'rgba(140, 240, 69, 0.72)' : 'rgba(255, 255, 255, 0.28)',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    boxShadow: state.isFocused ? '0 0 0 4px rgba(140, 240, 69, 0.12)' : '0 10px 24px rgba(15, 23, 42, 0.06)',
+    paddingInline: '0.35rem',
+    transition: 'border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease',
+    '&:hover': {
+      borderColor: 'rgba(140, 240, 69, 0.58)'
+    }
+  }),
+  valueContainer: (base) => ({
+    ...base,
+    paddingInline: '0.7rem'
+  }),
+  placeholder: (base) => ({
+    ...base,
+    color: '#475569'
+  }),
+  singleValue: (base) => ({
+    ...base,
+    color: '#0f172a',
+    fontWeight: 600
+  }),
+  dropdownIndicator: (base, state) => ({
+    ...base,
+    color: state.isFocused ? '#4d7c0f' : '#64748b',
+    '&:hover': {
+      color: '#4d7c0f'
+    }
+  }),
+  indicatorSeparator: () => ({
+    display: 'none'
+  }),
+  menuPortal: (base) => ({
+    ...base,
+    zIndex: 70
+  }),
+  menu: (base) => ({
+    ...base,
+    marginTop: '0.5rem',
+    borderRadius: '1.2rem',
+    overflow: 'hidden',
+    border: '1px solid rgba(226, 232, 240, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    boxShadow: '0 24px 50px rgba(15, 23, 42, 0.14)'
+  }),
+  menuList: (base) => ({
+    ...base,
+    padding: '0.4rem'
+  }),
+  option: (base, state) => ({
+    ...base,
+    borderRadius: '0.9rem',
+    padding: '0.7rem 0.85rem',
+    backgroundColor: state.isSelected
+      ? 'rgba(140, 240, 69, 0.16)'
+      : state.isFocused
+        ? 'rgba(148, 163, 184, 0.08)'
+        : 'transparent',
+    color: '#0f172a',
+    fontWeight: state.isSelected ? 700 : 500,
+    cursor: 'pointer'
+  })
+};
+
+const tipoFilterOptions = [
+  { value: 'all', label: 'Todos os tipos' },
+  { value: 'tarefas', label: 'Tarefas' },
+  { value: 'inspecoes', label: 'Inspecoes' },
+  { value: 'eventos', label: 'Eventos' }
+];
+
+const statusFilterOptions = [
+  { value: 'all', label: 'Todos os status' },
+  { value: 'pendente', label: 'Pendente' },
+  { value: 'em_andamento', label: 'Em andamento' },
+  { value: 'concluido', label: 'Concluido' },
+  { value: 'cancelada', label: 'Cancelada' }
+];
 
 const Agenda = () => {
   const { hasPermission } = useAuth();
@@ -284,6 +369,9 @@ const Agenda = () => {
     };
   }, [eventos, inspecoes, tarefas, visibleMonthAnchor, visibleMonthEvents]);
 
+  const selectedTipoOption = tipoFilterOptions.find((option) => option.value === filters.tipo) || tipoFilterOptions[0];
+  const selectedStatusOption = statusFilterOptions.find((option) => option.value === filters.status) || statusFilterOptions[0];
+
   const openEventModal = () => {
     setEventError(null);
     setEventForm({
@@ -529,27 +617,38 @@ const Agenda = () => {
             <span className="font-semibold capitalize">{monthLabel}</span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <select
-              className="input-field bg-white/90"
-              value={filters.tipo}
-              onChange={(event) => setFilters((prev) => ({ ...prev, tipo: event.target.value }))}
-            >
-              <option value="all">Todos os tipos</option>
-              <option value="tarefas">Tarefas</option>
-              <option value="inspecoes">Inspecoes</option>
-              <option value="eventos">Eventos</option>
-            </select>
-            <select
-              className="input-field bg-white/90"
-              value={filters.status}
-              onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}
-            >
-              <option value="all">Todos os status</option>
-              <option value="pendente">Pendente</option>
-              <option value="em_andamento">Em andamento</option>
-              <option value="concluido">Concluido</option>
-              <option value="cancelada">Cancelada</option>
-            </select>
+            <Select
+              inputId="agenda-filter-tipo"
+              className="min-w-0"
+              classNamePrefix="agenda-filter-select"
+              isSearchable={false}
+              options={tipoFilterOptions}
+              value={selectedTipoOption}
+              onChange={(option) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  tipo: option?.value || 'all'
+                }))
+              }
+              styles={agendaFilterSelectStyles}
+              menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+            />
+            <Select
+              inputId="agenda-filter-status"
+              className="min-w-0"
+              classNamePrefix="agenda-filter-select"
+              isSearchable={false}
+              options={statusFilterOptions}
+              value={selectedStatusOption}
+              onChange={(option) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  status: option?.value || 'all'
+                }))
+              }
+              styles={agendaFilterSelectStyles}
+              menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+            />
           </div>
         </div>
       </PageHeader>
