@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import Calendar from 'react-calendar';
 import {
   Building2,
   Calendar as CalendarIcon,
@@ -10,13 +9,13 @@ import {
   Shield,
   User
 } from 'lucide-react';
+import AgendaMonthCalendar from '../components/AgendaMonthCalendar';
 import FormModal from '../components/FormModal';
 import EmptyState from '../components/ui/EmptyState';
 import MetricCard from '../components/ui/MetricCard';
 import PageHeader from '../components/ui/PageHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { checklistsService, empresasService, eventosService, tarefasService } from '../services/api';
-import 'react-calendar/dist/Calendar.css';
 
 const pad = (value) => String(value).padStart(2, '0');
 
@@ -615,88 +614,58 @@ const Agenda = () => {
       </FormModal>
 
       <section className="grid gap-6 xl:grid-cols-[1.3fr_0.85fr]">
-        <div className="panel-surface p-6">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">Navegacao</p>
-              <h2 className="mt-1 text-xl text-slate-900">
-                {view === 'month' ? 'Visao mensal' : view === 'week' ? 'Panorama semanal' : 'Linha do tempo do dia'}
-              </h2>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
-              <span className="inline-flex items-center gap-2">
-                <span className="agenda-legend-dot bg-sky-500" />
-                Tarefas
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span className="agenda-legend-dot bg-emerald-500" />
-                Inspecoes
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span className="agenda-legend-dot bg-fuchsia-500" />
-                Eventos
-              </span>
-            </div>
-          </div>
-
-          {view === 'month' ? (
-            <div className="rounded-[1.6rem] border border-slate-200/80 bg-white/82 p-4">
-              <Calendar
-                onChange={setSelectedDate}
-                onClickDay={setSelectedDate}
-                onActiveStartDateChange={({ activeStartDate: nextStartDate }) => {
-                  if (nextStartDate) setActiveStartDate(nextStartDate);
-                }}
-                value={selectedDate}
-                className="agenda-calendar"
-                next2Label={null}
-                prev2Label={null}
-                formatShortWeekday={(_, date) => date.toLocaleDateString('pt-BR', { weekday: 'short' })}
-                tileClassName={({ date, view: calendarView }) => {
-                  if (calendarView !== 'month') return null;
-                  const dateKey = getLocalDateKey(date);
-                  const eventsForDay = visibleMonthEvents[dateKey];
-                  if (dateKey === getLocalDateKey(selectedDate)) return 'agenda-calendar__tile--selected';
-                  if (eventsForDay?.total) return 'agenda-calendar__tile--busy';
-                  return null;
-                }}
-                tileContent={({ date, view: calendarView }) => {
-                  if (calendarView !== 'month') return null;
-                  const dateKey = getLocalDateKey(date);
-                  const eventsForDay = visibleMonthEvents[dateKey];
-                  if (!eventsForDay) return <div className="agenda-calendar__tile-meta" />;
-                  return (
-                    <div className="agenda-calendar__tile-meta">
-                      <div className="agenda-calendar__dots">
-                        {eventsForDay.tarefas.length > 0 ? <span className="agenda-calendar__dot bg-sky-500" /> : null}
-                        {eventsForDay.inspecoes.length > 0 ? <span className="agenda-calendar__dot bg-emerald-500" /> : null}
-                        {eventsForDay.eventos.length > 0 ? <span className="agenda-calendar__dot bg-fuchsia-500" /> : null}
-                      </div>
-                      <span className="agenda-calendar__count">{eventsForDay.total}</span>
-                    </div>
-                  );
-                }}
-              />
-            </div>
-          ) : null}
-
-          {view === 'week' ? renderWeekView() : null}
-
-          {view === 'day' ? (
-            <div>
-              <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <p className="text-sm text-slate-500">Linha do tempo</p>
-                  <p className="mt-1 text-2xl font-semibold capitalize text-slate-900">{formatLongDate(selectedDate)}</p>
-                </div>
-                <span className="status-badge status-info">
-                  {dayTimeline.length === 1 ? '1 atividade' : `${dayTimeline.length} atividades`}
+        {view === 'month' ? (
+          <AgendaMonthCalendar
+            activeStartDate={visibleMonthAnchor}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            onActiveStartDateChange={setActiveStartDate}
+            getDayEvents={getEventsForDate}
+            loading={loading}
+          />
+        ) : (
+          <div className="panel-surface p-6">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">Navegacao</p>
+                <h2 className="mt-1 text-xl text-slate-900">
+                  {view === 'week' ? 'Panorama semanal' : 'Linha do tempo do dia'}
+                </h2>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                <span className="inline-flex items-center gap-2">
+                  <span className="agenda-legend-dot bg-sky-500" />
+                  Tarefas
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="agenda-legend-dot bg-emerald-500" />
+                  Inspecoes
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="agenda-legend-dot bg-fuchsia-500" />
+                  Eventos
                 </span>
               </div>
-              {renderTimeline()}
             </div>
-          ) : null}
-        </div>
+
+            {view === 'week' ? renderWeekView() : null}
+
+            {view === 'day' ? (
+              <div>
+                <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-slate-500">Linha do tempo</p>
+                    <p className="mt-1 text-2xl font-semibold capitalize text-slate-900">{formatLongDate(selectedDate)}</p>
+                  </div>
+                  <span className="status-badge status-info">
+                    {dayTimeline.length === 1 ? '1 atividade' : `${dayTimeline.length} atividades`}
+                  </span>
+                </div>
+                {renderTimeline()}
+              </div>
+            ) : null}
+          </div>
+        )}
 
         <div className="space-y-6">
           <div className="panel-surface p-6">
