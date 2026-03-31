@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { AlertCircle, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
+import AuthShell from '../components/AuthShell';
 import { useAuth } from '../contexts/AuthContext';
-import { Shield, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -15,7 +16,7 @@ const Login = () => {
     email: '',
     senha: ''
   });
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -24,14 +25,16 @@ const Login = () => {
   };
 
   const emailIsValid = (value) => /\S+@\S+\.\S+/.test(String(value).trim());
+
   const validateBeforeSubmit = () => {
     const errors = {};
+
     if (!emailIsValid(formData.email)) {
-      errors.email = 'Informe um email válido';
+      errors.email = 'Informe um email valido.';
     }
 
     if (String(formData.senha).trim().length < 6) {
-      errors.senha = 'A senha precisa ter pelo menos 6 caracteres';
+      errors.senha = 'A senha precisa ter pelo menos 6 caracteres.';
     }
 
     if (Object.keys(errors).length) {
@@ -42,17 +45,17 @@ const Login = () => {
     return true;
   };
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-    resetFieldError(e.target.name);
+  const handleChange = (event) => {
+    setFormData((prev) => ({
+      ...prev,
+      [event.target.name]: event.target.value
+    }));
+    resetFieldError(event.target.name);
     setError('');
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
     setLoading(true);
     setFieldErrors({ email: '', senha: '' });
@@ -64,20 +67,21 @@ const Login = () => {
 
     try {
       const result = await login(formData.email, formData.senha);
-      
+
       if (result.success) {
         navigate('/dashboard');
       } else {
-        setError(result.error);
+        setError(result.error || 'Nao foi possivel autenticar.');
       }
-    } catch (error) {
-      const apiCode = error?.response?.data?.meta?.code;
+    } catch (submitError) {
+      const apiCode = submitError?.response?.data?.meta?.code;
+
       if (apiCode === 'AUTH_USER_NOT_FOUND') {
-        setFieldErrors((prev) => ({ ...prev, email: 'Usuário não encontrado' }));
-        setError('Usuário não encontrado');
+        setFieldErrors((prev) => ({ ...prev, email: 'Usuario nao encontrado.' }));
+        setError('Usuario nao encontrado.');
       } else if (apiCode === 'AUTH_INVALID_PASSWORD') {
-        setFieldErrors((prev) => ({ ...prev, senha: 'Senha incorreta' }));
-        setError('Senha incorreta');
+        setFieldErrors((prev) => ({ ...prev, senha: 'Senha incorreta.' }));
+        setError('Senha incorreta.');
       } else {
         setError('Erro inesperado. Tente novamente.');
       }
@@ -87,117 +91,89 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="mx-auto h-12 w-12 flex items-center justify-center bg-primary-100 rounded-full">
-            <Shield className="h-8 w-8 text-primary-600" />
+    <AuthShell
+      eyebrow="Acesso seguro"
+      title="Entre no centro operacional."
+      description="Acesse a carteira de empresas, acompanhe prioridades e mova a operacao SST sem perder contexto tecnico."
+      switchPrompt="Ainda nao tem acesso?"
+      switchLabel="Criar conta"
+      switchTo="/register"
+      footerNote="A autenticacao respeita perfil e permissao por modulo. Auditoria e rastreabilidade permanecem no backend."
+    >
+      <form className="auth-form" onSubmit={handleSubmit}>
+        {error ? (
+          <div className="auth-alert" role="alert">
+            <AlertCircle className="h-4 w-4" />
+            <span>{error}</span>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Entre na sua conta
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Ou{' '}
-            <Link
-              to="/register"
-              className="font-medium text-primary-600 hover:text-primary-500"
-            >
-              crie uma nova conta
-            </Link>
-          </p>
-        </div>
-        
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <div className="flex">
-                <AlertCircle className="h-5 w-5 text-red-400" />
-                <div className="ml-3">
-                  <p className="text-sm text-red-800">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                placeholder="seu@email.com"
-                value={formData.email}
-                onChange={handleChange}
-                aria-invalid={!!fieldErrors.email}
-                aria-describedby={fieldErrors.email ? 'email-feedback' : undefined}
-              />
-              {fieldErrors.email && (
-                <p id="email-feedback" className="text-xs text-red-600 mt-1">
-                  {fieldErrors.email}
-                </p>
-              )}
-            </div>
-            
-            <div>
-              <label htmlFor="senha" className="block text-sm font-medium text-gray-700">
-                Senha
-              </label>
-              <div className="mt-1 relative">
-                <input
-                id="senha"
-                name="senha"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                required
-                className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                placeholder="Sua senha"
-                value={formData.senha}
-                onChange={handleChange}
-                aria-invalid={!!fieldErrors.senha}
-                aria-describedby={fieldErrors.senha ? 'senha-feedback' : undefined}
-              />
-              <button
-                type="button"
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5 text-gray-400" />
-                ) : (
-                  <Eye className="h-5 w-5 text-gray-400" />
-                )}
-              </button>
-            </div>
-            {fieldErrors.senha && (
-              <p id="senha-feedback" className="text-xs text-red-600 mt-1">
-                {fieldErrors.senha}
-              </p>
-            )}
-          </div>
-          </div>
+        ) : null}
 
-          <div>
+        <div className="auth-field">
+          <label htmlFor="email">Email corporativo</label>
+          <div className="auth-field__control">
+            <Mail className="h-4 w-4" />
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="voce@empresa.com"
+              aria-invalid={Boolean(fieldErrors.email)}
+              aria-describedby={fieldErrors.email ? 'email-feedback' : undefined}
+              required
+            />
+          </div>
+          {fieldErrors.email ? (
+            <p id="email-feedback" className="auth-field__feedback auth-field__feedback--error">
+              {fieldErrors.email}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="auth-field">
+          <div className="auth-field__label-row">
+            <label htmlFor="senha">Senha</label>
+            <Link className="auth-field__link" to="/recuperar-senha">
+              Recuperar acesso
+            </Link>
+          </div>
+          <div className="auth-field__control">
+            <LockKeyhole className="h-4 w-4" />
+            <input
+              id="senha"
+              name="senha"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={formData.senha}
+              onChange={handleChange}
+              placeholder="Sua senha"
+              aria-invalid={Boolean(fieldErrors.senha)}
+              aria-describedby={fieldErrors.senha ? 'senha-feedback' : undefined}
+              required
+            />
             <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              type="button"
+              className="auth-field__toggle"
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
             >
-              {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              ) : (
-                'Entrar'
-              )}
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+          {fieldErrors.senha ? (
+            <p id="senha-feedback" className="auth-field__feedback auth-field__feedback--error">
+              {fieldErrors.senha}
+            </p>
+          ) : null}
+        </div>
+
+        <button type="submit" disabled={loading} className="auth-submit">
+          {loading ? 'Autenticando...' : 'Entrar na operacao'}
+        </button>
+      </form>
+    </AuthShell>
   );
 };
 

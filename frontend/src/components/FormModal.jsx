@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Save, AlertCircle } from 'lucide-react';
 
 const FormModal = ({ 
@@ -34,46 +34,42 @@ const FormModal = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div 
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+        <div
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity"
           onClick={onClose}
         />
-        
-        <div 
-          className={`relative transform overflow-hidden rounded-lg bg-white shadow-xl transition-all ${
+
+        <div
+          className={`relative w-full max-w-3xl transform overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/95 shadow-[0_30px_80px_rgba(15,23,42,0.22)] backdrop-blur-xl transition-all ${
             isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
           }`}
-          style={{ width: '90%', maxWidth: '600px' }}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {title}
-            </h3>
+          <div className="flex items-center justify-between border-b border-slate-200/80 px-6 py-5">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">Edicao guiada</p>
+              <h3 className="mt-1 text-lg font-semibold text-slate-900">{title}</h3>
+            </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/80 text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700"
             >
               <X className="h-6 w-6" />
             </button>
           </div>
 
-          {/* Error Message */}
           {error && (
-            <div className="mx-6 mt-4 flex items-center space-x-2 rounded-md bg-red-50 p-3 text-red-700">
+            <div className="mx-6 mt-5 flex items-center space-x-2 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-700">
               <AlertCircle className="h-5 w-5" />
               <span className="text-sm">{error}</span>
             </div>
           )}
 
-          {/* Form Content */}
           {asForm ? (
             <form onSubmit={onSubmit} className="px-6 py-4">
               {children}
-              
-              {/* Footer */}
+
               {showFooter && (
-                <div className="mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-4">
+                <div className="mt-8 flex justify-end space-x-3 border-t border-slate-200/80 pt-5">
                   <button
                     type="button"
                     onClick={onClose}
@@ -88,7 +84,7 @@ const FormModal = ({
                     disabled={loading}
                   >
                     {loading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-900/10 border-t-slate-900" />
                     ) : (
                       <Save className="h-4 w-4" />
                     )}

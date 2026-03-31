@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
+const RecuperarSenha = lazy(() => import('./pages/RecuperarSenha'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Empresas = lazy(() => import('./pages/Empresas'));
 const EmpresaDetalhes = lazy(() => import('./pages/EmpresaDetalhes'));
@@ -25,8 +26,8 @@ const RiskSurvey = lazy(() => import('./pages/RiskSurvey'));
 const RiskSurveyEnvironments = lazy(() => import('./pages/RiskSurveyEnvironments'));
 
 const PageLoader = () => (
-  <div className="flex min-h-screen items-center justify-center bg-gray-50">
-    <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary-500" />
+  <div className="flex min-h-screen items-center justify-center bg-slate-950">
+    <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-lime-400" />
   </div>
 );
 
@@ -48,6 +49,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={renderPage(Login)} />
       <Route path="/register" element={renderPage(Register)} />
+      <Route path="/recuperar-senha" element={renderPage(RecuperarSenha)} />
 
       <Route
         path="/"

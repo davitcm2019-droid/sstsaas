@@ -1,14 +1,20 @@
-﻿import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Building2,
-  CheckSquare,
   AlertTriangle,
-  Shield,
-  Clock,
-  FileText
+  ArrowRight,
+  Building2,
+  CalendarRange,
+  CheckSquare,
+  ClipboardCheck,
+  FileText,
+  Shield
 } from 'lucide-react';
-import { empresasService, tarefasService, eventosService, incidentsService } from '../services/api';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import MetricCard from '../components/ui/MetricCard';
+import EmptyState from '../components/ui/EmptyState';
+import PageHeader from '../components/ui/PageHeader';
+import { empresasService, eventosService, incidentsService, tarefasService } from '../services/api';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -26,7 +32,7 @@ const Dashboard = () => {
   const [eventosProximos, setEventosProximos] = useState([]);
 
   useEffect(() => {
-    loadDashboardData();
+    void loadDashboardData();
   }, []);
 
   const loadDashboardData = async () => {
@@ -44,34 +50,26 @@ const Dashboard = () => {
       const eventos = eventosRes.data.data || [];
       const incidents = incidentsRes.data.data || [];
 
-      const tarefasPendentes = tarefas.filter(t => t.status === 'pendente').length;
-      const empresasConformes = empresas.filter(e => e.conformidade === 'em_dia').length;
-      const empresasAtrasadas = empresas.filter(e => e.conformidade === 'atrasado').length;
-      const alertasAtivos = incidents.filter(incident => incident.status !== 'concluido').length;
-
-      const empresasPendentesList = empresas
-        .filter(e => e.conformidade === 'atrasado')
-        .slice(0, 5);
-
-      const tarefasRecentesList = tarefas.slice(0, 5);
+      const tarefasPendentes = tarefas.filter((tarefa) => tarefa.status === 'pendente').length;
+      const empresasConformes = empresas.filter((empresa) => empresa.conformidade === 'em_dia').length;
+      const empresasAtrasadas = empresas.filter((empresa) => empresa.conformidade === 'atrasado').length;
+      const alertasAtivos = incidents.filter((incident) => incident.status !== 'concluido').length;
 
       const parseEventoData = (evento) => {
         if (!evento?.dataEvento) return Number.MAX_SAFE_INTEGER;
         const base = new Date(evento.dataEvento);
+
         if (!Number.isNaN(base.getTime()) && evento.horaEvento) {
-          const [h = 0, m = 0] = evento.horaEvento.split(':');
+          const [h = 0, m = 0] = String(evento.horaEvento).split(':');
           base.setHours(Number(h) || 0, Number(m) || 0, 0, 0);
         }
+
         return base.getTime();
       };
 
-      const eventosOrdenados = [...eventos]
-        .sort((a, b) => parseEventoData(a) - parseEventoData(b))
-        .slice(0, 5);
-
-      setEmpresasComPendencias(empresasPendentesList);
-      setTarefasRecentes(tarefasRecentesList);
-      setEventosProximos(eventosOrdenados);
+      setEmpresasComPendencias(empresas.filter((empresa) => empresa.conformidade === 'atrasado').slice(0, 5));
+      setTarefasRecentes(tarefas.slice(0, 6));
+      setEventosProximos([...eventos].sort((a, b) => parseEventoData(a) - parseEventoData(b)).slice(0, 5));
 
       setStats({
         totalEmpresas: empresas.length,
@@ -89,273 +87,320 @@ const Dashboard = () => {
     }
   };
 
-  const statCards = [
-    {
-      name: 'Total de Empresas',
-      value: stats.totalEmpresas,
-      icon: Building2,
-      color: 'bg-blue-500',
-      change: '+12%',
-      changeType: 'positive'
-    },
-    {
-      name: 'Tarefas Pendentes',
-      value: stats.tarefasPendentes,
-      icon: CheckSquare,
-      color: 'bg-yellow-500',
-      change: '+5%',
-      changeType: 'negative'
-    },
-    {
-      name: 'Alertas Ativos',
-      value: stats.totalAlertas,
-      icon: AlertTriangle,
-      color: 'bg-red-500',
-      change: '-2%',
-      changeType: 'positive'
-    },
-    {
-      name: 'Empresas Conformes',
-      value: stats.empresasConformes,
-      icon: Shield,
-      color: 'bg-green-500',
-      change: '+8%',
-      changeType: 'positive'
-    },
-    {
-      name: 'Eventos Programados',
-      value: stats.totalEventos,
-      icon: Clock,
-      color: 'bg-purple-500',
-      change: '+3%',
-      changeType: 'positive'
-    }
-  ];
+  const complianceData = useMemo(() => {
+    const emAjuste = Math.max(stats.totalEmpresas - stats.empresasConformes - stats.empresasAtrasadas, 0);
+
+    return [
+      { name: 'Em dia', total: stats.empresasConformes },
+      { name: 'Atrasadas', total: stats.empresasAtrasadas },
+      { name: 'Em ajuste', total: emAjuste }
+    ];
+  }, [stats.empresasAtrasadas, stats.empresasConformes, stats.totalEmpresas]);
+
+  const cadenceData = useMemo(
+    () => [
+      { name: 'Tarefas', total: stats.tarefasPendentes },
+      { name: 'Alertas', total: stats.totalAlertas },
+      { name: 'Eventos', total: stats.totalEventos }
+    ],
+    [stats.tarefasPendentes, stats.totalAlertas, stats.totalEventos]
+  );
+
+  const formatDate = (value) => {
+    if (!value) return 'Sem data';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Sem data';
+    return date.toLocaleDateString('pt-BR');
+  };
 
   const quickActions = [
     {
-      name: 'Nova Empresa',
-      description: 'Cadastrar nova empresa',
-      icon: Building2,
+      label: 'Abrir carteira de empresas',
+      description: 'Estrutura clientes, unidades e responsables por contexto.',
       href: '/empresas',
-      color: 'bg-primary-500'
+      icon: Building2
     },
     {
-      name: 'Dashboard SST',
-      description: 'Indicadores por empresa',
-      icon: Shield,
-      href: '/sst',
-      color: 'bg-green-600'
+      label: 'Entrar no levantamento',
+      description: 'Cadeia completa de atividade, perigo e risco.',
+      href: '/levantamento-riscos',
+      icon: AlertTriangle
     },
     {
-      name: 'Nova Tarefa',
-      description: 'Criar nova tarefa',
-      icon: CheckSquare,
-      href: '/tarefas',
-      color: 'bg-blue-500'
-    },
-    {
-      name: 'Novo Incidente',
-      description: 'Registrar ocorrência',
-      icon: AlertTriangle,
-      href: '/incidentes',
-      color: 'bg-red-500'
-    },
-    {
-      name: 'Relatórios',
-      description: 'Gerar relatórios',
-      icon: FileText,
-      href: '/relatorios',
-      color: 'bg-gray-600'
+      label: 'Revisar acoes',
+      description: 'Prioridades, prazos e rastreio de evidencias.',
+      href: '/acoes',
+      icon: ClipboardCheck
     }
   ];
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-2 border-slate-300 border-t-lime-500" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Visão Geral</h1>
-        <p className="mt-1 text-sm text-gray-500">Acompanhe os principais indicadores da operação.</p>
-      </div>
-
-      {/* Estatísticas */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {statCards.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.name} className="card">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className={`p-3 rounded-lg ${stat.color}`}>
-                    <Icon className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-                <div className="ml-4 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      {stat.name}
-                    </dt>
-                    <dd className="flex items-baseline">
-                      <div className="text-2xl font-semibold text-gray-900">
-                        {stat.value}
-                      </div>
-                      <div
-                        className={`ml-2 flex items-baseline text-sm font-semibold ${
-                          stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                        }`}
-                      >
-                        {stat.change}
-                      </div>
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Ações Rápidas */}
-      <div>
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Ações Rápidas</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Centro de comando"
+        title="Visao executiva com leitura operacional."
+        description="Acompanhe a carteira, detecte atraso documental e distribua a proxima decisao sem mudar de contexto."
+        actions={
+          <>
+            <Link to="/empresas" className="btn-secondary">
+              Carteira de empresas
+            </Link>
+            <Link to="/levantamento-riscos" className="btn-primary">
+              Abrir levantamento
+            </Link>
+          </>
+        }
+      >
+        <div className="mt-6 grid gap-3 md:grid-cols-3">
           {quickActions.map((action) => {
             const Icon = action.icon;
             return (
               <Link
-                key={action.name}
+                key={action.href}
                 to={action.href}
-                className="card hover:shadow-md transition-shadow duration-200"
+                className="rounded-3xl border border-white/10 bg-white/5 p-4 transition-transform duration-200 hover:-translate-y-1"
               >
-                <div className="flex items-center">
-                  <div className={`p-3 rounded-lg ${action.color}`}>
-                    <Icon className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-sm font-medium text-gray-900">
-                      {action.name}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {action.description}
-                    </p>
-                  </div>
+                <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
+                  <Icon className="h-5 w-5 text-lime-300" />
                 </div>
+                <h2 className="text-base text-white">{action.label}</h2>
+                <p className="mt-2 text-sm text-slate-300">{action.description}</p>
               </Link>
             );
           })}
         </div>
-      </div>
+      </PageHeader>
 
-      {/* Empresas e Tarefas */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="card">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Empresas com Pendências</h3>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          icon={Building2}
+          label="Empresas monitoradas"
+          value={stats.totalEmpresas}
+          meta={`${stats.empresasConformes} em dia`}
+          tone="blue"
+        />
+        <MetricCard
+          icon={CheckSquare}
+          label="Fila operacional"
+          value={stats.tarefasPendentes}
+          meta={`${stats.totalTarefas} tarefas cadastradas`}
+          tone="amber"
+        />
+        <MetricCard
+          icon={AlertTriangle}
+          label="Alertas em aberto"
+          value={stats.totalAlertas}
+          meta="Incidentes e ocorrencias ativas"
+          tone="rose"
+        />
+        <MetricCard
+          icon={CalendarRange}
+          label="Agenda programada"
+          value={stats.totalEventos}
+          meta="Compromissos e renovacoes mapeados"
+          tone="lime"
+        />
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
+        <div className="panel-surface p-6">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">Carteira</p>
+              <h2 className="mt-1 text-xl text-slate-900">Mapa de conformidade</h2>
+            </div>
+            <span className="status-badge status-info">Leitura rapida</span>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="rounded-[1.4rem] border border-slate-200/80 bg-white/80 p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-extrabold uppercase tracking-[0.16em] text-slate-500">Distribuicao</h3>
+                <span className="text-sm text-slate-500">{stats.totalEmpresas} empresas</span>
+              </div>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={complianceData} barSize={34}>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#dbe4ee" />
+                    <XAxis dataKey="name" tickLine={false} axisLine={false} />
+                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                    <Tooltip cursor={{ fill: 'rgba(140, 240, 69, 0.08)' }} />
+                    <Bar dataKey="total" radius={[12, 12, 0, 0]} fill="#8cf045" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="rounded-[1.4rem] border border-slate-200/80 bg-slate-950 p-4 text-white">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-extrabold uppercase tracking-[0.16em] text-slate-400">Cadencia</h3>
+                <span className="text-sm text-slate-400">Demandas imediatas</span>
+              </div>
+              <div className="space-y-3">
+                {cadenceData.map((item) => (
+                  <div key={item.name} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-300">{item.name}</span>
+                      <strong className="text-2xl text-white">{item.total}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="panel-surface p-6">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">Prioridade</p>
+              <h2 className="mt-1 text-xl text-slate-900">Empresas com maior tensao</h2>
+            </div>
+            <Link to="/empresas" className="btn-ghost">
+              Ver carteira
+            </Link>
+          </div>
+
           <div className="space-y-3">
             {empresasComPendencias.length > 0 ? (
               empresasComPendencias.map((empresa) => (
-                <div
+                <Link
                   key={empresa.id}
-                  className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg"
+                  to={`/empresas/${empresa.id}`}
+                  className="flex items-center justify-between rounded-[1.35rem] border border-slate-200/80 bg-white/80 px-4 py-4 transition-transform duration-200 hover:-translate-y-1"
                 >
-                  <div className="flex items-center">
-                    <AlertTriangle className="h-5 w-5 text-yellow-500 mr-3 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{empresa.nome}</p>
-                      <p className="text-xs text-gray-500">
-                        {empresa.pendencias || 1} pendência(s)
-                      </p>
-                    </div>
+                  <div>
+                    <p className="text-base font-semibold text-slate-900">{empresa.nome}</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {empresa.pendencias || 1} pendencia(s) e conformidade em atraso
+                    </p>
                   </div>
-                  <span className="status-badge status-warning">Atrasado</span>
-                </div>
+                  <ArrowRight className="h-5 w-5 text-slate-400" />
+                </Link>
               ))
             ) : (
-              <p className="text-sm text-gray-500">Nenhuma empresa com pendências no momento.</p>
+              <EmptyState
+                icon={Shield}
+                title="Carteira estabilizada"
+                description="Nenhuma empresa esta marcada com atraso neste momento."
+              />
             )}
           </div>
         </div>
+      </section>
 
-        <div className="card">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Tarefas Recentes</h3>
+      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="panel-surface p-6">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">Execucao</p>
+              <h2 className="mt-1 text-xl text-slate-900">Fila recente de tarefas</h2>
+            </div>
+            <Link to="/tarefas" className="btn-secondary">
+              Abrir tarefas
+            </Link>
+          </div>
+
           <div className="space-y-3">
             {tarefasRecentes.length > 0 ? (
               tarefasRecentes.map((tarefa) => (
-                <div
-                  key={tarefa.id}
-                  className="flex items-center justify-between p-3 bg-blue-50 rounded-lg"
-                >
-                  <div className="flex items-center">
-                    <CheckSquare className="h-5 w-5 text-blue-500 mr-3 flex-shrink-0" />
+                <div key={tarefa.id} className="rounded-[1.35rem] border border-slate-200/80 bg-white/86 px-4 py-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{tarefa.titulo}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-base font-semibold text-slate-900">{tarefa.titulo}</p>
+                      <p className="mt-1 text-sm text-slate-500">
                         {tarefa.status === 'concluida'
-                          ? 'Concluída'
+                          ? 'Concluida'
                           : tarefa.dataVencimento
-                            ? `Vence em: ${new Date(tarefa.dataVencimento).toLocaleDateString('pt-BR')}`
-                            : 'Sem data'}
+                            ? `Vencimento em ${formatDate(tarefa.dataVencimento)}`
+                            : 'Sem data definida'}
                       </p>
                     </div>
+                    <span
+                      className={`status-badge ${
+                        tarefa.prioridade === 'alta'
+                          ? 'status-danger'
+                          : tarefa.prioridade === 'media'
+                            ? 'status-warning'
+                            : 'status-info'
+                      }`}
+                    >
+                      {String(tarefa.prioridade || 'normal').toUpperCase()}
+                    </span>
                   </div>
-                  <span
-                    className={`status-badge ${
-                      tarefa.prioridade === 'alta'
-                        ? 'status-danger'
-                        : tarefa.prioridade === 'media'
-                          ? 'status-warning'
-                          : 'status-info'
-                    }`}
-                  >
-                    {tarefa.prioridade?.toUpperCase()}
-                  </span>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-gray-500">Nenhuma tarefa recente encontrada.</p>
+              <EmptyState
+                icon={CheckSquare}
+                title="Sem fila recente"
+                description="Nenhuma tarefa foi registrada ainda para a operacao atual."
+              />
             )}
           </div>
         </div>
-      </div>
 
-      {/* Eventos */}
-      <div className="card">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Próximos Eventos</h3>
-        <div className="space-y-3">
-          {eventosProximos.length > 0 ? (
-            eventosProximos.map((evento) => (
-              <div
-                key={evento.id || evento.titulo}
-                className="flex items-center justify-between p-3 bg-purple-50 rounded-lg"
-              >
-                <div className="flex items-center">
-                  <Clock className="h-5 w-5 text-purple-500 mr-3 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{evento.titulo}</p>
-                    <p className="text-xs text-gray-500">
-                      {evento.dataEvento
-                        ? new Date(evento.dataEvento).toLocaleDateString('pt-BR')
-                        : 'Sem data'}
-                      {evento.horaEvento && ` às ${evento.horaEvento}`}
-                    </p>
+        <div className="panel-surface p-6">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">Agenda</p>
+              <h2 className="mt-1 text-xl text-slate-900">Proximos eventos</h2>
+            </div>
+            <Link to="/agenda" className="btn-ghost">
+              Abrir agenda
+            </Link>
+          </div>
+
+          <div className="space-y-3">
+            {eventosProximos.length > 0 ? (
+              eventosProximos.map((evento) => (
+                <div key={evento.id || evento.titulo} className="rounded-[1.35rem] border border-slate-200/80 bg-slate-950 px-4 py-4 text-white">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold">{evento.titulo}</p>
+                      <p className="mt-1 text-sm text-slate-400">
+                        {formatDate(evento.dataEvento)}
+                        {evento.horaEvento ? ` as ${evento.horaEvento}` : ''}
+                      </p>
+                    </div>
+                    <span className="status-badge status-info">
+                      {String(evento.prioridade || 'info').toUpperCase()}
+                    </span>
                   </div>
                 </div>
-                <span className="status-badge status-info">
-                  {evento.prioridade?.toUpperCase() || 'INFO'}
-                </span>
+              ))
+            ) : (
+              <EmptyState
+                icon={CalendarRange}
+                title="Nenhum evento programado"
+                description="A agenda ainda nao possui compromissos ou renovacoes registradas."
+              />
+            )}
+          </div>
+
+          <div className="mt-5 rounded-[1.35rem] border border-slate-200/80 bg-white/80 p-4">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-lime-100 text-lime-700">
+                <FileText className="h-5 w-5" />
               </div>
-            ))
-          ) : (
-            <p className="text-sm text-gray-500">Nenhum evento programado.</p>
-          )}
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Leitura documental</p>
+                <p className="text-sm text-slate-500">
+                  Combine agenda, tarefas e inventario para preparar revisoes de PGR, LTCAT e PPP.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

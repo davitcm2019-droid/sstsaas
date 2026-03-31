@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -17,6 +17,9 @@ import {
 import * as XLSX from 'xlsx';
 import FormModal from '../components/FormModal';
 import EmpresaForm from '../components/forms/EmpresaForm';
+import EmptyState from '../components/ui/EmptyState';
+import MetricCard from '../components/ui/MetricCard';
+import PageHeader from '../components/ui/PageHeader';
 import { empresasService } from '../services/api';
 
 const REQUIRED_IMPORT_FIELDS = ['nome', 'documento', 'status'];
@@ -45,12 +48,15 @@ const normalizeStatus = (value) => {
 const formatDocumento = (value) => {
   if (!value) return '-';
   const digits = String(value).replace(/\D/g, '');
+
   if (digits.length === 14) {
     return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
   }
+
   if (digits.length === 11) {
     return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   }
+
   return value;
 };
 
@@ -80,6 +86,7 @@ const getDisplayCnae = (value) => {
 const normalizeCnaeCode = (value) => {
   const raw = String(value || '').trim().toUpperCase();
   if (!raw) return '';
+
   const sectionMatch = raw.match(/^([A-U])(?:\b|[\s\-|])/);
   if (sectionMatch) return sectionMatch[1];
   if (/^[A-U]$/.test(raw)) return raw;
@@ -102,18 +109,17 @@ const Empresas = () => {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    loadEmpresas();
+    void loadEmpresas();
   }, [searchTerm, filters]);
 
   useEffect(() => {
-    loadCnaes();
+    void loadCnaes();
   }, []);
 
   const loadEmpresas = async () => {
     try {
       setLoading(true);
-      const params = { search: searchTerm, ...filters };
-      const response = await empresasService.getAll(params);
+      const response = await empresasService.getAll({ search: searchTerm, ...filters });
       setEmpresas(response.data.data || []);
     } catch (error) {
       console.error('Erro ao carregar empresas:', error);
@@ -135,6 +141,19 @@ const Empresas = () => {
     }
   };
 
+  const metrics = useMemo(() => {
+    const ativas = empresas.filter((empresa) => empresa.status === 'ativa').length;
+    const atrasadas = empresas.filter((empresa) => empresa.conformidade === 'atrasado').length;
+    const comPendencia = empresas.filter((empresa) => Number(empresa.pendencias) > 0).length;
+
+    return {
+      total: empresas.length,
+      ativas,
+      atrasadas,
+      comPendencia
+    };
+  }, [empresas]);
+
   const handleCreate = () => {
     setSelectedEmpresa(null);
     setShowModal(true);
@@ -147,6 +166,7 @@ const Empresas = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Tem certeza que deseja excluir esta empresa?')) return;
+
     try {
       await empresasService.delete(id);
       await loadEmpresas();
@@ -155,16 +175,13 @@ const Empresas = () => {
     }
   };
 
-  const handleModalClose = () => {
-    setShowModal(false);
-    setSelectedEmpresa(null);
-  };
-
   const handleDownloadTemplate = async () => {
     let headers = [...REQUIRED_IMPORT_FIELDS];
+
     try {
       const response = await empresasService.getImportTemplate();
       const required = response.data?.data?.required;
+
       if (Array.isArray(required) && required.length > 0) {
         headers = required;
       }
@@ -176,10 +193,6 @@ const Empresas = () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Empresas');
     XLSX.writeFile(workbook, 'modelo_importacao_empresas.xlsx');
-  };
-
-  const handleOpenImport = () => {
-    fileInputRef.current?.click();
   };
 
   const handleImportFile = async (event) => {
@@ -205,7 +218,7 @@ const Empresas = () => {
       );
 
       if (hasMissingRequired) {
-        window.alert('Ha linhas sem campos obrigatorios: nome, documento (cnpj/cpf) e status.');
+        window.alert('Ha linhas sem campos obrigatorios: nome, documento e status.');
         return;
       }
 
@@ -243,15 +256,15 @@ const Empresas = () => {
 
   const handleSaveCnae = async (empresaId) => {
     const cnae = normalizeCnaeCode(cnaeDrafts[empresaId]);
+
     if (!cnae) {
       window.alert('Informe a secao CNAE para salvar.');
       return;
     }
 
-    const cnaesLoaded = cnaeOptions.length > 0;
-    const validCnae = cnaesLoaded ? cnaeOptions.some((item) => item.code === cnae) : true;
+    const validCnae = cnaeOptions.length > 0 ? cnaeOptions.some((item) => item.code === cnae) : true;
     if (!validCnae) {
-      window.alert('Secao CNAE nao encontrada na lista permitida. Selecione uma opcao valida.');
+      window.alert('Secao CNAE nao encontrada na lista permitida.');
       return;
     }
 
@@ -259,12 +272,8 @@ const Empresas = () => {
       setSavingCnaeId(empresaId);
       await empresasService.update(empresaId, { cnae });
 
-      setLastImported((prev) =>
-        prev.map((empresa) => (empresa.id === empresaId ? { ...empresa, cnae } : empresa))
-      );
-      setEmpresas((prev) =>
-        prev.map((empresa) => (empresa.id === empresaId ? { ...empresa, cnae } : empresa))
-      );
+      setLastImported((prev) => prev.map((empresa) => (empresa.id === empresaId ? { ...empresa, cnae } : empresa)));
+      setEmpresas((prev) => prev.map((empresa) => (empresa.id === empresaId ? { ...empresa, cnae } : empresa)));
     } catch (error) {
       console.error('Erro ao atualizar CNAE:', error);
       window.alert(error?.response?.data?.message || 'Falha ao salvar o CNAE.');
@@ -273,94 +282,124 @@ const Empresas = () => {
     }
   };
 
-  const getStatusBadge = (conformidade) => {
+  const getConformidadeBadge = (conformidade) => {
     switch (conformidade) {
       case 'em_dia':
         return <span className="status-badge status-success">Em dia</span>;
       case 'atrasado':
         return <span className="status-badge status-danger">Atrasado</span>;
       default:
-        return <span className="status-badge status-warning">Pendente</span>;
-    }
-  };
-
-  const getStatusIcon = (conformidade) => {
-    switch (conformidade) {
-      case 'em_dia':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'atrasado':
-        return <AlertTriangle className="h-5 w-5 text-red-500" />;
-      default:
-        return <Clock className="h-5 w-5 text-yellow-500" />;
+        return <span className="status-badge status-warning">Em ajuste</span>;
     }
   };
 
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary-500"></div>
+        <div className="h-12 w-12 animate-spin rounded-full border-2 border-slate-300 border-t-lime-500" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Empresas</h1>
-          <p className="mt-1 text-sm text-gray-500">Gerencie as empresas cadastradas no sistema</p>
-          <p className="mt-1 text-xs text-gray-400">
-            Planilha: campos obrigatorios `nome`, `documento` (cnpj/cpf) e `status` (ativa/inativa).
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={handleDownloadTemplate} className="btn-secondary flex items-center">
-            <Download className="mr-2 h-4 w-4" />
-            Modelo
-          </button>
-          <button onClick={handleOpenImport} className="btn-secondary flex items-center" disabled={importing}>
-            <Upload className="mr-2 h-4 w-4" />
-            {importing ? 'Importando...' : 'Importar Planilha'}
-          </button>
-          <button onClick={handleCreate} className="btn-primary flex items-center">
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Empresa
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept=".xlsx,.xls,.csv"
-            onChange={handleImportFile}
-          />
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Carteira de clientes"
+        title="Empresas organizadas para leitura tecnica."
+        description="Filtre a carteira, acompanhe conformidade, importe cadastros e avance para o detalhe operacional sem dispersao visual."
+        actions={
+          <>
+            <button type="button" onClick={handleDownloadTemplate} className="btn-secondary">
+              <Download className="h-4 w-4" />
+              Modelo
+            </button>
+            <button type="button" onClick={() => fileInputRef.current?.click()} className="btn-secondary" disabled={importing}>
+              <Upload className="h-4 w-4" />
+              {importing ? 'Importando...' : 'Importar planilha'}
+            </button>
+            <button type="button" onClick={handleCreate} className="btn-primary">
+              <Plus className="h-4 w-4" />
+              Nova empresa
+            </button>
+          </>
+        }
+      >
+        <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+            <div className="flex items-center gap-3 rounded-full bg-white/10 px-4 py-3 text-slate-200">
+              <Search className="h-4 w-4 shrink-0" />
+              <input
+                type="text"
+                placeholder="Buscar por nome, documento ou ramo"
+                className="w-full border-0 bg-transparent text-sm text-white placeholder:text-slate-400 focus:outline-none"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+              />
+            </div>
+          </div>
 
-      {lastImported.length > 0 && (
-        <div className="card">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">Ultimo upload (lista importada)</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <select
+              className="input-field bg-white/90"
+              value={filters.status}
+              onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}
+            >
+              <option value="">Todos os status</option>
+              <option value="ativo">Ativo</option>
+              <option value="inativo">Inativo</option>
+            </select>
+            <select
+              className="input-field bg-white/90"
+              value={filters.conformidade}
+              onChange={(event) => setFilters((prev) => ({ ...prev, conformidade: event.target.value }))}
+            >
+              <option value="">Todas as conformidades</option>
+              <option value="em_dia">Em dia</option>
+              <option value="atrasado">Atrasado</option>
+            </select>
+          </div>
+        </div>
+      </PageHeader>
+
+      <input ref={fileInputRef} type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportFile} />
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard icon={Building2} label="Empresas filtradas" value={metrics.total} meta="Carteira atual" tone="blue" />
+        <MetricCard icon={CheckCircle} label="Ativas" value={metrics.ativas} meta="Com acesso operacional" tone="lime" />
+        <MetricCard icon={AlertTriangle} label="Em atraso" value={metrics.atrasadas} meta="Exigem priorizacao" tone="rose" />
+        <MetricCard icon={Clock} label="Com pendencias" value={metrics.comPendencia} meta="Demandas abertas" tone="amber" />
+      </section>
+
+      {lastImported.length > 0 ? (
+        <section className="panel-surface p-6">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">Ultimo upload</p>
+              <h2 className="mt-1 text-xl text-slate-900">Revisao rapida de importacao</h2>
+            </div>
+            <span className="status-badge status-info">{lastImported.length} linhas importadas</span>
+          </div>
+
+          <div className="table-shell">
+            <table>
+              <thead>
                 <tr>
-                  <th className="px-4 py-2 text-left font-medium text-gray-600">Nome</th>
-                  <th className="px-4 py-2 text-left font-medium text-gray-600">Documento</th>
-                  <th className="px-4 py-2 text-left font-medium text-gray-600">Status</th>
-                  <th className="px-4 py-2 text-left font-medium text-gray-600">
-                    Seção CNAE (A-U)
-                  </th>
+                  <th>Nome</th>
+                  <th>Documento</th>
+                  <th>Status</th>
+                  <th>Secao CNAE</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {lastImported.map((empresa) => (
                   <tr key={empresa.id}>
-                    <td className="px-4 py-2">{empresa.nome}</td>
-                    <td className="px-4 py-2">{formatDocumento(empresa.cnpj)}</td>
-                    <td className="px-4 py-2">{empresa.status === 'inativo' ? 'Inativa' : 'Ativa'}</td>
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-2">
+                    <td className="font-semibold text-slate-900">{empresa.nome}</td>
+                    <td>{formatDocumento(empresa.cnpj)}</td>
+                    <td>{empresa.status === 'inativo' ? 'Inativa' : 'Ativa'}</td>
+                    <td>
+                      <div className="flex flex-wrap items-center gap-2">
                         <input
-                          className="input-field h-9 min-w-[170px]"
+                          className="input-field h-11 min-w-[12rem]"
                           placeholder={getDisplayCnae(empresa.cnae)}
                           value={cnaeDrafts[empresa.id] || ''}
                           list="cnae-catalog-options"
@@ -369,17 +408,16 @@ const Empresas = () => {
                           }
                         />
                         <button
+                          type="button"
                           onClick={() => handleSaveCnae(empresa.id)}
-                          className="btn-secondary h-9 px-3"
+                          className="btn-secondary"
                           disabled={savingCnaeId === empresa.id}
                         >
                           {savingCnaeId === empresa.id ? 'Salvando...' : 'Salvar'}
                         </button>
                       </div>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {loadingCnaes
-                          ? 'Carregando secoes CNAE...'
-                          : 'Selecione a secao CNAE alinhada ao mapeamento NR.'}
+                      <p className="mt-2 text-xs text-slate-500">
+                        {loadingCnaes ? 'Carregando secoes CNAE...' : 'Associe a secao correta antes de seguir para a operacao.'}
                       </p>
                     </td>
                   </tr>
@@ -387,8 +425,8 @@ const Empresas = () => {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        </section>
+      ) : null}
 
       <datalist id="cnae-catalog-options">
         {cnaeOptions.map((item) => (
@@ -398,142 +436,124 @@ const Empresas = () => {
         ))}
       </datalist>
 
-      <div className="card">
-        <div className="flex flex-col gap-4 sm:flex-row">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar por nome, documento ou ramo..."
-                className="input-field pl-10"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-              />
-            </div>
+      <section className="panel-surface p-6">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">Lista principal</p>
+            <h2 className="mt-1 text-xl text-slate-900">Leitura consolidada da carteira</h2>
           </div>
-          <div className="flex gap-2">
-            <select
-              className="input-field"
-              value={filters.status}
-              onChange={(event) => setFilters({ ...filters, status: event.target.value })}
-            >
-              <option value="">Todos os status</option>
-              <option value="ativo">Ativo</option>
-              <option value="inativo">Inativo</option>
-            </select>
-            <select
-              className="input-field"
-              value={filters.conformidade}
-              onChange={(event) => setFilters({ ...filters, conformidade: event.target.value })}
-            >
-              <option value="">Todas as conformidades</option>
-              <option value="em_dia">Em dia</option>
-              <option value="atrasado">Atrasado</option>
-            </select>
-          </div>
+          <span className="text-sm text-slate-500">Colunas priorizam status, CNAE e responsavel.</span>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {empresas.map((empresa) => (
-          <div key={empresa.id} className="card transition-shadow duration-200 hover:shadow-md">
-            <div className="mb-4 flex items-start justify-between">
-              <div className="flex items-center">
-                <div className="rounded-lg bg-primary-100 p-2">
-                  <Building2 className="h-6 w-6 text-primary-600" />
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-lg font-medium text-gray-900">{empresa.nome}</h3>
-                  <p className="text-sm text-gray-500">{formatDocumento(empresa.cnpj)}</p>
-                </div>
-              </div>
-              {getStatusIcon(empresa.conformidade)}
-            </div>
-
-            <div className="mb-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">CNAE:</span>
-                <span className="font-medium">{getDisplayCnae(empresa.cnae)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Ramo:</span>
-                <span className="font-medium">{empresa.ramo || '-'}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Responsavel:</span>
-                <span className="font-medium">{empresa.responsavel || '-'}</span>
-              </div>
-            </div>
-
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex space-x-4 text-sm">
-                <div className="flex items-center">
-                  <AlertTriangle className="mr-1 h-4 w-4 text-red-500" />
-                  <span className="font-medium text-red-600">{empresa.pendencias}</span>
-                </div>
-                <div className="flex items-center">
-                  <Clock className="mr-1 h-4 w-4 text-yellow-500" />
-                  <span className="font-medium text-yellow-600">{empresa.alertas}</span>
-                </div>
-              </div>
-              {getStatusBadge(empresa.conformidade)}
-            </div>
-
-            <div className="space-y-2">
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <Link to={`/empresas/${empresa.id}`} className="btn-secondary flex items-center justify-center">
-                  <Eye className="mr-2 h-4 w-4" />
-                  Ver Detalhes
-                </Link>
-                <Link to={`/empresas/${empresa.id}/sst`} className="btn-primary flex items-center justify-center">
-                  <Shield className="mr-2 h-4 w-4" />
-                  Dashboard SST
-                </Link>
-              </div>
-              <div className="flex justify-end space-x-2">
-                <button onClick={() => handleEdit(empresa)} className="btn-secondary p-2" title="Editar">
-                  <Edit className="h-4 w-4" />
-                </button>
-                <button
-                  className="btn-secondary p-2 text-red-600 hover:bg-red-50"
-                  onClick={() => handleDelete(empresa.id)}
-                  title="Excluir"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+        {empresas.length > 0 ? (
+          <div className="table-shell">
+            <table>
+              <thead>
+                <tr>
+                  <th>Empresa</th>
+                  <th>Documento</th>
+                  <th>Status</th>
+                  <th>Conformidade</th>
+                  <th>CNAE</th>
+                  <th>Responsavel</th>
+                  <th>Pendencias</th>
+                  <th>Acoes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {empresas.map((empresa) => (
+                  <tr key={empresa.id}>
+                    <td>
+                      <div className="flex items-start gap-3">
+                        <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                          <Building2 className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-900">{empresa.nome}</p>
+                          <p className="mt-1 text-sm text-slate-500">{empresa.ramo || 'Ramo nao informado'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{formatDocumento(empresa.cnpj)}</td>
+                    <td>{empresa.status === 'inativo' ? 'Inativa' : 'Ativa'}</td>
+                    <td>{getConformidadeBadge(empresa.conformidade)}</td>
+                    <td>{getDisplayCnae(empresa.cnae)}</td>
+                    <td>{empresa.responsavel || '-'}</td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <span className="status-badge status-danger">{empresa.pendencias || 0} pend.</span>
+                        <span className="status-badge status-warning">{empresa.alertas || 0} alert.</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link to={`/empresas/${empresa.id}`} className="btn-secondary">
+                          <Eye className="h-4 w-4" />
+                          Detalhe
+                        </Link>
+                        <Link to={`/empresas/${empresa.id}/sst`} className="btn-primary">
+                          <Shield className="h-4 w-4" />
+                          SST
+                        </Link>
+                        <button type="button" onClick={() => handleEdit(empresa)} className="btn-ghost">
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(empresa.id)}
+                          className="btn-ghost text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
-
-      {empresas.length === 0 && (
-        <div className="py-12 text-center">
-          <Building2 className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhuma empresa encontrada</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {searchTerm || Object.values(filters).some((value) => value)
-              ? 'Tente ajustar os filtros de busca.'
-              : 'Comece criando uma nova empresa.'}
-          </p>
-        </div>
-      )}
+        ) : (
+          <EmptyState
+            icon={Building2}
+            title="Nenhuma empresa encontrada"
+            description={
+              searchTerm || Object.values(filters).some((value) => value)
+                ? 'Ajuste os filtros para ampliar a carteira exibida.'
+                : 'Comece criando a primeira empresa da sua operacao.'
+            }
+            action={
+              !searchTerm && !Object.values(filters).some((value) => value) ? (
+                <button type="button" onClick={handleCreate} className="btn-primary">
+                  <Plus className="h-4 w-4" />
+                  Nova empresa
+                </button>
+              ) : null
+            }
+          />
+        )}
+      </section>
 
       <FormModal
         isOpen={showModal}
-        onClose={handleModalClose}
-        title={selectedEmpresa ? 'Editar Empresa' : 'Nova Empresa'}
+        onClose={() => {
+          setShowModal(false);
+          setSelectedEmpresa(null);
+        }}
+        title={selectedEmpresa ? 'Editar empresa' : 'Nova empresa'}
         showFooter={false}
         asForm={false}
       >
         <EmpresaForm
           empresa={selectedEmpresa}
           onSave={() => {
-            loadEmpresas();
-            handleModalClose();
+            void loadEmpresas();
+            setShowModal(false);
+            setSelectedEmpresa(null);
           }}
-          onCancel={handleModalClose}
+          onCancel={() => {
+            setShowModal(false);
+            setSelectedEmpresa(null);
+          }}
         />
       </FormModal>
     </div>
