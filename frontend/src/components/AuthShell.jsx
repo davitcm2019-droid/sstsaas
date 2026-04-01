@@ -6,6 +6,7 @@ import {
   FileCheck2,
   ShieldCheck
 } from 'lucide-react';
+import authHeroImage from '../assets/auth-hero.avif';
 
 const fieldSignals = [
   {
@@ -39,7 +40,7 @@ const AuthShell = ({
   children
 }) => {
   return (
-    <div className="auth-shell">
+    <div className="auth-shell" style={{ '--auth-hero-image': `url(${authHeroImage})` }}>
       <div className="auth-shell__grid">
         <section className="auth-hero">
           <div className="auth-hero__image" />
