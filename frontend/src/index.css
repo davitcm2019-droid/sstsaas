@@ -1217,7 +1217,7 @@
   .auth-hero__image {
     background-image:
       linear-gradient(180deg, rgba(6, 13, 24, 0.28) 0%, rgba(6, 13, 24, 0.52) 100%),
-      url('../assets/auth-hero.jpg');
+      url('../assets/auth-hero.avif');
     background-position: center;
     background-size: cover;
     transform: scale(1.04);
