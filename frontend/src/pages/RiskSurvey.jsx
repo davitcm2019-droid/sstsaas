@@ -1,8 +1,9 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Save, Trash2 } from 'lucide-react';
 
 import FormModal from '../components/FormModal';
+import EmptyState from '../components/ui/EmptyState';
 import { empresasService, riskSurveyService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -19,13 +20,47 @@ const EMPTY_RISK = {
   riskLibraryId: '',
   tituloRisco: '',
   perigo: '',
+  fonteGeradora: '',
   eventoPerigoso: '',
   danoPotencial: '',
+  descricaoExposicao: '',
+  frequenciaExposicao: 'frequente',
+  habitualidade: 'habitual_intermitente',
+  duracaoExposicao: '',
+  viaExposicao: '',
   condicao: 'normal',
   numeroExpostos: 1,
   grupoHomogeneo: false,
-  controlesExistentes: ''
+  controlesExistentes: '',
+  controlesEstruturados: {
+    epc: [],
+    epi: [],
+    administrativos: [],
+    organizacionais: [],
+    emergencia: [],
+    observacoes: '',
+    eficacia: 'nao_avaliada'
+  }
 };
+
+const EMPTY_ACTION_PLAN = {
+  titulo: '',
+  descricao: '',
+  tipo: 'corretiva',
+  prioridade: 'media',
+  status: 'pendente',
+  responsavel: '',
+  prazo: '',
+  criterioAceite: '',
+  evidenciaEsperada: ''
+};
+
+const listToText = (items = []) => (Array.isArray(items) ? items.join('\n') : '');
+const textToList = (value = '') =>
+  String(value)
+    .split('\n')
+    .map((item) => item.trim())
+    .filter(Boolean);
 
 const EMPTY_ASSESSMENT = {
   probabilidade: 1,
@@ -64,6 +99,7 @@ const RiskSurvey = () => {
   const canConfigure = hasPermission('riskSurvey:configure');
   const canWrite = hasPermission('riskSurvey:write');
   const canFinalize = hasPermission('riskSurvey:finalize');
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -71,6 +107,8 @@ const RiskSurvey = () => {
   const [metadata, setMetadata] = useState(null);
   const [dashboard, setDashboard] = useState(null);
   const [empresas, setEmpresas] = useState([]);
+  const [cycles, setCycles] = useState([]);
+  const [selectedCycleId, setSelectedCycleId] = useState('');
   const [libraryItems, setLibraryItems] = useState([]);
   const [devices, setDevices] = useState([]);
 
@@ -93,12 +131,24 @@ const RiskSurvey = () => {
 
   const [activityForm, setActivityForm] = useState(EMPTY_ACTIVITY);
   const [riskForm, setRiskForm] = useState(EMPTY_RISK);
+  const [riskEditForm, setRiskEditForm] = useState(EMPTY_RISK);
   const [assessmentForm, setAssessmentForm] = useState(EMPTY_ASSESSMENT);
   const [measurementForm, setMeasurementForm] = useState(EMPTY_MEASUREMENT);
+  const [actionPlanForm, setActionPlanForm] = useState(EMPTY_ACTION_PLAN);
 
   const selectedEnvironment = useMemo(
     () => environments.find((item) => String(item.id) === String(selectedEnvironmentId)) || null,
     [environments, selectedEnvironmentId]
+  );
+
+  const selectedCycle = useMemo(
+    () => cycles.find((item) => String(item.id) === String(selectedCycleId)) || null,
+    [cycles, selectedCycleId]
+  );
+
+  const companyMap = useMemo(
+    () => new Map(empresas.map((empresa) => [String(empresa.id), empresa.nome])),
+    [empresas]
   );
 
   const filteredLibrary = useMemo(
@@ -117,26 +167,46 @@ const RiskSurvey = () => {
   const computedClass = scoreLabel(computedScore || 1);
 
   const loadDashboard = async () => {
-    const response = await riskSurveyService.getDashboard(empresaId ? { empresaId } : {});
+    const response = await riskSurveyService.getDashboard(
+      selectedCycleId ? { cycleId: selectedCycleId } : empresaId ? { empresaId } : {}
+    );
     setDashboard(response.data.data || null);
   };
 
   const loadBase = async () => {
-    const [metadataRes, companiesRes, libraryRes, devicesRes] = await Promise.all([
+    const [metadataRes, companiesRes, cyclesRes, libraryRes, devicesRes] = await Promise.all([
       riskSurveyService.getMetadata(),
       empresasService.getAll(),
+      riskSurveyService.listCycles(),
       riskSurveyService.listLibrary({ ativo: true }),
       riskSurveyService.listDevices({ ativo: true })
     ]);
 
+    const cycleRows = cyclesRes.data.data || [];
+    const requestedCycleId = searchParams.get('cycleId');
+    const preferredCycle =
+      cycleRows.find((item) => String(item.id) === String(requestedCycleId)) ||
+      cycleRows.find((item) => item.status === 'draft' || item.status === 'in_review') ||
+      cycleRows[0] ||
+      null;
+
     setMetadata(metadataRes.data.data || null);
     setEmpresas(companiesRes.data.data || []);
+    setCycles(cycleRows);
+    setSelectedCycleId(preferredCycle?.id || '');
+    setEmpresaId(preferredCycle?.empresaId || '');
     setLibraryItems(libraryRes.data.data || []);
     setDevices(devicesRes.data.data || []);
   };
 
   const loadEnvironments = async () => {
-    const response = await riskSurveyService.listEnvironments(empresaId ? { empresaId } : {});
+    if (!selectedCycleId) {
+      setEnvironments([]);
+      setSelectedEnvironmentId('');
+      return;
+    }
+
+    const response = await riskSurveyService.listEnvironments({ cycleId: selectedCycleId });
     const rows = response.data.data || [];
     setEnvironments(rows);
     if (!rows.some((item) => String(item.id) === String(selectedEnvironmentId))) {
@@ -189,14 +259,48 @@ const RiskSurvey = () => {
   const loadRiskDetail = async () => {
     if (!selectedRiskId) {
       setRiskDetail(null);
+      setRiskEditForm(EMPTY_RISK);
       setAssessmentForm(EMPTY_ASSESSMENT);
       setMeasurementForm(EMPTY_MEASUREMENT);
+      setActionPlanForm(EMPTY_ACTION_PLAN);
       return;
     }
 
     const response = await riskSurveyService.getRiskDetail(selectedRiskId);
     const detail = response.data.data || null;
     setRiskDetail(detail);
+
+    if (detail?.risk) {
+      setRiskEditForm({
+        riskType: detail.risk.riskType || detail.risk.categoriaAgente || 'fisico',
+        riskLibraryId: detail.risk.riskLibraryId || '',
+        tituloRisco: detail.risk.titulo || '',
+        perigo: detail.risk.perigo || '',
+        fonteGeradora: detail.risk.fonteGeradora || '',
+        eventoPerigoso: detail.risk.eventoPerigoso || '',
+        danoPotencial: detail.risk.danoPotencial || '',
+        descricaoExposicao: detail.risk.descricaoExposicao || '',
+        frequenciaExposicao: detail.risk.frequenciaExposicao || 'frequente',
+        habitualidade: detail.risk.habitualidade || 'habitual_intermitente',
+        duracaoExposicao: detail.risk.duracaoExposicao || '',
+        viaExposicao: detail.risk.viaExposicao || '',
+        condicao: detail.risk.condicao || 'normal',
+        numeroExpostos: detail.risk.numeroExpostos || 1,
+        grupoHomogeneo: Boolean(detail.risk.grupoHomogeneo),
+        controlesExistentes: detail.risk.controlesExistentes || '',
+        controlesEstruturados: {
+          epc: detail.risk.controlesEstruturados?.epc || [],
+          epi: detail.risk.controlesEstruturados?.epi || [],
+          administrativos: detail.risk.controlesEstruturados?.administrativos || [],
+          organizacionais: detail.risk.controlesEstruturados?.organizacionais || [],
+          emergencia: detail.risk.controlesEstruturados?.emergencia || [],
+          observacoes: detail.risk.controlesEstruturados?.observacoes || '',
+          eficacia: detail.risk.controlesEstruturados?.eficacia || 'nao_avaliada'
+        }
+      });
+    } else {
+      setRiskEditForm(EMPTY_RISK);
+    }
 
     if (detail?.assessment) {
       setAssessmentForm({
@@ -213,6 +317,7 @@ const RiskSurvey = () => {
       ...prev,
       deviceId: detail?.measurements?.[0]?.deviceId || prev.deviceId || ''
     }));
+    setActionPlanForm((prev) => ({ ...prev, responsavel: prev.responsavel || selectedCycle?.responsibleTechnical?.nome || '' }));
   };
 
   useEffect(() => {
@@ -221,7 +326,6 @@ const RiskSurvey = () => {
         setLoading(true);
         setError('');
         await loadBase();
-        await Promise.all([loadEnvironments(), loadDashboard()]);
       } catch (err) {
         setError(err?.response?.data?.message || 'Erro ao carregar módulo de riscos.');
       } finally {
@@ -231,14 +335,25 @@ const RiskSurvey = () => {
   }, []);
 
   useEffect(() => {
+    if (!selectedCycleId) {
+      setDashboard(null);
+      setEnvironments([]);
+      setSelectedEnvironmentId('');
+      return;
+    }
+
+    if (selectedCycle?.empresaId) {
+      setEmpresaId(selectedCycle.empresaId);
+    }
+    setSearchParams({ cycleId: selectedCycleId });
     void (async () => {
       try {
         await Promise.all([loadEnvironments(), loadDashboard()]);
       } catch (err) {
-        setError(err?.response?.data?.message || 'Erro ao atualizar filtros por empresa.');
+        setError(err?.response?.data?.message || 'Erro ao atualizar o ciclo selecionado.');
       }
     })();
-  }, [empresaId]);
+  }, [selectedCycleId]);
 
   useEffect(() => {
     void loadCargos();
@@ -279,8 +394,11 @@ const RiskSurvey = () => {
     if (!selectedActivityId) return;
 
     try {
-      if (isManualRisk && (!riskForm.tituloRisco || !riskForm.perigo || !riskForm.eventoPerigoso || !riskForm.danoPotencial)) {
-        setError('Preencha título, perigo, evento perigoso e dano potencial para cadastrar um novo risco.');
+      if (
+        isManualRisk &&
+        (!riskForm.tituloRisco || !riskForm.perigo || !riskForm.fonteGeradora || !riskForm.eventoPerigoso || !riskForm.danoPotencial || !riskForm.descricaoExposicao)
+      ) {
+        setError('Preencha título, perigo, fonte geradora, evento perigoso, dano potencial e exposição para cadastrar um novo risco.');
         return;
       }
 
@@ -290,18 +408,96 @@ const RiskSurvey = () => {
         riskLibraryId: riskForm.riskLibraryId,
         tituloRisco: riskForm.tituloRisco,
         perigo: riskForm.perigo,
+        fonteGeradora: riskForm.fonteGeradora,
         eventoPerigoso: riskForm.eventoPerigoso,
         danoPotencial: riskForm.danoPotencial,
+        descricaoExposicao: riskForm.descricaoExposicao,
+        frequenciaExposicao: riskForm.frequenciaExposicao,
+        habitualidade: riskForm.habitualidade,
+        duracaoExposicao: riskForm.duracaoExposicao,
+        viaExposicao: riskForm.viaExposicao,
         condicao: riskForm.condicao,
         numeroExpostos: riskForm.numeroExpostos,
         grupoHomogeneo: riskForm.grupoHomogeneo,
-        controlesExistentes: riskForm.controlesExistentes
+        controlesExistentes: riskForm.controlesExistentes,
+        controlesEstruturados: riskForm.controlesEstruturados
       });
       setRiskModalOpen(false);
       setRiskForm(EMPTY_RISK);
       await Promise.all([loadRisks(), loadDashboard()]);
     } catch (err) {
       setError(err?.response?.data?.message || 'Erro ao criar risco.');
+    }
+  };
+
+  const onSaveRiskProfile = async (event) => {
+    event.preventDefault();
+    if (!riskDetail?.risk?.id) return;
+
+    try {
+      await riskSurveyService.updateRisk(riskDetail.risk.id, {
+        titulo: riskEditForm.tituloRisco,
+        perigo: riskEditForm.perigo,
+        fonteGeradora: riskEditForm.fonteGeradora,
+        eventoPerigoso: riskEditForm.eventoPerigoso,
+        danoPotencial: riskEditForm.danoPotencial,
+        descricaoExposicao: riskEditForm.descricaoExposicao,
+        frequenciaExposicao: riskEditForm.frequenciaExposicao,
+        habitualidade: riskEditForm.habitualidade,
+        duracaoExposicao: riskEditForm.duracaoExposicao,
+        viaExposicao: riskEditForm.viaExposicao,
+        categoriaAgente: riskEditForm.riskType,
+        condicao: riskEditForm.condicao,
+        numeroExpostos: riskEditForm.numeroExpostos,
+        grupoHomogeneo: riskEditForm.grupoHomogeneo,
+        controlesExistentes: riskEditForm.controlesExistentes
+      });
+      await Promise.all([loadRiskDetail(), loadRisks(), loadDashboard()]);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Erro ao atualizar identificação do risco.');
+    }
+  };
+
+  const onSaveControls = async (event) => {
+    event.preventDefault();
+    if (!riskDetail?.risk?.id) return;
+
+    try {
+      await riskSurveyService.updateRiskControls(riskDetail.risk.id, {
+        epc: riskEditForm.controlesEstruturados.epc,
+        epi: riskEditForm.controlesEstruturados.epi,
+        administrativos: riskEditForm.controlesEstruturados.administrativos,
+        organizacionais: riskEditForm.controlesEstruturados.organizacionais,
+        emergencia: riskEditForm.controlesEstruturados.emergencia,
+        observacoes: riskEditForm.controlesEstruturados.observacoes,
+        eficacia: riskEditForm.controlesEstruturados.eficacia,
+        controlesExistentes: riskEditForm.controlesExistentes
+      });
+      await Promise.all([loadRiskDetail(), loadDashboard()]);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Erro ao atualizar controles do risco.');
+    }
+  };
+
+  const onCreateActionPlanItem = async (event) => {
+    event.preventDefault();
+    if (!riskDetail?.risk?.id) return;
+
+    try {
+      await riskSurveyService.createRiskActionPlanItem(riskDetail.risk.id, actionPlanForm);
+      setActionPlanForm((prev) => ({ ...EMPTY_ACTION_PLAN, responsavel: prev.responsavel || selectedCycle?.responsibleTechnical?.nome || '' }));
+      await Promise.all([loadRiskDetail(), loadDashboard()]);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Erro ao criar plano de ação para o risco.');
+    }
+  };
+
+  const onDeleteActionPlanItem = async (itemId) => {
+    try {
+      await riskSurveyService.deleteRiskActionPlanItem(itemId);
+      await Promise.all([loadRiskDetail(), loadDashboard()]);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Erro ao remover plano de ação do risco.');
     }
   };
 
@@ -357,21 +553,52 @@ const RiskSurvey = () => {
     );
   }
 
+  if (!cycles.length) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Levantamento de Riscos Ocupacionais</h1>
+            <p className="text-sm text-gray-500">A execução do fluxo agora depende de um ciclo ativo.</p>
+          </div>
+          <Link className="btn-secondary" to="/levantamento-riscos">
+            Ciclos v2
+          </Link>
+        </div>
+
+        <div className="card">
+          <EmptyState
+            icon={Plus}
+            title="Nenhum ciclo disponivel"
+            description="Crie um ciclo de levantamento para estruturar ambientes, atividades e riscos dentro de um escopo controlado."
+            action={
+              <Link className="btn-primary" to="/levantamento-riscos">
+                Criar ciclo
+              </Link>
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Levantamento de Riscos Ocupacionais</h1>
-          <p className="text-sm text-gray-500">Fluxo obrigatório: Setor ? Ambiente ? Cargo ? Atividade ? Risco.</p>
+          <p className="text-sm text-gray-500">Fluxo obrigatório: Ciclo ? Ambiente ? Cargo ? Atividade ? Risco.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <select className="input-field min-w-[240px]" value={empresaId} onChange={(event) => setEmpresaId(event.target.value)}>
-            <option value="">Todas as empresas</option>
-            {empresas.map((empresa) => (
-              <option key={empresa.id} value={empresa.id}>{empresa.nome}</option>
+          <select className="input-field min-w-[280px]" value={selectedCycleId} onChange={(event) => setSelectedCycleId(event.target.value)}>
+            {cycles.map((cycle) => (
+              <option key={cycle.id} value={cycle.id}>
+                {(cycle.title || `Levantamento ${cycle.estabelecimento}`)} • v{cycle.version}
+              </option>
             ))}
           </select>
-          <Link className="btn-secondary" to="/levantamento-riscos/ambientes">Caracterização de Ambientes</Link>
+          <Link className="btn-secondary" to="/levantamento-riscos">Ciclos v2</Link>
+          <Link className="btn-secondary" to={selectedCycleId ? `/levantamento-riscos/ambientes?cycleId=${selectedCycleId}` : '/levantamento-riscos/ambientes'}>Caracterização de Ambientes</Link>
           {canConfigure && (
             <button className="btn-secondary" onClick={() => riskSurveyService.runLegacyMigration().then(() => loadDashboard())}>
               Migrar legado
@@ -381,6 +608,21 @@ const RiskSurvey = () => {
       </div>
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+
+      {selectedCycle ? (
+        <div className="card flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Ciclo em execucao</div>
+            <div className="mt-2 text-lg font-semibold text-slate-900">{selectedCycle.title || `Levantamento ${selectedCycle.estabelecimento}`}</div>
+            <div className="mt-1 text-sm text-slate-600">
+              {companyMap.get(String(selectedCycle.empresaId)) || 'Empresa vinculada'} • {selectedCycle.unidade} / {selectedCycle.estabelecimento}
+            </div>
+          </div>
+          <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
+            Responsável técnico: {selectedCycle.responsibleTechnical?.nome || 'Não informado'}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-8">
         <div className="card py-4 text-center"><div className="text-xl font-bold">{dashboard?.counts?.ambientes || 0}</div><div className="text-xs text-gray-500">Ambientes</div></div>
@@ -400,10 +642,10 @@ const RiskSurvey = () => {
             {environments.map((item) => (
               <button key={item.id} className={`w-full rounded-lg border p-3 text-left ${String(item.id) === String(selectedEnvironmentId) ? 'border-primary-400 bg-primary-50' : 'border-gray-200'}`} onClick={() => setSelectedEnvironmentId(item.id)}>
                 <div className="text-sm font-semibold">{item.setor}</div>
-                <div className="text-xs text-gray-500">{item.nome} • {item.unidade}</div>
+                <div className="text-xs text-gray-500">{item.nome} • {item.unidade} • {item.estabelecimento || 'Estabelecimento'}</div>
               </button>
             ))}
-            {!environments.length && <div className="text-sm text-gray-500">Cadastre ambientes na tela de caracterização.</div>}
+            {!environments.length && <div className="text-sm text-gray-500">Cadastre ambientes na tela de caracterização para este ciclo.</div>}
           </div>
           {selectedEnvironment && canFinalize && !isEnvironmentFinalized && (
             <button className="btn-secondary mt-3 w-full" onClick={onFinalizeEnvironment}>Finalizar levantamento</button>
@@ -461,28 +703,50 @@ const RiskSurvey = () => {
           <button className={`rounded-lg px-3 py-1.5 text-sm ${tab === 'identificacao' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`} onClick={() => setTab('identificacao')}>Identificação</button>
           <button className={`rounded-lg px-3 py-1.5 text-sm ${tab === 'avaliacao' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`} onClick={() => setTab('avaliacao')}>Avaliação Qualitativa</button>
           <button className={`rounded-lg px-3 py-1.5 text-sm ${tab === 'medicoes' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`} onClick={() => setTab('medicoes')}>Avaliação Quantitativa</button>
+          <button className={`rounded-lg px-3 py-1.5 text-sm ${tab === 'controles' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`} onClick={() => setTab('controles')}>Controles</button>
+          <button className={`rounded-lg px-3 py-1.5 text-sm ${tab === 'plano' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`} onClick={() => setTab('plano')}>Plano de Ação</button>
           {isEnvironmentFinalized && <span className="rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white">Snapshot read-only ativo</span>}
         </div>
 
         {!riskDetail?.risk && <div className="text-sm text-gray-500">Selecione um risco para visualizar detalhes.</div>}
 
         {riskDetail?.risk && tab === 'identificacao' && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-lg border border-gray-200 p-4 text-sm text-gray-700">
-              <div><strong>Ambiente:</strong> {riskDetail.environment?.nome || '-'}</div>
-              <div><strong>Cargo:</strong> {riskDetail.cargo?.nome || '-'}</div>
-              <div><strong>Atividade:</strong> {riskDetail.activity?.nome || '-'}</div>
-              <div><strong>Risco:</strong> {riskDetail.risk?.perigo}</div>
-              <div><strong>Tipo:</strong> {riskDetail.risk?.riskType || riskDetail.risk?.categoriaAgente}</div>
+          <form className="space-y-4" onSubmit={onSaveRiskProfile}>
+            <div className="grid grid-cols-1 gap-4 rounded-lg border border-gray-200 p-4 md:grid-cols-3">
+              <div><span className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Ambiente</span><div className="mt-1 text-sm font-semibold text-gray-900">{riskDetail.environment?.nome || '-'}</div></div>
+              <div><span className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Cargo</span><div className="mt-1 text-sm font-semibold text-gray-900">{riskDetail.cargo?.nome || '-'}</div></div>
+              <div><span className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Atividade</span><div className="mt-1 text-sm font-semibold text-gray-900">{riskDetail.activity?.nome || '-'}</div></div>
             </div>
-            <div className="rounded-lg border border-gray-200 p-4 text-sm text-gray-700">
-              <div><strong>Evento perigoso:</strong> {riskDetail.risk?.eventoPerigoso}</div>
-              <div><strong>Dano potencial:</strong> {riskDetail.risk?.danoPotencial}</div>
-              <div><strong>Condição:</strong> {riskDetail.risk?.condicao}</div>
-              <div><strong>Expostos:</strong> {riskDetail.risk?.numeroExpostos}</div>
-              <div><strong>Legacy migrado:</strong> {riskDetail.risk?.legacyMigrated ? 'Sim' : 'Não'}</div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <input className="input-field" placeholder="Título do risco" value={riskEditForm.tituloRisco} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, tituloRisco: event.target.value }))} />
+              <select className="input-field" value={riskEditForm.riskType} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, riskType: event.target.value }))}>
+                {metadata?.riskTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+              <textarea className="input-field md:col-span-2" placeholder="Perigo" value={riskEditForm.perigo} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, perigo: event.target.value }))} />
+              <textarea className="input-field" placeholder="Fonte geradora" value={riskEditForm.fonteGeradora} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, fonteGeradora: event.target.value }))} />
+              <textarea className="input-field" placeholder="Evento perigoso" value={riskEditForm.eventoPerigoso} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, eventoPerigoso: event.target.value }))} />
+              <textarea className="input-field md:col-span-2" placeholder="Dano potencial" value={riskEditForm.danoPotencial} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, danoPotencial: event.target.value }))} />
+              <textarea className="input-field md:col-span-2" placeholder="Descrição da exposição" value={riskEditForm.descricaoExposicao} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, descricaoExposicao: event.target.value }))} />
+              <select className="input-field" value={riskEditForm.frequenciaExposicao} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, frequenciaExposicao: event.target.value }))}>
+                {metadata?.exposureFrequencyTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+              <select className="input-field" value={riskEditForm.habitualidade} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, habitualidade: event.target.value }))}>
+                {metadata?.exposureHabitualityTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+              <input className="input-field" placeholder="Duração da exposição" value={riskEditForm.duracaoExposicao} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, duracaoExposicao: event.target.value }))} />
+              <input className="input-field" placeholder="Via de exposição" value={riskEditForm.viaExposicao} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, viaExposicao: event.target.value }))} />
+              <select className="input-field" value={riskEditForm.condicao} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, condicao: event.target.value }))}>
+                {metadata?.riskConditionTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+              <input type="number" min="1" className="input-field" value={riskEditForm.numeroExpostos} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, numeroExpostos: Number(event.target.value) || 1 }))} />
+              <label className="flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700 md:col-span-2">
+                <input type="checkbox" checked={riskEditForm.grupoHomogeneo} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, grupoHomogeneo: event.target.checked }))} />
+                Grupo homogêneo de exposição
+              </label>
             </div>
-          </div>
+            {canWrite && !isEnvironmentFinalized && <button className="btn-primary" type="submit"><Save className="mr-2 inline h-4 w-4" />Salvar identificação</button>}
+          </form>
         )}
 
         {riskDetail?.risk && tab === 'avaliacao' && (
@@ -536,6 +800,70 @@ const RiskSurvey = () => {
                 </div>
               ))}
               {!riskDetail.measurements?.length && <div className="text-sm text-gray-500">Nenhuma avaliação quantitativa registrada.</div>}
+            </div>
+          </div>
+        )}
+
+        {riskDetail?.risk && tab === 'controles' && (
+          <form className="space-y-4" onSubmit={onSaveControls}>
+            <textarea className="input-field min-h-[100px]" placeholder="Controles existentes (resumo livre)" value={riskEditForm.controlesExistentes} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, controlesExistentes: event.target.value }))} />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <textarea className="input-field min-h-[120px]" placeholder="EPCs, um por linha" value={listToText(riskEditForm.controlesEstruturados.epc)} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, controlesEstruturados: { ...prev.controlesEstruturados, epc: textToList(event.target.value) } }))} />
+              <textarea className="input-field min-h-[120px]" placeholder="EPIs, um por linha" value={listToText(riskEditForm.controlesEstruturados.epi)} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, controlesEstruturados: { ...prev.controlesEstruturados, epi: textToList(event.target.value) } }))} />
+              <textarea className="input-field min-h-[120px]" placeholder="Medidas administrativas, uma por linha" value={listToText(riskEditForm.controlesEstruturados.administrativos)} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, controlesEstruturados: { ...prev.controlesEstruturados, administrativos: textToList(event.target.value) } }))} />
+              <textarea className="input-field min-h-[120px]" placeholder="Medidas organizacionais, uma por linha" value={listToText(riskEditForm.controlesEstruturados.organizacionais)} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, controlesEstruturados: { ...prev.controlesEstruturados, organizacionais: textToList(event.target.value) } }))} />
+              <textarea className="input-field min-h-[120px] md:col-span-2" placeholder="Ações de emergência e sinalização, uma por linha" value={listToText(riskEditForm.controlesEstruturados.emergencia)} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, controlesEstruturados: { ...prev.controlesEstruturados, emergencia: textToList(event.target.value) } }))} />
+              <select className="input-field" value={riskEditForm.controlesEstruturados.eficacia} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, controlesEstruturados: { ...prev.controlesEstruturados, eficacia: event.target.value } }))}>
+                {metadata?.controlEffectivenessTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+              <textarea className="input-field md:col-span-2" placeholder="Observações sobre eficácia, limitações e lacunas" value={riskEditForm.controlesEstruturados.observacoes} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setRiskEditForm((prev) => ({ ...prev, controlesEstruturados: { ...prev.controlesEstruturados, observacoes: event.target.value } }))} />
+            </div>
+            {canWrite && !isEnvironmentFinalized && <button className="btn-primary" type="submit"><Save className="mr-2 inline h-4 w-4" />Salvar controles</button>}
+          </form>
+        )}
+
+        {riskDetail?.risk && tab === 'plano' && (
+          <div className="space-y-4">
+            {canWrite && !isEnvironmentFinalized && (
+              <form className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 p-4 md:grid-cols-2" onSubmit={onCreateActionPlanItem}>
+                <input className="input-field md:col-span-2" placeholder="Título da ação" value={actionPlanForm.titulo} onChange={(event) => setActionPlanForm((prev) => ({ ...prev, titulo: event.target.value }))} required />
+                <textarea className="input-field md:col-span-2" placeholder="Descrição da ação" value={actionPlanForm.descricao} onChange={(event) => setActionPlanForm((prev) => ({ ...prev, descricao: event.target.value }))} />
+                <select className="input-field" value={actionPlanForm.tipo} onChange={(event) => setActionPlanForm((prev) => ({ ...prev, tipo: event.target.value }))}>
+                  {metadata?.actionPlanTypeTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+                <select className="input-field" value={actionPlanForm.prioridade} onChange={(event) => setActionPlanForm((prev) => ({ ...prev, prioridade: event.target.value }))}>
+                  {metadata?.actionPlanPriorityTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+                <select className="input-field" value={actionPlanForm.status} onChange={(event) => setActionPlanForm((prev) => ({ ...prev, status: event.target.value }))}>
+                  {metadata?.actionPlanStatusTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+                <input className="input-field" placeholder="Responsável" value={actionPlanForm.responsavel} onChange={(event) => setActionPlanForm((prev) => ({ ...prev, responsavel: event.target.value }))} required />
+                <input className="input-field" type="date" value={actionPlanForm.prazo} onChange={(event) => setActionPlanForm((prev) => ({ ...prev, prazo: event.target.value }))} />
+                <input className="input-field md:col-span-2" placeholder="Critério de aceite" value={actionPlanForm.criterioAceite} onChange={(event) => setActionPlanForm((prev) => ({ ...prev, criterioAceite: event.target.value }))} />
+                <textarea className="input-field md:col-span-2" placeholder="Evidência esperada" value={actionPlanForm.evidenciaEsperada} onChange={(event) => setActionPlanForm((prev) => ({ ...prev, evidenciaEsperada: event.target.value }))} />
+                <div className="md:col-span-2"><button className="btn-primary" type="submit"><Plus className="mr-2 inline h-4 w-4" />Vincular ação ao risco</button></div>
+              </form>
+            )}
+
+            <div className="space-y-2">
+              {riskDetail.actionPlanItems?.map((item) => (
+                <div key={item.id} className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 md:flex-row md:items-start md:justify-between">
+                  <div className="space-y-1">
+                    <div className="text-sm font-semibold text-gray-900">{item.titulo}</div>
+                    <div className="text-xs text-gray-500">{item.tipo} • {item.prioridade} • {item.status}</div>
+                    <div className="text-sm text-gray-600">{item.descricao || 'Sem descrição detalhada.'}</div>
+                    <div className="text-xs text-gray-500">Responsável: {item.responsavel || '-'} {item.prazo ? `• Prazo: ${new Date(item.prazo).toLocaleDateString('pt-BR')}` : ''}</div>
+                    {item.criterioAceite ? <div className="text-xs text-gray-500">Critério de aceite: {item.criterioAceite}</div> : null}
+                    {item.evidenciaEsperada ? <div className="text-xs text-gray-500">Evidência esperada: {item.evidenciaEsperada}</div> : null}
+                  </div>
+                  {canWrite && !isEnvironmentFinalized ? (
+                    <button type="button" className="rounded-md border border-red-200 p-2 text-red-600" onClick={() => onDeleteActionPlanItem(item.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+              {!riskDetail.actionPlanItems?.length && <div className="text-sm text-gray-500">Nenhum plano de ação vinculado a este risco.</div>}
             </div>
           </div>
         )}
@@ -596,6 +924,16 @@ const RiskSurvey = () => {
             </>
           )}
           {selectedLibraryItem && <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">{selectedLibraryItem.perigo} • {selectedLibraryItem.eventoPerigoso}</div>}
+          <textarea className="input-field" placeholder="Fonte geradora" value={riskForm.fonteGeradora} onChange={(event) => setRiskForm((prev) => ({ ...prev, fonteGeradora: event.target.value }))} required />
+          <textarea className="input-field" placeholder="Descrição da exposição" value={riskForm.descricaoExposicao} onChange={(event) => setRiskForm((prev) => ({ ...prev, descricaoExposicao: event.target.value }))} required />
+          <select className="input-field" value={riskForm.frequenciaExposicao} onChange={(event) => setRiskForm((prev) => ({ ...prev, frequenciaExposicao: event.target.value }))}>
+            {metadata?.exposureFrequencyTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+          <select className="input-field" value={riskForm.habitualidade} onChange={(event) => setRiskForm((prev) => ({ ...prev, habitualidade: event.target.value }))}>
+            {metadata?.exposureHabitualityTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+          <input className="input-field" placeholder="Duração da exposição" value={riskForm.duracaoExposicao} onChange={(event) => setRiskForm((prev) => ({ ...prev, duracaoExposicao: event.target.value }))} />
+          <input className="input-field" placeholder="Via de exposição" value={riskForm.viaExposicao} onChange={(event) => setRiskForm((prev) => ({ ...prev, viaExposicao: event.target.value }))} />
           <select className="input-field" value={riskForm.condicao} onChange={(event) => setRiskForm((prev) => ({ ...prev, condicao: event.target.value }))}>
             {metadata?.riskConditionTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>

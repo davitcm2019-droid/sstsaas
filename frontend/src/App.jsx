@@ -22,6 +22,7 @@ const Agenda = lazy(() => import('./pages/Agenda'));
 const Documentos = lazy(() => import('./pages/Documentos'));
 const Relatorios = lazy(() => import('./pages/Relatorios'));
 const Usuarios = lazy(() => import('./pages/Usuarios'));
+const RiskSurveyCycles = lazy(() => import('./pages/RiskSurveyCycles'));
 const RiskSurvey = lazy(() => import('./pages/RiskSurvey'));
 const RiskSurveyEnvironments = lazy(() => import('./pages/RiskSurveyEnvironments'));
 
@@ -63,7 +64,8 @@ const AppRoutes = () => {
       <Route path="/empresas/:id/sst" element={renderProtectedPage(EmpresaSstDashboard, 'checklists:read')} />
       <Route path="/tarefas" element={renderProtectedPage(Tarefas, 'tasks:read')} />
       <Route path="/checklists" element={renderProtectedPage(Checklists, 'checklists:read')} />
-      <Route path="/levantamento-riscos" element={renderProtectedPage(RiskSurvey, 'riskSurvey:read')} />
+      <Route path="/levantamento-riscos" element={renderProtectedPage(RiskSurveyCycles, 'riskSurvey:read')} />
+      <Route path="/levantamento-riscos/execucao" element={renderProtectedPage(RiskSurvey, 'riskSurvey:read')} />
       <Route path="/levantamento-riscos/ambientes" element={renderProtectedPage(RiskSurveyEnvironments, 'riskSurvey:read')} />
       <Route path="/incidentes" element={renderProtectedPage(Incidentes, 'incidents:read')} />
       <Route path="/cipa" element={renderProtectedPage(Cipa, 'cipas:read')} />

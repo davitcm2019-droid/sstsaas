@@ -17,6 +17,12 @@ const FREQ_TYPES = ['diaria', 'semanal', 'eventual', 'sazonal'];
 const AGENT_TYPES = ['fisico', 'quimico', 'biologico', 'ergonomico', 'acidente', 'psicossocial'];
 const CONDITION_TYPES = ['normal', 'anormal', 'emergencia'];
 const CONFIDENCE_TYPES = ['alto', 'medio', 'baixo'];
+const EXPOSURE_FREQUENCY_TYPES = ['continua', 'frequente', 'intermitente', 'eventual'];
+const EXPOSURE_HABITUALITY_TYPES = ['habitual_permanente', 'habitual_intermitente', 'eventual'];
+const CONTROL_EFFECTIVENESS_TYPES = ['nao_avaliada', 'adequado', 'parcial', 'ineficaz'];
+const ACTION_PLAN_STATUS_TYPES = ['pendente', 'em_andamento', 'concluida', 'cancelada'];
+const ACTION_PLAN_PRIORITY_TYPES = ['baixa', 'media', 'alta', 'critica'];
+const ACTION_PLAN_TYPE_TYPES = ['preventiva', 'corretiva', 'melhoria', 'administrativa', 'monitoramento'];
 const MEASUREMENT_TYPES = [
   'ruido',
   'calor_ibutg',
@@ -26,6 +32,18 @@ const MEASUREMENT_TYPES = [
   'radiacao_nao_ionizante',
   'outro'
 ];
+const SURVEY_CYCLE_STATUS = ['draft', 'in_review', 'published', 'superseded'];
+const SURVEY_CYCLE_OPEN_STATUS = ['draft', 'in_review'];
+const SURVEY_CYCLE_REVIEW_REASONS = [
+  'implantacao_inicial',
+  'revisao_periodica',
+  'mudanca_processo',
+  'incidente',
+  'solicitacao_interna',
+  'atualizacao_normativa',
+  'outro'
+];
+const SURVEY_CYCLE_METHODOLOGIES = ['gro_pgr', 'gro_pgr_iso45001', 'customizada'];
 const LEGACY_ACTIVITY_NAME = 'Atividade migrada - modelo anterior';
 
 const DEFAULT_RANGES = {
@@ -45,10 +63,40 @@ const attachmentSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const riskControlSchema = new mongoose.Schema(
+  {
+    epc: { type: [String], default: [] },
+    epi: { type: [String], default: [] },
+    administrativos: { type: [String], default: [] },
+    organizacionais: { type: [String], default: [] },
+    emergencia: { type: [String], default: [] },
+    observacoes: { type: String, default: '' },
+    eficacia: { type: String, enum: CONTROL_EFFECTIVENESS_TYPES, default: 'nao_avaliada' }
+  },
+  { _id: false }
+);
+
+const cycleContextSchema = new mongoose.Schema(
+  {
+    scopeSummary: { type: String, default: '' },
+    operationDescription: { type: String, default: '' },
+    workerParticipation: { type: String, default: '' },
+    contractors: { type: String, default: '' },
+    changesSinceLastReview: { type: String, default: '' },
+    contextOfOrganization: { type: String, default: '' },
+    reviewIntervalMonths: { type: Number, default: 12 },
+    lastFieldVisitAt: { type: Date, default: null },
+    nextReviewAt: { type: Date, default: null }
+  },
+  { _id: false }
+);
+
 const environmentSchema = new mongoose.Schema(
   {
+    cycleId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyCycle', default: null, index: true },
     empresaId: { type: String, required: true, index: true },
     unidade: { type: String, required: true },
+    estabelecimento: { type: String, default: '' },
     setor: { type: String, required: true },
     nome: { type: String, required: true },
     tipo: { type: String, enum: ENV_TYPES, required: true },
@@ -94,9 +142,11 @@ const environmentSchema = new mongoose.Schema(
 
 const cargoSchema = new mongoose.Schema(
   {
+    cycleId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyCycle', default: null, index: true },
     environmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyEnvironment', required: true, index: true },
     empresaId: { type: String, required: true, index: true },
     unidade: { type: String, required: true },
+    estabelecimento: { type: String, default: '' },
     setor: { type: String, required: true },
     nome: { type: String, required: true },
     descricao: { type: String, default: '' },
@@ -107,6 +157,7 @@ const cargoSchema = new mongoose.Schema(
 
 const activitySchema = new mongoose.Schema(
   {
+    cycleId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyCycle', default: null, index: true },
     environmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyEnvironment', required: true, index: true },
     cargoId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyCargo', required: true, index: true },
     empresaId: { type: String, required: true, index: true },
@@ -134,19 +185,28 @@ const activitySchema = new mongoose.Schema(
 
 const riskItemSchema = new mongoose.Schema(
   {
+    cycleId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyCycle', default: null, index: true },
     activityId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyActivity', required: true, index: true },
     environmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyEnvironment', required: true, index: true },
     riskLibraryId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskLibrary', default: null, index: true },
     empresaId: { type: String, required: true, index: true },
+    titulo: { type: String, default: '' },
     perigo: { type: String, required: true },
+    fonteGeradora: { type: String, default: '' },
     eventoPerigoso: { type: String, required: true },
     danoPotencial: { type: String, required: true },
+    descricaoExposicao: { type: String, default: '' },
+    frequenciaExposicao: { type: String, enum: EXPOSURE_FREQUENCY_TYPES, default: 'frequente' },
+    habitualidade: { type: String, enum: EXPOSURE_HABITUALITY_TYPES, default: 'habitual_intermitente' },
+    duracaoExposicao: { type: String, default: '' },
+    viaExposicao: { type: String, default: '' },
     riskType: { type: String, enum: AGENT_TYPES, required: true },
     categoriaAgente: { type: String, enum: AGENT_TYPES, required: true },
     condicao: { type: String, enum: CONDITION_TYPES, required: true },
     numeroExpostos: { type: Number, default: 1 },
     grupoHomogeneo: { type: Boolean, default: false },
     controlesExistentes: { type: String, default: '' },
+    controlesEstruturados: { type: riskControlSchema, default: () => ({}) },
     legacyMigrated: { type: Boolean, default: false, index: true },
     isCustomRisk: { type: Boolean, default: false }
   },
@@ -270,14 +330,100 @@ const snapshotSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+const surveyCycleSchema = new mongoose.Schema(
+  {
+    empresaId: { type: String, required: true, index: true },
+    unidade: { type: String, required: true },
+    estabelecimento: { type: String, required: true },
+    title: { type: String, default: '' },
+    description: { type: String, default: '' },
+    version: { type: Number, required: true, min: 1, default: 1 },
+    status: { type: String, enum: SURVEY_CYCLE_STATUS, default: 'draft', index: true },
+    reviewReason: { type: String, enum: SURVEY_CYCLE_REVIEW_REASONS, required: true },
+    methodology: { type: String, enum: SURVEY_CYCLE_METHODOLOGIES, default: 'gro_pgr' },
+    context: { type: cycleContextSchema, default: () => ({}) },
+    responsibleTechnical: {
+      nome: { type: String, required: true },
+      email: { type: String, default: '' },
+      registro: { type: String, default: '' }
+    },
+    clonedFromCycleId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyCycle', default: null, index: true },
+    createdBy: {
+      id: { type: String, default: null },
+      nome: { type: String, default: '' },
+      email: { type: String, default: '' },
+      perfil: { type: String, default: '' }
+    },
+    updatedBy: {
+      id: { type: String, default: null },
+      nome: { type: String, default: '' },
+      email: { type: String, default: '' },
+      perfil: { type: String, default: '' }
+    },
+    publishedAt: { type: Date, default: null },
+    publishedBy: {
+      id: { type: String, default: null },
+      nome: { type: String, default: '' },
+      email: { type: String, default: '' },
+      perfil: { type: String, default: '' }
+    }
+  },
+  { timestamps: true }
+);
+
+const surveyCycleSnapshotSchema = new mongoose.Schema(
+  {
+    cycleId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyCycle', required: true, index: true },
+    version: { type: Number, required: true },
+    publishedAt: { type: Date, required: true },
+    publishedBy: {
+      id: { type: String, default: null },
+      nome: { type: String, default: '' },
+      email: { type: String, default: '' },
+      perfil: { type: String, default: '' }
+    },
+    payload: { type: mongoose.Schema.Types.Mixed, required: true }
+  },
+  { timestamps: true }
+);
+
+const actionPlanItemSchema = new mongoose.Schema(
+  {
+    cycleId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyCycle', required: true, index: true },
+    riskItemId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyItem', required: true, index: true },
+    environmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyEnvironment', required: true, index: true },
+    activityId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyActivity', required: true, index: true },
+    empresaId: { type: String, required: true, index: true },
+    titulo: { type: String, required: true },
+    descricao: { type: String, default: '' },
+    tipo: { type: String, enum: ACTION_PLAN_TYPE_TYPES, default: 'corretiva' },
+    prioridade: { type: String, enum: ACTION_PLAN_PRIORITY_TYPES, default: 'media' },
+    status: { type: String, enum: ACTION_PLAN_STATUS_TYPES, default: 'pendente' },
+    responsavel: { type: String, required: true },
+    prazo: { type: Date, default: null },
+    criterioAceite: { type: String, default: '' },
+    evidenciaEsperada: { type: String, default: '' }
+  },
+  { timestamps: true }
+);
+
 environmentSchema.index({ empresaId: 1, unidade: 1, setor: 1, nome: 1 });
+environmentSchema.index({ cycleId: 1, createdAt: -1 });
 cargoSchema.index({ environmentId: 1, nome: 1 }, { unique: true });
+cargoSchema.index({ cycleId: 1, createdAt: -1 });
 activitySchema.index({ environmentId: 1, nome: 1 });
+activitySchema.index({ cycleId: 1, createdAt: -1 });
 riskItemSchema.index({ activityId: 1, riskType: 1 });
+riskItemSchema.index({ cycleId: 1, createdAt: -1 });
 measurementSchema.index({ riskItemId: 1, dataMedicao: -1 });
 assessmentSchema.index({ activityId: 1 });
 riskLibrarySchema.index({ tipo: 1, titulo: 1 }, { unique: true });
 snapshotSchema.index({ environmentId: 1, createdAt: -1 });
+surveyCycleSchema.index({ empresaId: 1, unidade: 1, estabelecimento: 1, version: -1 });
+surveyCycleSchema.index({ empresaId: 1, status: 1, updatedAt: -1 });
+surveyCycleSnapshotSchema.index({ cycleId: 1, createdAt: -1 });
+actionPlanItemSchema.index({ riskItemId: 1, createdAt: -1 });
+actionPlanItemSchema.index({ cycleId: 1, status: 1, prioridade: 1 });
 
 const RiskSurveyEnvironment =
   mongoose.models.RiskSurveyEnvironment || mongoose.model('RiskSurveyEnvironment', environmentSchema);
@@ -293,6 +439,11 @@ const MeasurementDevice =
 const RiskSurveyConfig = mongoose.models.RiskSurveyConfig || mongoose.model('RiskSurveyConfig', configSchema);
 const RiskSurveyAudit = mongoose.models.RiskSurveyAudit || mongoose.model('RiskSurveyAudit', auditSchema);
 const RiskSurveySnapshot = mongoose.models.RiskSurveySnapshot || mongoose.model('RiskSurveySnapshot', snapshotSchema);
+const RiskSurveyCycle = mongoose.models.RiskSurveyCycle || mongoose.model('RiskSurveyCycle', surveyCycleSchema);
+const RiskSurveyCycleSnapshot =
+  mongoose.models.RiskSurveyCycleSnapshot || mongoose.model('RiskSurveyCycleSnapshot', surveyCycleSnapshotSchema);
+const RiskSurveyActionPlanItem =
+  mongoose.models.RiskSurveyActionPlanItem || mongoose.model('RiskSurveyActionPlanItem', actionPlanItemSchema);
 
 const toText = (value, fallback = '') => (value === undefined || value === null ? fallback : String(value).trim());
 const toNumber = (value, fallback = null) => {
@@ -323,8 +474,10 @@ const mapEnvironment = (doc) => {
   if (!doc) return null;
   return {
     id: doc._id?.toString(),
+    cycleId: doc.cycleId?.toString() || null,
     empresaId: doc.empresaId,
     unidade: doc.unidade,
+    estabelecimento: doc.estabelecimento || '',
     setor: doc.setor,
     nome: doc.nome,
     tipo: doc.tipo,
@@ -346,9 +499,11 @@ const mapCargo = (doc) => {
   if (!doc) return null;
   return {
     id: doc._id?.toString(),
+    cycleId: doc.cycleId?.toString() || null,
     environmentId: doc.environmentId?.toString(),
     empresaId: doc.empresaId,
     unidade: doc.unidade,
+    estabelecimento: doc.estabelecimento || '',
     setor: doc.setor,
     nome: doc.nome,
     descricao: doc.descricao || '',
@@ -362,6 +517,7 @@ const mapActivity = (doc) => {
   if (!doc) return null;
   return {
     id: doc._id?.toString(),
+    cycleId: doc.cycleId?.toString() || null,
     environmentId: doc.environmentId?.toString(),
     cargoId: doc.cargoId?.toString(),
     empresaId: doc.empresaId,
@@ -387,19 +543,36 @@ const mapRisk = (doc) => {
   if (!doc) return null;
   return {
     id: doc._id?.toString(),
+    cycleId: doc.cycleId?.toString() || null,
     activityId: doc.activityId?.toString(),
     environmentId: doc.environmentId?.toString(),
     riskLibraryId: doc.riskLibraryId?.toString() || null,
     empresaId: doc.empresaId,
+    titulo: doc.titulo || '',
     perigo: doc.perigo,
+    fonteGeradora: doc.fonteGeradora || '',
     eventoPerigoso: doc.eventoPerigoso,
     danoPotencial: doc.danoPotencial,
+    descricaoExposicao: doc.descricaoExposicao || '',
+    frequenciaExposicao: doc.frequenciaExposicao || 'frequente',
+    habitualidade: doc.habitualidade || 'habitual_intermitente',
+    duracaoExposicao: doc.duracaoExposicao || '',
+    viaExposicao: doc.viaExposicao || '',
     riskType: doc.riskType,
     categoriaAgente: doc.categoriaAgente,
     condicao: doc.condicao,
     numeroExpostos: doc.numeroExpostos,
     grupoHomogeneo: Boolean(doc.grupoHomogeneo),
     controlesExistentes: doc.controlesExistentes,
+    controlesEstruturados: doc.controlesEstruturados || {
+      epc: [],
+      epi: [],
+      administrativos: [],
+      organizacionais: [],
+      emergencia: [],
+      observacoes: '',
+      eficacia: 'nao_avaliada'
+    },
     legacyMigrated: Boolean(doc.legacyMigrated),
     isCustomRisk: Boolean(doc.isCustomRisk),
     createdAt: doc.createdAt,
@@ -490,6 +663,77 @@ const mapReference = (doc) => {
   };
 };
 
+const mapSurveyCycle = (doc) => {
+  if (!doc) return null;
+  return {
+    id: doc._id?.toString(),
+    empresaId: doc.empresaId,
+    unidade: doc.unidade,
+    estabelecimento: doc.estabelecimento,
+    title: doc.title || '',
+    description: doc.description || '',
+    version: doc.version,
+    status: doc.status,
+    reviewReason: doc.reviewReason,
+    methodology: doc.methodology,
+    context: doc.context || {
+      scopeSummary: '',
+      operationDescription: '',
+      workerParticipation: '',
+      contractors: '',
+      changesSinceLastReview: '',
+      contextOfOrganization: '',
+      reviewIntervalMonths: 12,
+      lastFieldVisitAt: null,
+      nextReviewAt: null
+    },
+    responsibleTechnical: doc.responsibleTechnical || { nome: '', email: '', registro: '' },
+    clonedFromCycleId: doc.clonedFromCycleId?.toString() || null,
+    createdBy: doc.createdBy || null,
+    updatedBy: doc.updatedBy || null,
+    publishedAt: doc.publishedAt || null,
+    publishedBy: doc.publishedBy || null,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt
+  };
+};
+
+const mapCycleSnapshot = (doc) => {
+  if (!doc) return null;
+  return {
+    id: doc._id?.toString(),
+    cycleId: doc.cycleId?.toString(),
+    version: doc.version,
+    publishedAt: doc.publishedAt,
+    publishedBy: doc.publishedBy || null,
+    payload: doc.payload,
+    createdAt: doc.createdAt
+  };
+};
+
+const mapActionPlanItem = (doc) => {
+  if (!doc) return null;
+  return {
+    id: doc._id?.toString(),
+    cycleId: doc.cycleId?.toString(),
+    riskItemId: doc.riskItemId?.toString(),
+    environmentId: doc.environmentId?.toString(),
+    activityId: doc.activityId?.toString(),
+    empresaId: doc.empresaId,
+    titulo: doc.titulo,
+    descricao: doc.descricao || '',
+    tipo: doc.tipo,
+    prioridade: doc.prioridade,
+    status: doc.status,
+    responsavel: doc.responsavel,
+    prazo: doc.prazo,
+    criterioAceite: doc.criterioAceite || '',
+    evidenciaEsperada: doc.evidenciaEsperada || '',
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt
+  };
+};
+
 const diff = (before, after) => {
   if (!before && !after) return null;
   if (!before) return { created: after };
@@ -530,6 +774,206 @@ const classifyScore = (score, ranges) => {
 const getRanges = async () => {
   const cfg = await RiskSurveyConfig.findOne({ key: 'assessment_ranges' }).lean();
   return cfg?.value || DEFAULT_RANGES;
+};
+
+const getNextSurveyCycleVersion = async ({ empresaId, unidade, estabelecimento }) => {
+  const latest = await RiskSurveyCycle.findOne({ empresaId, unidade, estabelecimento }).sort({ version: -1 }).lean();
+  return Number(latest?.version || 0) + 1;
+};
+
+const ensureNoOpenSurveyCycle = async ({ empresaId, unidade, estabelecimento, excludeId = null }) => {
+  const filters = {
+    empresaId,
+    unidade,
+    estabelecimento,
+    status: { $in: SURVEY_CYCLE_OPEN_STATUS }
+  };
+
+  if (excludeId && mongoose.Types.ObjectId.isValid(excludeId)) {
+    filters._id = { $ne: excludeId };
+  }
+
+  const existing = await RiskSurveyCycle.findOne(filters).lean();
+  if (existing) {
+    const error = new Error('Ja existe um ciclo ativo para este estabelecimento');
+    error.status = 409;
+    error.code = 'OPEN_CYCLE_EXISTS';
+    throw error;
+  }
+};
+
+const ensureEditableSurveyCycle = (cycle) => {
+  if (!cycle) {
+    const error = new Error('Ciclo de levantamento nao encontrado');
+    error.status = 404;
+    error.code = 'SURVEY_CYCLE_NOT_FOUND';
+    throw error;
+  }
+
+  if (!SURVEY_CYCLE_OPEN_STATUS.includes(cycle.status)) {
+    const error = new Error('Ciclo sem edicao disponivel para novos cadastros');
+    error.status = 409;
+    error.code = 'SURVEY_CYCLE_LOCKED';
+    throw error;
+  }
+};
+
+const hasAnyStructuredControl = (controls = {}) => {
+  if (!controls || typeof controls !== 'object') return false;
+  return ['epc', 'epi', 'administrativos', 'organizacionais', 'emergencia'].some(
+    (key) => Array.isArray(controls[key]) && controls[key].filter(Boolean).length > 0
+  );
+};
+
+const normalizeRiskControls = (controls = {}, fallback = {}) => ({
+  epc: Array.isArray(controls?.epc)
+    ? controls.epc.map((item) => toText(item)).filter(Boolean)
+    : Array.isArray(fallback?.epc)
+      ? fallback.epc.map((item) => toText(item)).filter(Boolean)
+      : [],
+  epi: Array.isArray(controls?.epi)
+    ? controls.epi.map((item) => toText(item)).filter(Boolean)
+    : Array.isArray(fallback?.epi)
+      ? fallback.epi.map((item) => toText(item)).filter(Boolean)
+      : [],
+  administrativos: Array.isArray(controls?.administrativos)
+    ? controls.administrativos.map((item) => toText(item)).filter(Boolean)
+    : Array.isArray(fallback?.administrativos)
+      ? fallback.administrativos.map((item) => toText(item)).filter(Boolean)
+      : [],
+  organizacionais: Array.isArray(controls?.organizacionais)
+    ? controls.organizacionais.map((item) => toText(item)).filter(Boolean)
+    : Array.isArray(fallback?.organizacionais)
+      ? fallback.organizacionais.map((item) => toText(item)).filter(Boolean)
+      : [],
+  emergencia: Array.isArray(controls?.emergencia)
+    ? controls.emergencia.map((item) => toText(item)).filter(Boolean)
+    : Array.isArray(fallback?.emergencia)
+      ? fallback.emergencia.map((item) => toText(item)).filter(Boolean)
+      : [],
+  observacoes:
+    controls?.observacoes !== undefined
+      ? toText(controls.observacoes)
+      : toText(fallback?.observacoes),
+  eficacia:
+    controls?.eficacia !== undefined
+      ? toText(controls.eficacia, 'nao_avaliada')
+      : toText(fallback?.eficacia, 'nao_avaliada')
+});
+
+const normalizeActionPlanPayload = (body = {}, fallback = {}) => ({
+  titulo: body?.titulo !== undefined ? toText(body.titulo) : toText(fallback?.titulo),
+  descricao: body?.descricao !== undefined ? toText(body.descricao) : toText(fallback?.descricao),
+  tipo: body?.tipo !== undefined ? toText(body.tipo, 'corretiva') : toText(fallback?.tipo, 'corretiva'),
+  prioridade:
+    body?.prioridade !== undefined ? toText(body.prioridade, 'media') : toText(fallback?.prioridade, 'media'),
+  status: body?.status !== undefined ? toText(body.status, 'pendente') : toText(fallback?.status, 'pendente'),
+  responsavel:
+    body?.responsavel !== undefined ? toText(body.responsavel) : toText(fallback?.responsavel),
+  criterioAceite:
+    body?.criterioAceite !== undefined ? toText(body.criterioAceite) : toText(fallback?.criterioAceite),
+  evidenciaEsperada:
+    body?.evidenciaEsperada !== undefined ? toText(body.evidenciaEsperada) : toText(fallback?.evidenciaEsperada),
+  prazo: body?.prazo !== undefined ? body.prazo : fallback?.prazo
+});
+
+const computeCycleCompletion = async (cycleId) => {
+  const validCycleId = toId(cycleId, 'cycleId');
+  const cycle = await RiskSurveyCycle.findById(validCycleId).lean();
+  if (!cycle) {
+    const error = new Error('Ciclo de levantamento nao encontrado');
+    error.status = 404;
+    error.code = 'SURVEY_CYCLE_NOT_FOUND';
+    throw error;
+  }
+
+  const riskIds = await RiskSurveyItem.find({ cycleId: validCycleId }).distinct('_id');
+  const [environmentCount, cargoCount, activityCount, risks, assessments, actionPlanItems] = await Promise.all([
+    RiskSurveyEnvironment.countDocuments({ cycleId: validCycleId }),
+    RiskSurveyCargo.countDocuments({ cycleId: validCycleId }),
+    RiskSurveyActivity.countDocuments({ cycleId: validCycleId }),
+    RiskSurveyItem.find({ cycleId: validCycleId }).lean(),
+    RiskAssessment.find({ riskItemId: { $in: riskIds } }).lean(),
+    RiskSurveyActionPlanItem.find({ cycleId: validCycleId }).lean()
+  ]);
+
+  const assessedRiskIds = new Set(assessments.map((item) => String(item.riskItemId)));
+  const actionByRisk = new Map();
+  for (const item of actionPlanItems) {
+    const key = String(item.riskItemId);
+    if (!actionByRisk.has(key)) actionByRisk.set(key, []);
+    actionByRisk.get(key).push(item);
+  }
+
+  let risksWithExposure = 0;
+  let risksWithControls = 0;
+  let highOrCritical = 0;
+  let highOrCriticalCovered = 0;
+
+  for (const risk of risks) {
+    if (toText(risk.fonteGeradora) && toText(risk.descricaoExposicao)) {
+      risksWithExposure += 1;
+    }
+    if (hasAnyStructuredControl(risk.controlesEstruturados)) {
+      risksWithControls += 1;
+    }
+
+    const assessment = assessments.find((item) => String(item.riskItemId) === String(risk._id));
+    if (assessment?.classificacao === 'alto' || assessment?.classificacao === 'critico') {
+      highOrCritical += 1;
+      const linkedActions = actionByRisk.get(String(risk._id)) || [];
+      if (linkedActions.length > 0) {
+        highOrCriticalCovered += 1;
+      }
+    }
+  }
+
+  const context = cycle.context || {};
+  const completionBlocks = {
+    contexto:
+      Boolean(toText(context.scopeSummary)) &&
+      Boolean(toText(context.operationDescription)) &&
+      Boolean(toText(context.workerParticipation)),
+    estrutura: environmentCount > 0 && cargoCount > 0 && activityCount > 0,
+    riscos: risks.length > 0 && risksWithExposure === risks.length,
+    avaliacao: risks.length > 0 && assessedRiskIds.size === risks.length,
+    controles: risks.length > 0 && risksWithControls === risks.length,
+    planoAcao: highOrCritical === 0 || highOrCriticalCovered === highOrCritical
+  };
+
+  const blockers = [];
+  if (!completionBlocks.contexto) blockers.push('Preencher contexto do ciclo');
+  if (!completionBlocks.estrutura) blockers.push('Completar ambientes, cargos e atividades');
+  if (!completionBlocks.riscos) blockers.push('Completar fonte geradora e exposição dos riscos');
+  if (!completionBlocks.avaliacao) blockers.push('Concluir avaliação qualitativa de todos os riscos');
+  if (!completionBlocks.controles) blockers.push('Estruturar controles de todos os riscos');
+  if (!completionBlocks.planoAcao) blockers.push('Criar plano de ação para riscos alto/crítico');
+
+  const totalBlocks = Object.keys(completionBlocks).length;
+  const completedBlocks = Object.values(completionBlocks).filter(Boolean).length;
+
+  return {
+    cycleId: String(validCycleId),
+    status: cycle.status,
+    counts: {
+      environments: environmentCount,
+      cargos: cargoCount,
+      activities: activityCount,
+      risks: risks.length,
+      assessedRisks: assessedRiskIds.size,
+      risksWithExposure,
+      risksWithControls,
+      highOrCritical,
+      highOrCriticalCovered,
+      actionPlanItems: actionPlanItems.length
+    },
+    blocks: completionBlocks,
+    blockers,
+    completedBlocks,
+    totalBlocks,
+    percentage: Math.round((completedBlocks / totalBlocks) * 100),
+    readyToPublish: blockers.length === 0
+  };
 };
 
 const ensureEditableEnvironment = (environment) => {
@@ -799,6 +1243,375 @@ const runLegacyMigration = async (actor = null) => {
 
 router.use(requireFeatureFlag('structured_risk_survey'));
 
+router.get('/v2/cycles', requirePermission('riskSurvey:read'), async (req, res) => {
+  try {
+    const filters = {};
+    const includeCompletion = String(req.query?.includeCompletion || 'false').toLowerCase() === 'true';
+    if (req.query?.empresaId) filters.empresaId = toText(req.query.empresaId);
+    if (req.query?.status) {
+      const status = toText(req.query.status);
+      if (!isEnum(SURVEY_CYCLE_STATUS, status)) {
+        return sendError(res, { message: 'Status do ciclo invalido' }, 400);
+      }
+      filters.status = status;
+    }
+    if (req.query?.search) {
+      const term = createSearchRegex(toText(req.query.search));
+      if (term) {
+        filters.$or = [
+          { unidade: term },
+          { estabelecimento: term },
+          { title: term },
+          { description: term },
+          { 'responsibleTechnical.nome': term }
+        ];
+      }
+    }
+
+    const rows = await RiskSurveyCycle.find(filters).sort({ updatedAt: -1, createdAt: -1 }).lean();
+    const mappedRows = rows.map(mapSurveyCycle);
+    const completionMap = includeCompletion
+      ? await Promise.all(
+          mappedRows.map(async (cycle) => ({
+            id: cycle.id,
+            completion: await computeCycleCompletion(cycle.id)
+          }))
+        )
+      : [];
+    const completionById = new Map(completionMap.map((item) => [item.id, item.completion]));
+
+    return sendSuccess(res, {
+      data: mappedRows.map((cycle) => ({
+        ...cycle,
+        completion: completionById.get(cycle.id) || null
+      })),
+      meta: { total: rows.length, includeCompletion }
+    });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao listar ciclos de levantamento', meta: { details: error.message } }, 500);
+  }
+});
+
+router.get('/v2/cycles/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:read'), async (req, res) => {
+  try {
+    const row = await RiskSurveyCycle.findById(req.params.id).lean();
+    if (!row) return sendError(res, { message: 'Ciclo nao encontrado' }, 404);
+    const completion = await computeCycleCompletion(req.params.id);
+    return sendSuccess(res, { data: { ...mapSurveyCycle(row), completion } });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao carregar ciclo', meta: { details: error.message } }, 500);
+  }
+});
+
+router.post('/v2/cycles', requirePermission('riskSurvey:write'), async (req, res) => {
+  try {
+    const empresaId = toText(req.body?.empresaId);
+    const unidade = toText(req.body?.unidade);
+    const estabelecimento = toText(req.body?.estabelecimento);
+    const reviewReason = toText(req.body?.reviewReason, 'implantacao_inicial');
+    const methodology = toText(req.body?.methodology, 'gro_pgr');
+    const responsibleTechnical = {
+      nome: toText(req.body?.responsibleTechnical?.nome || req.user?.nome),
+      email: toText(req.body?.responsibleTechnical?.email || req.user?.email),
+      registro: toText(req.body?.responsibleTechnical?.registro)
+    };
+
+    if (!empresaId || !unidade || !estabelecimento) {
+      return sendError(res, { message: 'Empresa, unidade e estabelecimento sao obrigatorios' }, 400);
+    }
+    if (!responsibleTechnical.nome) {
+      return sendError(res, { message: 'Responsavel tecnico obrigatorio' }, 400);
+    }
+    if (!isEnum(SURVEY_CYCLE_REVIEW_REASONS, reviewReason)) {
+      return sendError(res, { message: 'Motivo da revisao invalido' }, 400);
+    }
+    if (!isEnum(SURVEY_CYCLE_METHODOLOGIES, methodology)) {
+      return sendError(res, { message: 'Metodologia invalida' }, 400);
+    }
+
+    await ensureNoOpenSurveyCycle({ empresaId, unidade, estabelecimento });
+    const version = await getNextSurveyCycleVersion({ empresaId, unidade, estabelecimento });
+
+    const created = await RiskSurveyCycle.create({
+      empresaId,
+      unidade,
+      estabelecimento,
+      title: toText(req.body?.title, `Levantamento ${estabelecimento}`),
+      description: toText(req.body?.description),
+      version,
+      status: 'draft',
+      reviewReason,
+      methodology,
+      responsibleTechnical,
+      createdBy: toActor(req.user),
+      updatedBy: toActor(req.user)
+    });
+
+    const mapped = mapSurveyCycle(created.toObject());
+    await logAudit({
+      entityType: 'survey_cycle',
+      entityId: mapped.id,
+      action: 'create',
+      actor: req.user,
+      before: null,
+      after: mapped
+    });
+
+    return sendSuccess(res, { data: mapped, message: 'Ciclo de levantamento criado com sucesso' }, 201);
+  } catch (error) {
+    return sendError(res, { message: error.message || 'Erro ao criar ciclo', meta: { code: error.code, details: error.message } }, error.status || 500);
+  }
+});
+
+router.post('/v2/cycles/:id([a-fA-F0-9]{24})/clone', requirePermission('riskSurvey:write'), async (req, res) => {
+  try {
+    const source = await RiskSurveyCycle.findById(req.params.id);
+    if (!source) return sendError(res, { message: 'Ciclo de origem nao encontrado' }, 404);
+    if (!['published', 'superseded'].includes(source.status)) {
+      return sendError(res, { message: 'Somente ciclos publicados podem ser clonados' }, 409);
+    }
+
+    await ensureNoOpenSurveyCycle({
+      empresaId: source.empresaId,
+      unidade: source.unidade,
+      estabelecimento: source.estabelecimento
+    });
+
+    const version = await getNextSurveyCycleVersion({
+      empresaId: source.empresaId,
+      unidade: source.unidade,
+      estabelecimento: source.estabelecimento
+    });
+
+    const created = await RiskSurveyCycle.create({
+      empresaId: source.empresaId,
+      unidade: source.unidade,
+      estabelecimento: source.estabelecimento,
+      title: source.title,
+      description: source.description,
+      version,
+      status: 'draft',
+      reviewReason: toText(req.body?.reviewReason, 'revisao_periodica'),
+      methodology: source.methodology,
+      responsibleTechnical: {
+        nome: toText(req.body?.responsibleTechnical?.nome || source.responsibleTechnical?.nome || req.user?.nome),
+        email: toText(req.body?.responsibleTechnical?.email || source.responsibleTechnical?.email || req.user?.email),
+        registro: toText(req.body?.responsibleTechnical?.registro || source.responsibleTechnical?.registro)
+      },
+      clonedFromCycleId: source._id,
+      createdBy: toActor(req.user),
+      updatedBy: toActor(req.user)
+    });
+
+    const mapped = mapSurveyCycle(created.toObject());
+    await logAudit({
+      entityType: 'survey_cycle',
+      entityId: mapped.id,
+      action: 'clone',
+      actor: req.user,
+      before: mapSurveyCycle(source.toObject()),
+      after: mapped
+    });
+
+    return sendSuccess(res, { data: mapped, message: 'Ciclo clonado com sucesso' }, 201);
+  } catch (error) {
+    return sendError(res, { message: error.message || 'Erro ao clonar ciclo', meta: { code: error.code, details: error.message } }, error.status || 500);
+  }
+});
+
+router.put('/v2/cycles/:id([a-fA-F0-9]{24})/context', requirePermission('riskSurvey:write'), async (req, res) => {
+  try {
+    const cycle = await RiskSurveyCycle.findById(req.params.id);
+    ensureEditableSurveyCycle(cycle);
+
+    const before = mapSurveyCycle(cycle.toObject());
+    const nextReviewAt = req.body?.nextReviewAt ? new Date(req.body.nextReviewAt) : null;
+    const lastFieldVisitAt = req.body?.lastFieldVisitAt ? new Date(req.body.lastFieldVisitAt) : null;
+
+    cycle.context = {
+      ...cycle.context,
+      scopeSummary: toText(req.body?.scopeSummary, cycle.context?.scopeSummary),
+      operationDescription: toText(req.body?.operationDescription, cycle.context?.operationDescription),
+      workerParticipation: toText(req.body?.workerParticipation, cycle.context?.workerParticipation),
+      contractors: toText(req.body?.contractors, cycle.context?.contractors),
+      changesSinceLastReview: toText(req.body?.changesSinceLastReview, cycle.context?.changesSinceLastReview),
+      contextOfOrganization: toText(req.body?.contextOfOrganization, cycle.context?.contextOfOrganization),
+      reviewIntervalMonths: toNumber(req.body?.reviewIntervalMonths, cycle.context?.reviewIntervalMonths || 12),
+      lastFieldVisitAt: lastFieldVisitAt && !Number.isNaN(lastFieldVisitAt.getTime()) ? lastFieldVisitAt : cycle.context?.lastFieldVisitAt || null,
+      nextReviewAt: nextReviewAt && !Number.isNaN(nextReviewAt.getTime()) ? nextReviewAt : cycle.context?.nextReviewAt || null
+    };
+    cycle.updatedBy = toActor(req.user);
+    await cycle.save();
+
+    const after = mapSurveyCycle(cycle.toObject());
+    await logAudit({ entityType: 'survey_cycle', entityId: after.id, action: 'update_context', actor: req.user, before, after });
+    const completion = await computeCycleCompletion(after.id);
+
+    return sendSuccess(res, { data: { ...after, completion }, message: 'Contexto do ciclo atualizado com sucesso' });
+  } catch (error) {
+    return sendError(res, { message: error.message || 'Erro ao atualizar contexto do ciclo', meta: { code: error.code, details: error.message } }, error.status || 500);
+  }
+});
+
+router.get('/v2/cycles/:id([a-fA-F0-9]{24})/completion', requirePermission('riskSurvey:read'), async (req, res) => {
+  try {
+    const completion = await computeCycleCompletion(req.params.id);
+    return sendSuccess(res, { data: completion });
+  } catch (error) {
+    return sendError(res, { message: error.message || 'Erro ao calcular completude do ciclo', meta: { code: error.code, details: error.message } }, error.status || 500);
+  }
+});
+
+router.post('/v2/cycles/:id([a-fA-F0-9]{24})/review', requirePermission('riskSurvey:finalize'), async (req, res) => {
+  try {
+    const cycle = await RiskSurveyCycle.findById(req.params.id);
+    if (!cycle) return sendError(res, { message: 'Ciclo nao encontrado' }, 404);
+    if (cycle.status === 'published' || cycle.status === 'superseded') {
+      return sendError(res, { message: 'Ciclo publicado nao pode voltar para revisao direta' }, 409);
+    }
+
+    const before = mapSurveyCycle(cycle.toObject());
+    cycle.status = 'in_review';
+    cycle.updatedBy = toActor(req.user);
+    await cycle.save();
+    const after = mapSurveyCycle(cycle.toObject());
+
+    await logAudit({ entityType: 'survey_cycle', entityId: after.id, action: 'start_review', actor: req.user, before, after });
+    return sendSuccess(res, { data: after, message: 'Ciclo movido para revisao' });
+  } catch (error) {
+    return sendError(res, { message: error.message || 'Erro ao iniciar revisao do ciclo', meta: { code: error.code, details: error.message } }, error.status || 500);
+  }
+});
+
+router.post('/v2/cycles/:id([a-fA-F0-9]{24})/publish', requirePermission('riskSurvey:finalize'), async (req, res) => {
+  try {
+    const cycle = await RiskSurveyCycle.findById(req.params.id);
+    ensureEditableSurveyCycle(cycle);
+
+    const completion = await computeCycleCompletion(req.params.id);
+    if (!completion.readyToPublish) {
+      return sendError(res, { message: 'Ciclo com pendencias para publicacao', meta: { code: 'CYCLE_NOT_READY', completion } }, 409);
+    }
+
+    const riskIds = await RiskSurveyItem.find({ cycleId: cycle._id }).distinct('_id');
+    const [environments, cargos, activities, risks, assessments, measurements, actions] = await Promise.all([
+      RiskSurveyEnvironment.find({ cycleId: cycle._id }).lean(),
+      RiskSurveyCargo.find({ cycleId: cycle._id }).lean(),
+      RiskSurveyActivity.find({ cycleId: cycle._id }).lean(),
+      RiskSurveyItem.find({ cycleId: cycle._id }).lean(),
+      RiskAssessment.find({ riskItemId: { $in: riskIds } }).lean(),
+      RiskMeasurement.find({ riskItemId: { $in: riskIds } }).lean(),
+      RiskSurveyActionPlanItem.find({ cycleId: cycle._id }).lean()
+    ]);
+
+    const assessmentMap = new Map(assessments.map((item) => [String(item.riskItemId), item]));
+    const measurementMap = new Map();
+    for (const measurement of measurements) {
+      const key = String(measurement.riskItemId);
+      if (!measurementMap.has(key)) measurementMap.set(key, []);
+      measurementMap.set(key, [...(measurementMap.get(key) || []), measurement]);
+    }
+
+    const actionMap = new Map();
+    for (const action of actions) {
+      const key = String(action.riskItemId);
+      if (!actionMap.has(key)) actionMap.set(key, []);
+      actionMap.set(key, [...(actionMap.get(key) || []), action]);
+    }
+
+    const risksByActivity = new Map();
+    for (const risk of risks) {
+      const key = String(risk.activityId);
+      if (!risksByActivity.has(key)) risksByActivity.set(key, []);
+      risksByActivity.get(key).push({
+        ...mapRisk(risk),
+        assessment: mapAssessment(assessmentMap.get(String(risk._id))),
+        measurements: (measurementMap.get(String(risk._id)) || []).map(mapMeasurement),
+        actionPlanItems: (actionMap.get(String(risk._id)) || []).map(mapActionPlanItem)
+      });
+    }
+
+    const activitiesByCargo = new Map();
+    for (const activity of activities) {
+      const key = String(activity.cargoId || 'sem_cargo');
+      if (!activitiesByCargo.has(key)) activitiesByCargo.set(key, []);
+      activitiesByCargo.get(key).push({
+        ...mapActivity(activity),
+        risks: risksByActivity.get(String(activity._id)) || []
+      });
+    }
+
+    const payload = {
+      cycle: mapSurveyCycle(cycle.toObject()),
+      completion,
+      environments: environments.map((environment) => ({
+        ...mapEnvironment(environment),
+        cargos: cargos
+          .filter((cargo) => String(cargo.environmentId) === String(environment._id))
+          .map((cargo) => ({
+            ...mapCargo(cargo),
+            activities: activitiesByCargo.get(String(cargo._id)) || []
+          }))
+      })),
+      actionPlanItems: actions.map(mapActionPlanItem)
+    };
+
+    const snapshot = await RiskSurveyCycleSnapshot.create({
+      cycleId: cycle._id,
+      version: cycle.version,
+      publishedAt: new Date(),
+      publishedBy: toActor(req.user),
+      payload
+    });
+
+    const before = mapSurveyCycle(cycle.toObject());
+    cycle.status = 'published';
+    cycle.publishedAt = snapshot.publishedAt;
+    cycle.publishedBy = toActor(req.user);
+    cycle.updatedBy = toActor(req.user);
+    await cycle.save();
+
+    await RiskSurveyCycle.updateMany(
+      {
+        _id: { $ne: cycle._id },
+        empresaId: cycle.empresaId,
+        unidade: cycle.unidade,
+        estabelecimento: cycle.estabelecimento,
+        status: 'published'
+      },
+      {
+        $set: {
+          status: 'superseded',
+          updatedBy: toActor(req.user)
+        }
+      }
+    );
+
+    const after = mapSurveyCycle(cycle.toObject());
+    await logAudit({ entityType: 'survey_cycle', entityId: after.id, action: 'publish', actor: req.user, before, after });
+
+    return sendSuccess(
+      res,
+      {
+        data: { cycle: after, snapshot: mapCycleSnapshot(snapshot.toObject()), completion },
+        message: 'Ciclo publicado com sucesso'
+      }
+    );
+  } catch (error) {
+    return sendError(res, { message: error.message || 'Erro ao publicar ciclo', meta: { code: error.code, details: error.message } }, error.status || 500);
+  }
+});
+
+router.get('/v2/cycles/:id([a-fA-F0-9]{24})/snapshot', requirePermission('riskSurvey:read'), async (req, res) => {
+  try {
+    const snapshot = await RiskSurveyCycleSnapshot.findOne({ cycleId: req.params.id }).sort({ createdAt: -1 }).lean();
+    if (!snapshot) return sendError(res, { message: 'Snapshot do ciclo nao encontrado' }, 404);
+    return sendSuccess(res, { data: mapCycleSnapshot(snapshot) });
+  } catch (error) {
+    return sendError(res, { message: error.message || 'Erro ao carregar snapshot do ciclo', meta: { code: error.code, details: error.message } }, error.status || 500);
+  }
+});
+
 router.get('/metadata', requirePermission('riskSurvey:read'), (req, res) => {
   return sendSuccess(res, {
     data: {
@@ -812,9 +1625,18 @@ router.get('/metadata', requirePermission('riskSurvey:read'), (req, res) => {
       riskTypes: AGENT_TYPES,
       riskAgentCategories: AGENT_TYPES,
       riskConditionTypes: CONDITION_TYPES,
+      exposureFrequencyTypes: EXPOSURE_FREQUENCY_TYPES,
+      exposureHabitualityTypes: EXPOSURE_HABITUALITY_TYPES,
       confidenceLevels: CONFIDENCE_TYPES,
       measurementTypes: MEASUREMENT_TYPES,
-      assessmentRanges: DEFAULT_RANGES
+      controlEffectivenessTypes: CONTROL_EFFECTIVENESS_TYPES,
+      actionPlanStatusTypes: ACTION_PLAN_STATUS_TYPES,
+      actionPlanPriorityTypes: ACTION_PLAN_PRIORITY_TYPES,
+      actionPlanTypeTypes: ACTION_PLAN_TYPE_TYPES,
+      assessmentRanges: DEFAULT_RANGES,
+      surveyCycleStatuses: SURVEY_CYCLE_STATUS,
+      surveyCycleReviewReasons: SURVEY_CYCLE_REVIEW_REASONS,
+      surveyCycleMethodologies: SURVEY_CYCLE_METHODOLOGIES
     }
   });
 });
@@ -1125,11 +1947,17 @@ router.get('/environments', requirePermission('riskSurvey:read'), async (req, re
   try {
     const filters = {};
     if (req.query?.empresaId) filters.empresaId = String(req.query.empresaId);
+    if (req.query?.cycleId) {
+      if (!mongoose.Types.ObjectId.isValid(req.query.cycleId)) {
+        return sendError(res, { message: 'cycleId invalido' }, 400);
+      }
+      filters.cycleId = req.query.cycleId;
+    }
     if (req.query?.surveyStatus) filters.surveyStatus = String(req.query.surveyStatus);
     if (req.query?.search) {
       const term = createSearchRegex(toText(req.query.search));
       if (term) {
-        filters.$or = [{ nome: term }, { unidade: term }, { setor: term }];
+        filters.$or = [{ nome: term }, { unidade: term }, { estabelecimento: term }, { setor: term }];
       }
     }
 
@@ -1142,9 +1970,17 @@ router.get('/environments', requirePermission('riskSurvey:read'), async (req, re
 
 router.post('/environments', requirePermission('riskSurvey:write'), async (req, res) => {
   try {
+    const cycleId = req.body?.cycleId ? toId(req.body.cycleId, 'cycleId') : null;
+    const cycle = cycleId ? await RiskSurveyCycle.findById(cycleId) : null;
+    if (cycleId) {
+      ensureEditableSurveyCycle(cycle);
+    }
+
     const payload = {
-      empresaId: toText(req.body?.empresaId),
-      unidade: toText(req.body?.unidade),
+      cycleId: cycle?._id || null,
+      empresaId: cycle?.empresaId || toText(req.body?.empresaId),
+      unidade: cycle?.unidade || toText(req.body?.unidade),
+      estabelecimento: cycle?.estabelecimento || toText(req.body?.estabelecimento),
       setor: toText(req.body?.setor),
       nome: toText(req.body?.nome),
       tipo: toText(req.body?.tipo),
@@ -1194,7 +2030,7 @@ router.post('/environments', requirePermission('riskSurvey:write'), async (req, 
 
     return sendSuccess(res, { data: mapped, message: 'Ambiente criado com sucesso' }, 201);
   } catch (error) {
-    return sendError(res, { message: 'Erro ao criar ambiente', meta: { details: error.message } }, 500);
+    return sendError(res, { message: error.message || 'Erro ao criar ambiente', meta: { code: error.code, details: error.message } }, error.status || 500);
   }
 });
 
@@ -1311,9 +2147,11 @@ router.post('/cargos', requirePermission('riskSurvey:write'), async (req, res) =
     ensureEditableEnvironment(environment);
 
     const payload = {
+      cycleId: environment.cycleId || null,
       environmentId: environment._id,
       empresaId: environment.empresaId,
       unidade: environment.unidade,
+      estabelecimento: environment.estabelecimento || '',
       setor: environment.setor,
       nome: toText(req.body?.nome),
       descricao: toText(req.body?.descricao),
@@ -1332,7 +2170,7 @@ router.post('/cargos', requirePermission('riskSurvey:write'), async (req, res) =
     if (error?.code === 11000) {
       return sendError(res, { message: 'Cargo ja cadastrado neste ambiente' }, 409);
     }
-    return sendError(res, { message: 'Erro ao criar cargo', meta: { details: error.message } }, 500);
+    return sendError(res, { message: error.message || 'Erro ao criar cargo', meta: { code: error.code, details: error.message } }, error.status || 500);
   }
 });
 
@@ -1417,6 +2255,7 @@ router.post('/activities', requirePermission('riskSurvey:write'), async (req, re
     }
 
     const payload = {
+      cycleId: environment.cycleId || null,
       environmentId,
       cargoId,
       empresaId: environment.empresaId,
@@ -1628,31 +2467,57 @@ router.post('/risks', requirePermission('riskSurvey:write'), async (req, res) =>
     }
 
     const payload = {
+      cycleId: environment.cycleId || null,
       activityId: activity._id,
       environmentId: environment._id,
       riskLibraryId: library._id,
       empresaId: environment.empresaId,
+      titulo: toText(req.body?.tituloRisco || req.body?.titulo || library.titulo || req.body?.perigo),
       perigo: toText(req.body?.perigo || library.perigo),
+      fonteGeradora: toText(req.body?.fonteGeradora),
       eventoPerigoso: toText(req.body?.eventoPerigoso || library.eventoPerigoso),
       danoPotencial: toText(req.body?.danoPotencial || library.danoPotencial),
+      descricaoExposicao: toText(req.body?.descricaoExposicao),
+      frequenciaExposicao: toText(req.body?.frequenciaExposicao, 'frequente'),
+      habitualidade: toText(req.body?.habitualidade, 'habitual_intermitente'),
+      duracaoExposicao: toText(req.body?.duracaoExposicao),
+      viaExposicao: toText(req.body?.viaExposicao),
       riskType: normalizeRiskType(req.body?.riskType || library.tipo || normalizedRiskType),
       categoriaAgente: normalizeRiskType(req.body?.categoriaAgente || library.tipo || normalizedRiskType),
       condicao: toText(req.body?.condicao, 'normal'),
       numeroExpostos: toNumber(req.body?.numeroExpostos, 1),
       grupoHomogeneo: Boolean(req.body?.grupoHomogeneo),
       controlesExistentes: toText(req.body?.controlesExistentes),
+      controlesEstruturados: {
+        epc: Array.isArray(req.body?.controlesEstruturados?.epc) ? req.body.controlesEstruturados.epc.map((item) => toText(item)).filter(Boolean) : [],
+        epi: Array.isArray(req.body?.controlesEstruturados?.epi) ? req.body.controlesEstruturados.epi.map((item) => toText(item)).filter(Boolean) : [],
+        administrativos: Array.isArray(req.body?.controlesEstruturados?.administrativos) ? req.body.controlesEstruturados.administrativos.map((item) => toText(item)).filter(Boolean) : [],
+        organizacionais: Array.isArray(req.body?.controlesEstruturados?.organizacionais) ? req.body.controlesEstruturados.organizacionais.map((item) => toText(item)).filter(Boolean) : [],
+        emergencia: Array.isArray(req.body?.controlesEstruturados?.emergencia) ? req.body.controlesEstruturados.emergencia.map((item) => toText(item)).filter(Boolean) : [],
+        observacoes: toText(req.body?.controlesEstruturados?.observacoes),
+        eficacia: toText(req.body?.controlesEstruturados?.eficacia, 'nao_avaliada')
+      },
       legacyMigrated: false,
       isCustomRisk: library.origem === 'personalizado'
     };
 
-    if (!payload.perigo || !payload.eventoPerigoso || !payload.danoPotencial) {
-      return sendError(res, { message: 'Perigo, evento perigoso e dano potencial sao obrigatorios' }, 400);
+    if (!payload.perigo || !payload.fonteGeradora || !payload.eventoPerigoso || !payload.danoPotencial || !payload.descricaoExposicao) {
+      return sendError(res, { message: 'Perigo, fonte geradora, evento perigoso, dano potencial e exposição sao obrigatorios' }, 400);
     }
     if (!isEnum(AGENT_TYPES, payload.categoriaAgente) || !isEnum(AGENT_TYPES, payload.riskType)) {
       return sendError(res, { message: 'Categoria de agente invalida' }, 400);
     }
     if (!isEnum(CONDITION_TYPES, payload.condicao)) {
       return sendError(res, { message: 'Condicao invalida' }, 400);
+    }
+    if (!isEnum(EXPOSURE_FREQUENCY_TYPES, payload.frequenciaExposicao)) {
+      return sendError(res, { message: 'Frequencia de exposicao invalida' }, 400);
+    }
+    if (!isEnum(EXPOSURE_HABITUALITY_TYPES, payload.habitualidade)) {
+      return sendError(res, { message: 'Habitualidade invalida' }, 400);
+    }
+    if (!isEnum(CONTROL_EFFECTIVENESS_TYPES, payload.controlesEstruturados.eficacia)) {
+      return sendError(res, { message: 'Eficacia dos controles invalida' }, 400);
     }
 
     const created = await RiskSurveyItem.create(payload);
@@ -1671,7 +2536,7 @@ router.get('/risks/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:read'), 
     const risk = await RiskSurveyItem.findById(req.params.id).lean();
     if (!risk) return sendError(res, { message: 'Risco nao encontrado' }, 404);
 
-    const [activity, environment, cargo, library, assessment, measurements] = await Promise.all([
+    const [activity, environment, cargo, library, assessment, measurements, actionPlanItems] = await Promise.all([
       RiskSurveyActivity.findById(risk.activityId).lean(),
       RiskSurveyEnvironment.findById(risk.environmentId).lean(),
       RiskSurveyActivity.findById(risk.activityId).then((row) =>
@@ -1679,7 +2544,8 @@ router.get('/risks/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:read'), 
       ),
       risk.riskLibraryId ? RiskLibrary.findById(risk.riskLibraryId).lean() : null,
       RiskAssessment.findOne({ riskItemId: risk._id }).lean(),
-      RiskMeasurement.find({ riskItemId: risk._id }).sort({ dataMedicao: -1 }).lean()
+      RiskMeasurement.find({ riskItemId: risk._id }).sort({ dataMedicao: -1 }).lean(),
+      RiskSurveyActionPlanItem.find({ riskItemId: risk._id }).sort({ createdAt: -1 }).lean()
     ]);
 
     const deviceIds = measurements.filter((item) => item.deviceId).map((item) => item.deviceId);
@@ -1699,7 +2565,8 @@ router.get('/risks/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:read'), 
         measurements: measurements.map((measurement) => ({
           ...mapMeasurement(measurement),
           device: measurement.deviceId ? deviceMap.get(String(measurement.deviceId)) || null : null
-        }))
+        })),
+        actionPlanItems: actionPlanItems.map(mapActionPlanItem)
       }
     });
   } catch (error) {
@@ -1717,19 +2584,45 @@ router.put('/risks/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:write'),
 
     const before = mapRisk(risk.toObject());
 
+    if (req.body?.titulo !== undefined || req.body?.tituloRisco !== undefined) {
+      risk.titulo = toText(req.body?.titulo ?? req.body?.tituloRisco);
+    }
     if (req.body?.perigo !== undefined) risk.perigo = toText(req.body.perigo);
+    if (req.body?.fonteGeradora !== undefined) risk.fonteGeradora = toText(req.body.fonteGeradora);
     if (req.body?.eventoPerigoso !== undefined) risk.eventoPerigoso = toText(req.body.eventoPerigoso);
     if (req.body?.danoPotencial !== undefined) risk.danoPotencial = toText(req.body.danoPotencial);
+    if (req.body?.descricaoExposicao !== undefined) risk.descricaoExposicao = toText(req.body.descricaoExposicao);
+    if (req.body?.frequenciaExposicao !== undefined) {
+      const frequency = toText(req.body.frequenciaExposicao);
+      if (!isEnum(EXPOSURE_FREQUENCY_TYPES, frequency)) {
+        return sendError(res, { message: 'Frequencia de exposicao invalida' }, 400);
+      }
+      risk.frequenciaExposicao = frequency;
+    }
+    if (req.body?.habitualidade !== undefined) {
+      const habituality = toText(req.body.habitualidade);
+      if (!isEnum(EXPOSURE_HABITUALITY_TYPES, habituality)) {
+        return sendError(res, { message: 'Habitualidade invalida' }, 400);
+      }
+      risk.habitualidade = habituality;
+    }
+    if (req.body?.duracaoExposicao !== undefined) risk.duracaoExposicao = toText(req.body.duracaoExposicao);
+    if (req.body?.viaExposicao !== undefined) risk.viaExposicao = toText(req.body.viaExposicao);
     if (req.body?.riskLibraryId !== undefined) {
-      const libraryId = toId(req.body.riskLibraryId, 'riskLibraryId');
-      const library = await RiskLibrary.findById(libraryId).lean();
-      if (!library || !library.ativo) return sendError(res, { message: 'Risco de biblioteca invalido' }, 400);
-      risk.riskLibraryId = libraryId;
-      risk.riskType = normalizeRiskType(library.tipo);
-      risk.categoriaAgente = normalizeRiskType(library.tipo);
-      if (!req.body?.perigo) risk.perigo = library.perigo;
-      if (!req.body?.eventoPerigoso) risk.eventoPerigoso = library.eventoPerigoso;
-      if (!req.body?.danoPotencial) risk.danoPotencial = library.danoPotencial;
+      if (!req.body.riskLibraryId) {
+        risk.riskLibraryId = null;
+      } else {
+        const libraryId = toId(req.body.riskLibraryId, 'riskLibraryId');
+        const library = await RiskLibrary.findById(libraryId).lean();
+        if (!library || !library.ativo) return sendError(res, { message: 'Risco de biblioteca invalido' }, 400);
+        risk.riskLibraryId = libraryId;
+        risk.riskType = normalizeRiskType(library.tipo);
+        risk.categoriaAgente = normalizeRiskType(library.tipo);
+        if (!req.body?.titulo && !req.body?.tituloRisco) risk.titulo = library.titulo;
+        if (!req.body?.perigo) risk.perigo = library.perigo;
+        if (!req.body?.eventoPerigoso) risk.eventoPerigoso = library.eventoPerigoso;
+        if (!req.body?.danoPotencial) risk.danoPotencial = library.danoPotencial;
+      }
     }
     if (req.body?.categoriaAgente !== undefined) {
       const category = normalizeRiskType(req.body.categoriaAgente);
@@ -1745,6 +2638,21 @@ router.put('/risks/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:write'),
     if (req.body?.numeroExpostos !== undefined) risk.numeroExpostos = toNumber(req.body.numeroExpostos, 1);
     if (req.body?.grupoHomogeneo !== undefined) risk.grupoHomogeneo = Boolean(req.body.grupoHomogeneo);
     if (req.body?.controlesExistentes !== undefined) risk.controlesExistentes = toText(req.body.controlesExistentes);
+    if (req.body?.controlesEstruturados !== undefined) {
+      const controls = normalizeRiskControls(req.body.controlesEstruturados, risk.controlesEstruturados);
+      if (!isEnum(CONTROL_EFFECTIVENESS_TYPES, controls.eficacia)) {
+        return sendError(res, { message: 'Eficacia dos controles invalida' }, 400);
+      }
+      risk.controlesEstruturados = controls;
+    }
+
+    if (!risk.perigo || !risk.fonteGeradora || !risk.eventoPerigoso || !risk.danoPotencial || !risk.descricaoExposicao) {
+      return sendError(
+        res,
+        { message: 'Perigo, fonte geradora, evento perigoso, dano potencial e exposicao sao obrigatorios' },
+        400
+      );
+    }
 
     await risk.save();
 
@@ -1769,6 +2677,7 @@ router.delete('/risks/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:write
 
     await RiskAssessment.deleteOne({ riskItemId: risk._id });
     await RiskMeasurement.deleteMany({ riskItemId: risk._id });
+    await RiskSurveyActionPlanItem.deleteMany({ riskItemId: risk._id });
     await RiskSurveyItem.deleteOne({ _id: risk._id });
 
     await logAudit({ entityType: 'risk_item', entityId: before.id, action: 'delete', actor: req.user, before, after: null });
@@ -1776,6 +2685,216 @@ router.delete('/risks/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:write
     return sendSuccess(res, { data: null, message: 'Risco removido com sucesso' });
   } catch (error) {
     return sendError(res, { message: error.message || 'Erro ao remover risco', meta: { code: error.code } }, error.status || 500);
+  }
+});
+
+router.put('/risks/:id([a-fA-F0-9]{24})/controls', requirePermission('riskSurvey:write'), async (req, res) => {
+  try {
+    const risk = await RiskSurveyItem.findById(req.params.id);
+    if (!risk) return sendError(res, { message: 'Risco nao encontrado' }, 404);
+
+    const environment = await RiskSurveyEnvironment.findById(risk.environmentId);
+    ensureEditableEnvironment(environment);
+
+    const before = mapRisk(risk.toObject());
+    const controls = normalizeRiskControls(req.body, risk.controlesEstruturados);
+    if (!isEnum(CONTROL_EFFECTIVENESS_TYPES, controls.eficacia)) {
+      return sendError(res, { message: 'Eficacia dos controles invalida' }, 400);
+    }
+
+    risk.controlesEstruturados = controls;
+    if (req.body?.controlesExistentes !== undefined) {
+      risk.controlesExistentes = toText(req.body.controlesExistentes);
+    }
+    await risk.save();
+
+    const after = mapRisk(risk.toObject());
+    await logAudit({ entityType: 'risk_item', entityId: after.id, action: 'update_controls', actor: req.user, before, after });
+
+    return sendSuccess(res, { data: after, message: 'Controles do risco atualizados com sucesso' });
+  } catch (error) {
+    return sendError(
+      res,
+      { message: error.message || 'Erro ao atualizar controles do risco', meta: { code: error.code } },
+      error.status || 500
+    );
+  }
+});
+
+router.get('/risks/:id([a-fA-F0-9]{24})/action-plan-items', requirePermission('riskSurvey:read'), async (req, res) => {
+  try {
+    const risk = await RiskSurveyItem.findById(req.params.id).lean();
+    if (!risk) return sendError(res, { message: 'Risco nao encontrado' }, 404);
+
+    const items = await RiskSurveyActionPlanItem.find({ riskItemId: risk._id }).sort({ createdAt: -1 }).lean();
+    return sendSuccess(res, { data: items.map(mapActionPlanItem) });
+  } catch (error) {
+    return sendError(
+      res,
+      { message: error.message || 'Erro ao listar plano de acao do risco', meta: { code: error.code } },
+      error.status || 500
+    );
+  }
+});
+
+router.post('/risks/:id([a-fA-F0-9]{24})/action-plan-items', requirePermission('riskSurvey:write'), async (req, res) => {
+  try {
+    const risk = await RiskSurveyItem.findById(req.params.id).lean();
+    if (!risk) return sendError(res, { message: 'Risco nao encontrado' }, 404);
+
+    const environment = await RiskSurveyEnvironment.findById(risk.environmentId);
+    ensureEditableEnvironment(environment);
+
+    const assessment = await RiskAssessment.findOne({ riskItemId: risk._id }).lean();
+    if (!assessment) {
+      return sendError(res, { message: 'Nao e possivel criar plano de acao sem avaliacao qualitativa' }, 409);
+    }
+
+    const payload = normalizeActionPlanPayload(req.body);
+    if (!payload.titulo || !payload.responsavel) {
+      return sendError(res, { message: 'Titulo e responsavel sao obrigatorios para o plano de acao' }, 400);
+    }
+    if (!isEnum(ACTION_PLAN_TYPE_TYPES, payload.tipo)) {
+      return sendError(res, { message: 'Tipo de acao invalido' }, 400);
+    }
+    if (!isEnum(ACTION_PLAN_PRIORITY_TYPES, payload.prioridade)) {
+      return sendError(res, { message: 'Prioridade invalida' }, 400);
+    }
+    if (!isEnum(ACTION_PLAN_STATUS_TYPES, payload.status)) {
+      return sendError(res, { message: 'Status da acao invalido' }, 400);
+    }
+
+    const deadline = payload.prazo ? new Date(payload.prazo) : null;
+    if (payload.prazo && Number.isNaN(deadline?.getTime())) {
+      return sendError(res, { message: 'Prazo invalido' }, 400);
+    }
+
+    const created = await RiskSurveyActionPlanItem.create({
+      cycleId: risk.cycleId || null,
+      riskItemId: risk._id,
+      environmentId: risk.environmentId,
+      activityId: risk.activityId,
+      empresaId: risk.empresaId,
+      titulo: payload.titulo,
+      descricao: payload.descricao,
+      tipo: payload.tipo,
+      prioridade: payload.prioridade,
+      status: payload.status,
+      responsavel: payload.responsavel,
+      prazo: deadline,
+      criterioAceite: payload.criterioAceite,
+      evidenciaEsperada: payload.evidenciaEsperada
+    });
+
+    const mapped = mapActionPlanItem(created.toObject());
+    await logAudit({
+      entityType: 'risk_action_plan_item',
+      entityId: mapped.id,
+      action: 'create',
+      actor: req.user,
+      before: null,
+      after: mapped
+    });
+
+    return sendSuccess(res, { data: mapped, message: 'Plano de acao vinculado ao risco com sucesso' }, 201);
+  } catch (error) {
+    return sendError(
+      res,
+      { message: error.message || 'Erro ao criar plano de acao do risco', meta: { code: error.code } },
+      error.status || 500
+    );
+  }
+});
+
+router.put('/action-plan-items/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:write'), async (req, res) => {
+  try {
+    const item = await RiskSurveyActionPlanItem.findById(req.params.id);
+    if (!item) return sendError(res, { message: 'Plano de acao nao encontrado' }, 404);
+
+    const risk = await RiskSurveyItem.findById(item.riskItemId).lean();
+    const environment = risk ? await RiskSurveyEnvironment.findById(risk.environmentId) : null;
+    ensureEditableEnvironment(environment);
+
+    const before = mapActionPlanItem(item.toObject());
+    const payload = normalizeActionPlanPayload(req.body, item.toObject());
+
+    if (!payload.titulo || !payload.responsavel) {
+      return sendError(res, { message: 'Titulo e responsavel sao obrigatorios para o plano de acao' }, 400);
+    }
+    if (!isEnum(ACTION_PLAN_TYPE_TYPES, payload.tipo)) {
+      return sendError(res, { message: 'Tipo de acao invalido' }, 400);
+    }
+    if (!isEnum(ACTION_PLAN_PRIORITY_TYPES, payload.prioridade)) {
+      return sendError(res, { message: 'Prioridade invalida' }, 400);
+    }
+    if (!isEnum(ACTION_PLAN_STATUS_TYPES, payload.status)) {
+      return sendError(res, { message: 'Status da acao invalido' }, 400);
+    }
+
+    const deadline = payload.prazo ? new Date(payload.prazo) : null;
+    if (payload.prazo && Number.isNaN(deadline?.getTime())) {
+      return sendError(res, { message: 'Prazo invalido' }, 400);
+    }
+
+    item.titulo = payload.titulo;
+    item.descricao = payload.descricao;
+    item.tipo = payload.tipo;
+    item.prioridade = payload.prioridade;
+    item.status = payload.status;
+    item.responsavel = payload.responsavel;
+    item.prazo = deadline;
+    item.criterioAceite = payload.criterioAceite;
+    item.evidenciaEsperada = payload.evidenciaEsperada;
+    await item.save();
+
+    const after = mapActionPlanItem(item.toObject());
+    await logAudit({
+      entityType: 'risk_action_plan_item',
+      entityId: after.id,
+      action: 'update',
+      actor: req.user,
+      before,
+      after
+    });
+
+    return sendSuccess(res, { data: after, message: 'Plano de acao atualizado com sucesso' });
+  } catch (error) {
+    return sendError(
+      res,
+      { message: error.message || 'Erro ao atualizar plano de acao', meta: { code: error.code } },
+      error.status || 500
+    );
+  }
+});
+
+router.delete('/action-plan-items/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:write'), async (req, res) => {
+  try {
+    const item = await RiskSurveyActionPlanItem.findById(req.params.id);
+    if (!item) return sendError(res, { message: 'Plano de acao nao encontrado' }, 404);
+
+    const risk = await RiskSurveyItem.findById(item.riskItemId).lean();
+    const environment = risk ? await RiskSurveyEnvironment.findById(risk.environmentId) : null;
+    ensureEditableEnvironment(environment);
+
+    const before = mapActionPlanItem(item.toObject());
+    await RiskSurveyActionPlanItem.deleteOne({ _id: item._id });
+
+    await logAudit({
+      entityType: 'risk_action_plan_item',
+      entityId: before.id,
+      action: 'delete',
+      actor: req.user,
+      before,
+      after: null
+    });
+
+    return sendSuccess(res, { data: null, message: 'Plano de acao removido com sucesso' });
+  } catch (error) {
+    return sendError(
+      res,
+      { message: error.message || 'Erro ao remover plano de acao', meta: { code: error.code } },
+      error.status || 500
+    );
   }
 });
 
@@ -2103,6 +3222,13 @@ router.get('/dashboard', requirePermission('riskSurvey:read'), async (req, res) 
   try {
     const riskFilter = {};
     const baseFilter = {};
+    if (req.query?.cycleId) {
+      if (!mongoose.Types.ObjectId.isValid(req.query.cycleId)) {
+        return sendError(res, { message: 'cycleId invalido' }, 400);
+      }
+      riskFilter.cycleId = req.query.cycleId;
+      baseFilter.cycleId = req.query.cycleId;
+    }
     if (req.query?.empresaId) {
       const companyId = String(req.query.empresaId);
       riskFilter.empresaId = companyId;
@@ -2201,6 +3327,7 @@ module.exports = router;
 module.exports.__internals = {
   runLegacyMigration,
   models: {
+    RiskSurveyCycle,
     RiskSurveyEnvironment,
     RiskSurveyCargo,
     RiskSurveyActivity,
@@ -2213,6 +3340,7 @@ module.exports.__internals = {
   helpers: {
     classifyScore,
     normalizeRiskType,
-    ensureAssessmentExists
+    ensureAssessmentExists,
+    getNextSurveyCycleVersion
   }
 };
