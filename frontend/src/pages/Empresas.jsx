@@ -8,11 +8,13 @@ import {
   Download,
   Edit,
   Eye,
+  MapPin,
   Plus,
   Search,
   Shield,
   Trash2,
-  Upload
+  Upload,
+  User
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import FormModal from '../components/FormModal';
@@ -58,6 +60,13 @@ const formatDocumento = (value) => {
   }
 
   return value;
+};
+
+const formatDate = (value) => {
+  if (!value) return 'Sem atualizacao';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Sem atualizacao';
+  return date.toLocaleDateString('pt-BR');
 };
 
 const mapSpreadsheetRow = (row) => {
@@ -293,6 +302,18 @@ const Empresas = () => {
     }
   };
 
+  const getStatusBadge = (status) => {
+    const normalizedStatus = String(status || '').toLowerCase();
+
+    if (normalizedStatus === 'inativo' || normalizedStatus === 'inativa') {
+      return <span className="status-badge status-danger">Inativa</span>;
+    }
+
+    return <span className="status-badge status-success">Ativa</span>;
+  };
+
+  const hasActiveFilters = Boolean(searchTerm || filters.status || filters.conformidade);
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -442,12 +463,16 @@ const Empresas = () => {
             <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">Lista principal</p>
             <h2 className="mt-1 text-xl text-slate-900">Leitura consolidada da carteira</h2>
           </div>
-          <span className="text-sm text-slate-500">Colunas priorizam status, CNAE e responsavel.</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="status-badge status-info">{metrics.total} empresas visiveis</span>
+            <span className="status-badge status-warning">{metrics.comPendencia} com pendencias</span>
+            {hasActiveFilters ? <span className="status-badge status-success">Filtros aplicados</span> : null}
+          </div>
         </div>
 
         {empresas.length > 0 ? (
-          <div className="table-shell">
-            <table>
+          <div className="table-shell company-table-shell">
+            <table className="company-table">
               <thead>
                 <tr>
                   <th>Empresa</th>
@@ -464,29 +489,63 @@ const Empresas = () => {
                 {empresas.map((empresa) => (
                   <tr key={empresa.id}>
                     <td>
-                      <div className="flex items-start gap-3">
-                        <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                      <div className="company-table__identity">
+                        <div className="company-table__mark">
                           <Building2 className="h-5 w-5" />
                         </div>
-                        <div>
-                          <p className="font-semibold text-slate-900">{empresa.nome}</p>
-                          <p className="mt-1 text-sm text-slate-500">{empresa.ramo || 'Ramo nao informado'}</p>
+                        <div className="company-table__copy">
+                          <p className="company-table__name">{empresa.nome}</p>
+                          <p className="company-table__subline">{empresa.ramo || 'Ramo nao informado'}</p>
+                          <div className="company-table__meta">
+                            <span>
+                              <MapPin className="h-3.5 w-3.5" />
+                              {empresa.cidade || 'Cidade nao informada'}
+                            </span>
+                            <span>
+                              <Clock className="h-3.5 w-3.5" />
+                              Atualizado em {formatDate(empresa.updatedAt)}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </td>
-                    <td>{formatDocumento(empresa.cnpj)}</td>
-                    <td>{empresa.status === 'inativo' ? 'Inativa' : 'Ativa'}</td>
-                    <td>{getConformidadeBadge(empresa.conformidade)}</td>
-                    <td>{getDisplayCnae(empresa.cnae)}</td>
-                    <td>{empresa.responsavel || '-'}</td>
                     <td>
-                      <div className="flex items-center gap-2">
-                        <span className="status-badge status-danger">{empresa.pendencias || 0} pend.</span>
-                        <span className="status-badge status-warning">{empresa.alertas || 0} alert.</span>
+                      <div className="company-table__stack">
+                        <strong>{formatDocumento(empresa.cnpj)}</strong>
+                        <span>{empresa.email || 'Sem email principal'}</span>
+                      </div>
+                    </td>
+                    <td>{getStatusBadge(empresa.status)}</td>
+                    <td>{getConformidadeBadge(empresa.conformidade)}</td>
+                    <td>
+                      <div className="company-table__stack">
+                        <strong>{getDisplayCnae(empresa.cnae)}</strong>
+                        <span>Secao principal vinculada</span>
                       </div>
                     </td>
                     <td>
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="company-table__stack">
+                        <strong>{empresa.responsavel || 'Sem responsavel definido'}</strong>
+                        <span className="company-table__inline-meta">
+                          <User className="h-3.5 w-3.5" />
+                          Contato operacional
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="company-table__signals">
+                        <div className="company-table__signal company-table__signal--danger">
+                          <strong>{empresa.pendencias || 0}</strong>
+                          <span>Pendencias</span>
+                        </div>
+                        <div className="company-table__signal company-table__signal--warning">
+                          <strong>{empresa.alertas || 0}</strong>
+                          <span>Alertas</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="company-table__actions">
                         <Link to={`/empresas/${empresa.id}`} className="btn-secondary">
                           <Eye className="h-4 w-4" />
                           Detalhe
@@ -495,13 +554,19 @@ const Empresas = () => {
                           <Shield className="h-4 w-4" />
                           SST
                         </Link>
-                        <button type="button" onClick={() => handleEdit(empresa)} className="btn-ghost">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(empresa)}
+                          className="company-table__icon-button"
+                          aria-label={`Editar ${empresa.nome}`}
+                        >
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(empresa.id)}
-                          className="btn-ghost text-red-600"
+                          className="company-table__icon-button company-table__icon-button--danger"
+                          aria-label={`Excluir ${empresa.nome}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
