@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
   Building2,
+  ChevronDown,
   CheckCircle,
   Clock,
   Download,
   Edit,
   Eye,
   MapPin,
+  MoreHorizontal,
   Plus,
   Search,
   Shield,
@@ -115,7 +118,10 @@ const Empresas = () => {
   const [savingCnaeId, setSavingCnaeId] = useState('');
   const [cnaeOptions, setCnaeOptions] = useState([]);
   const [loadingCnaes, setLoadingCnaes] = useState(false);
+  const [openActionMenu, setOpenActionMenu] = useState(null);
   const fileInputRef = useRef(null);
+  const actionMenuRef = useRef(null);
+  const actionTriggerRef = useRef(null);
 
   useEffect(() => {
     void loadEmpresas();
@@ -124,6 +130,38 @@ const Empresas = () => {
   useEffect(() => {
     void loadCnaes();
   }, []);
+
+  useEffect(() => {
+    if (!openActionMenu) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (actionMenuRef.current?.contains(event.target)) return;
+      if (actionTriggerRef.current?.contains(event.target)) return;
+      setOpenActionMenu(null);
+    };
+
+    const handleViewportChange = () => {
+      setOpenActionMenu(null);
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setOpenActionMenu(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange, true);
+    };
+  }, [openActionMenu]);
 
   const loadEmpresas = async () => {
     try {
@@ -313,6 +351,39 @@ const Empresas = () => {
   };
 
   const hasActiveFilters = Boolean(searchTerm || filters.status || filters.conformidade);
+
+  const openCompanyActionMenu = (empresa, trigger) => {
+    if (typeof window === 'undefined' || !trigger) return;
+
+    const menuWidth = 232;
+    const estimatedMenuHeight = 254;
+    const rect = trigger.getBoundingClientRect();
+    const left = Math.min(Math.max(16, rect.right - menuWidth), window.innerWidth - menuWidth - 16);
+    const canOpenDown = rect.bottom + estimatedMenuHeight <= window.innerHeight - 16;
+    const top = canOpenDown
+      ? rect.bottom + 10
+      : Math.max(16, rect.top - estimatedMenuHeight - 10);
+
+    actionTriggerRef.current = trigger;
+    setOpenActionMenu({
+      id: empresa.id,
+      top,
+      left
+    });
+  };
+
+  const toggleCompanyActionMenu = (empresa, trigger) => {
+    if (openActionMenu?.id === empresa.id) {
+      setOpenActionMenu(null);
+      return;
+    }
+
+    openCompanyActionMenu(empresa, trigger);
+  };
+
+  const activeActionEmpresa = openActionMenu
+    ? empresas.find((empresa) => empresa.id === openActionMenu.id) || null
+    : null;
 
   if (loading) {
     return (
@@ -545,30 +616,20 @@ const Empresas = () => {
                       </div>
                     </td>
                     <td>
-                      <div className="company-table__actions">
-                        <Link to={`/empresas/${empresa.id}`} className="btn-secondary">
-                          <Eye className="h-4 w-4" />
-                          Detalhe
-                        </Link>
-                        <Link to={`/empresas/${empresa.id}/sst`} className="btn-primary">
-                          <Shield className="h-4 w-4" />
-                          SST
-                        </Link>
+                      <div className="company-action-menu">
                         <button
                           type="button"
-                          onClick={() => handleEdit(empresa)}
-                          className="company-table__icon-button"
-                          aria-label={`Editar ${empresa.nome}`}
+                          className={`company-action-menu__trigger ${
+                            openActionMenu?.id === empresa.id ? 'company-action-menu__trigger--open' : ''
+                          }`}
+                          onClick={(event) => toggleCompanyActionMenu(empresa, event.currentTarget)}
+                          aria-expanded={openActionMenu?.id === empresa.id}
+                          aria-haspopup="menu"
+                          aria-label={`Abrir acoes de ${empresa.nome}`}
                         >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(empresa.id)}
-                          className="company-table__icon-button company-table__icon-button--danger"
-                          aria-label={`Excluir ${empresa.nome}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
+                          <MoreHorizontal className="h-4 w-4" />
+                          Acoes
+                          <ChevronDown className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
@@ -597,6 +658,72 @@ const Empresas = () => {
           />
         )}
       </section>
+
+      {openActionMenu && activeActionEmpresa && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              ref={actionMenuRef}
+              className="company-action-menu__panel"
+              style={{ top: `${openActionMenu.top}px`, left: `${openActionMenu.left}px` }}
+              role="menu"
+              aria-label={`Acoes de ${activeActionEmpresa.nome}`}
+            >
+              <div className="company-action-menu__panel-head">
+                <p className="company-action-menu__panel-label">Acoes da empresa</p>
+                <strong className="company-action-menu__panel-title">{activeActionEmpresa.nome}</strong>
+              </div>
+
+              <div className="company-action-menu__panel-body">
+                <Link
+                  to={`/empresas/${activeActionEmpresa.id}`}
+                  className="company-action-menu__item"
+                  role="menuitem"
+                  onClick={() => setOpenActionMenu(null)}
+                >
+                  <Eye className="h-4 w-4" />
+                  <span>Ver detalhe</span>
+                </Link>
+
+                <Link
+                  to={`/empresas/${activeActionEmpresa.id}/sst`}
+                  className="company-action-menu__item company-action-menu__item--primary"
+                  role="menuitem"
+                  onClick={() => setOpenActionMenu(null)}
+                >
+                  <Shield className="h-4 w-4" />
+                  <span>Abrir SST</span>
+                </Link>
+
+                <button
+                  type="button"
+                  className="company-action-menu__item"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpenActionMenu(null);
+                    handleEdit(activeActionEmpresa);
+                  }}
+                >
+                  <Edit className="h-4 w-4" />
+                  <span>Editar cadastro</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="company-action-menu__item company-action-menu__item--danger"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpenActionMenu(null);
+                    void handleDelete(activeActionEmpresa.id);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Excluir empresa</span>
+                </button>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
 
       <FormModal
         isOpen={showModal}
