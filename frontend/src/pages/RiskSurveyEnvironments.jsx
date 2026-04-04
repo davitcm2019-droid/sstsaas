@@ -16,7 +16,15 @@ const ENV_FORM_DEFAULT = {
 
 const CARGO_FORM_DEFAULT = {
   nome: '',
-  descricao: ''
+  descricao: '',
+  gheId: ''
+};
+
+const GHE_FORM_DEFAULT = {
+  nomeTecnico: '',
+  descricaoSimilaridade: '',
+  headcount: 1,
+  status: 'ativo'
 };
 
 const RiskSurveyEnvironments = () => {
@@ -32,10 +40,13 @@ const RiskSurveyEnvironments = () => {
   const [selectedCycleId, setSelectedCycleId] = useState('');
   const [environments, setEnvironments] = useState([]);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState('');
+  const [ghes, setGhes] = useState([]);
   const [cargos, setCargos] = useState([]);
   const [envModalOpen, setEnvModalOpen] = useState(false);
+  const [gheModalOpen, setGheModalOpen] = useState(false);
   const [cargoModalOpen, setCargoModalOpen] = useState(false);
   const [envForm, setEnvForm] = useState(ENV_FORM_DEFAULT);
+  const [gheForm, setGheForm] = useState(GHE_FORM_DEFAULT);
   const [cargoForm, setCargoForm] = useState(CARGO_FORM_DEFAULT);
 
   const selectedEnvironment = useMemo(
@@ -51,6 +62,11 @@ const RiskSurveyEnvironments = () => {
   const companyMap = useMemo(
     () => new Map(empresas.map((empresa) => [String(empresa.id), empresa.nome])),
     [empresas]
+  );
+
+  const gheMap = useMemo(
+    () => new Map(ghes.map((ghe) => [String(ghe.id), ghe])),
+    [ghes]
   );
 
   const loadBase = async () => {
@@ -117,6 +133,26 @@ const RiskSurveyEnvironments = () => {
     }
   };
 
+  const loadGhes = async () => {
+    if (!selectedEnvironmentId) {
+      setGhes([]);
+      setCargoForm((prev) => ({ ...prev, gheId: '' }));
+      return;
+    }
+
+    try {
+      const response = await riskSurveyService.listGhesByEnvironment(selectedEnvironmentId);
+      const rows = response.data.data || [];
+      setGhes(rows);
+      setCargoForm((prev) => ({
+        ...prev,
+        gheId: rows.some((item) => String(item.id) === String(prev.gheId)) ? prev.gheId : rows[0]?.id || ''
+      }));
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Erro ao carregar GHEs.');
+    }
+  };
+
   useEffect(() => {
     void loadBase();
   }, []);
@@ -129,7 +165,7 @@ const RiskSurveyEnvironments = () => {
   }, [selectedCycleId]);
 
   useEffect(() => {
-    void loadCargos();
+    void Promise.all([loadGhes(), loadCargos()]);
   }, [selectedEnvironmentId]);
 
   const createEnvironment = async (event) => {
@@ -165,6 +201,24 @@ const RiskSurveyEnvironments = () => {
       await loadCargos();
     } catch (err) {
       setError(err?.response?.data?.message || 'Erro ao criar cargo.');
+    }
+  };
+
+  const createGhe = async (event) => {
+    event.preventDefault();
+    if (!selectedEnvironmentId || !canWrite) return;
+
+    try {
+      await riskSurveyService.createGhe({
+        cycleId: selectedCycleId,
+        environmentId: selectedEnvironmentId,
+        ...gheForm
+      });
+      setGheModalOpen(false);
+      setGheForm(GHE_FORM_DEFAULT);
+      await loadGhes();
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Erro ao criar GHE.');
     }
   };
 
@@ -283,26 +337,58 @@ const RiskSurveyEnvironments = () => {
         </div>
 
         <div className="card">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-700">Cargos no ambiente</h2>
-            <button
-              className={`btn-secondary px-3 py-1 text-xs ${canWrite ? '' : 'opacity-60 cursor-not-allowed'}`}
-              disabled={!selectedEnvironment || !canWrite}
-              onClick={() => setCargoModalOpen(true)}
-            >
-              <Plus className="mr-1 inline h-3 w-3" />
-              Novo cargo
-            </button>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-gray-700">GHEs e cargos no ambiente</h2>
+            <div className="flex gap-2">
+              <button
+                className={`btn-secondary px-3 py-1 text-xs ${canWrite ? '' : 'opacity-60 cursor-not-allowed'}`}
+                disabled={!selectedEnvironment || !canWrite}
+                onClick={() => setGheModalOpen(true)}
+              >
+                <Plus className="mr-1 inline h-3 w-3" />
+                Novo GHE
+              </button>
+              <button
+                className={`btn-secondary px-3 py-1 text-xs ${canWrite ? '' : 'opacity-60 cursor-not-allowed'}`}
+                disabled={!selectedEnvironment || !canWrite || !ghes.length}
+                onClick={() => setCargoModalOpen(true)}
+              >
+                <Plus className="mr-1 inline h-3 w-3" />
+                Novo cargo
+              </button>
+            </div>
           </div>
           {selectedEnvironment ? (
             <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
               Ambiente selecionado: <strong>{selectedEnvironment.nome}</strong>
             </div>
           ) : null}
+          <div className="mb-4 space-y-2">
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Grupos homogêneos de exposição</p>
+            {ghes.map((ghe) => (
+              <div key={ghe.id} className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">{ghe.nomeTecnico}</div>
+                    <div className="text-xs text-slate-500">{ghe.descricaoSimilaridade || 'Sem descrição de similaridade.'}</div>
+                  </div>
+                  <span className="rounded-full bg-white px-2 py-1 text-xs font-semibold text-slate-600">
+                    {ghe.headcount || 1} exposto(s)
+                  </span>
+                </div>
+              </div>
+            ))}
+            {!ghes.length ? <div className="text-sm text-gray-500">Cadastre ao menos um GHE ativo antes de criar cargos.</div> : null}
+          </div>
           <div className="space-y-2">
             {cargos.map((cargo) => (
               <div key={cargo.id} className="rounded-lg border border-gray-200 p-3">
-                <div className="text-sm font-semibold text-gray-900">{cargo.nome}</div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-gray-900">{cargo.nome}</div>
+                  <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                    {gheMap.get(String(cargo.gheId))?.nomeTecnico || 'Sem GHE'}
+                  </span>
+                </div>
                 <div className="text-xs text-gray-500">{cargo.descricao || 'Sem descricao'}</div>
               </div>
             ))}
@@ -343,8 +429,49 @@ const RiskSurveyEnvironments = () => {
         </div>
       </FormModal>
 
+      <FormModal isOpen={gheModalOpen} onClose={() => setGheModalOpen(false)} title="Novo GHE" onSubmit={createGhe}>
+        <div className="grid grid-cols-1 gap-3">
+          <input
+            className="input-field"
+            value={gheForm.nomeTecnico}
+            onChange={(event) => setGheForm((prev) => ({ ...prev, nomeTecnico: event.target.value }))}
+            placeholder="Nome técnico do GHE"
+            required
+          />
+          <textarea
+            className="input-field"
+            value={gheForm.descricaoSimilaridade}
+            onChange={(event) => setGheForm((prev) => ({ ...prev, descricaoSimilaridade: event.target.value }))}
+            placeholder="Descrição da similaridade de exposição"
+          />
+          <input
+            type="number"
+            min="1"
+            className="input-field"
+            value={gheForm.headcount}
+            onChange={(event) => setGheForm((prev) => ({ ...prev, headcount: Number(event.target.value) || 1 }))}
+            placeholder="Quantidade exposta"
+          />
+          <select className="input-field" value={gheForm.status} onChange={(event) => setGheForm((prev) => ({ ...prev, status: event.target.value }))}>
+            {metadata?.gheStatusTypes?.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+        </div>
+      </FormModal>
+
       <FormModal isOpen={cargoModalOpen} onClose={() => setCargoModalOpen(false)} title="Novo cargo" onSubmit={createCargo}>
         <div className="grid grid-cols-1 gap-3">
+          <select className="input-field" value={cargoForm.gheId} onChange={(event) => setCargoForm((prev) => ({ ...prev, gheId: event.target.value }))} required>
+            <option value="">Selecione o GHE</option>
+            {ghes.map((ghe) => (
+              <option key={ghe.id} value={ghe.id}>
+                {ghe.nomeTecnico}
+              </option>
+            ))}
+          </select>
           <input
             className="input-field"
             value={cargoForm.nome}

@@ -9,8 +9,13 @@ import PageHeader from '../components/ui/PageHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { empresasService, riskSurveyService } from '../services/api';
 
-const STATUS_LABELS = { draft: 'Rascunho', in_review: 'Em revisao', published: 'Publicado', superseded: 'Substituido' };
-const STATUS_CLASSES = { draft: 'status-warning', in_review: 'status-info', published: 'status-success', superseded: 'status-danger' };
+const STATUS_LABELS = { draft: 'Rascunho', in_review: 'Em revisao', approved: 'Aprovado', published: 'Publicado', superseded: 'Substituido' };
+const STATUS_CLASSES = { draft: 'status-warning', in_review: 'status-info', approved: 'status-info', published: 'status-success', superseded: 'status-danger' };
+const DOCUMENT_IMPACT_LABELS = {
+  sem_impacto: 'Sem impacto documental',
+  revisao_pendente: 'Revisao documental pendente',
+  reemitido: 'Documentacao reemitida'
+};
 const REVIEW_REASON_LABELS = {
   implantacao_inicial: 'Implantacao inicial',
   revisao_periodica: 'Revisao periodica',
@@ -66,6 +71,7 @@ const formatDateTime = (value) => {
 const RiskSurveyCycles = () => {
   const { hasPermission, user } = useAuth();
   const canWrite = hasPermission('riskSurvey:write');
+  const canApprove = hasPermission('riskSurvey:approve');
   const canFinalize = hasPermission('riskSurvey:finalize');
 
   const [loading, setLoading] = useState(true);
@@ -94,6 +100,7 @@ const RiskSurveyCycles = () => {
     total: cycles.length,
     rascunhos: cycles.filter((cycle) => cycle.status === 'draft').length,
     revisao: cycles.filter((cycle) => cycle.status === 'in_review').length,
+    aprovados: cycles.filter((cycle) => cycle.status === 'approved').length,
     publicados: cycles.filter((cycle) => cycle.status === 'published').length,
     prontos: cycles.filter((cycle) => cycle.completion?.readyToPublish).length
   }), [cycles]);
@@ -195,6 +202,17 @@ const RiskSurveyCycles = () => {
     }
   };
 
+  const handleApprove = async (cycleId) => {
+    try {
+      setError('');
+      await riskSurveyService.approveCycle(cycleId);
+      await loadCycles();
+    } catch (err) {
+      const blockers = err?.response?.data?.meta?.completion?.blockers;
+      setError(Array.isArray(blockers) && blockers.length ? `Aprovacao bloqueada: ${blockers.join(' • ')}` : err?.response?.data?.message || 'Erro ao aprovar ciclo.');
+    }
+  };
+
   const openSnapshotModal = async (cycle) => {
     try {
       setSnapshotOpen(true);
@@ -243,11 +261,12 @@ const RiskSurveyCycles = () => {
 
       {error ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <MetricCard icon={Building2} label="Ciclos no modulo" value={metrics.total} meta="Base de levantamento" tone="blue" />
         <MetricCard icon={FileClock} label="Rascunhos" value={metrics.rascunhos} meta="Ciclos abertos" tone="amber" />
-        <MetricCard icon={ShieldCheck} label="Publicados" value={metrics.publicados} meta="Versoes consolidadas" tone="lime" />
-        <MetricCard icon={GitBranch} label="Prontos para publicar" value={metrics.prontos} meta={`${metrics.revisao} em revisao`} tone="slate" />
+        <MetricCard icon={ShieldCheck} label="Aprovados" value={metrics.aprovados} meta="Aguardando publicacao" tone="blue" />
+        <MetricCard icon={Rocket} label="Publicados" value={metrics.publicados} meta="Versoes consolidadas" tone="lime" />
+        <MetricCard icon={GitBranch} label="Prontos para aprovar" value={metrics.prontos} meta={`${metrics.revisao} em revisao`} tone="slate" />
       </section>
 
       <section className="panel-surface p-6">
@@ -303,6 +322,9 @@ const RiskSurveyCycles = () => {
                         <span className="status-pill status-info">v{cycle.version}</span>
                         {completion ? <span className={`status-pill ${completion.readyToPublish ? 'status-success' : 'status-warning'}`}>{completion.percentage}% concluido</span> : null}
                         {cycle.clonedFromCycleId ? <span className="status-pill status-warning">Revisao derivada</span> : null}
+                        <span className={`status-pill ${cycle.documentImpactStatus === 'revisao_pendente' ? 'status-warning' : cycle.documentImpactStatus === 'reemitido' ? 'status-success' : 'status-info'}`}>
+                          {DOCUMENT_IMPACT_LABELS[cycle.documentImpactStatus] || cycle.documentImpactStatus}
+                        </span>
                       </div>
 
                       <h3 className="mt-3 text-xl font-semibold text-slate-950">{cycle.title || `Levantamento ${cycle.estabelecimento}`}</h3>
@@ -347,10 +369,12 @@ const RiskSurveyCycles = () => {
                               <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-200/80"><div className={`h-full rounded-full ${completion.readyToPublish ? 'bg-lime-400' : 'bg-sky-500'}`} style={{ width: `${completion.percentage}%` }} /></div>
                               <div className="mt-4 grid gap-2 text-xs text-slate-500 md:grid-cols-3">
                                 <div>Ambientes: <strong className="text-slate-900">{completion.counts?.environments || 0}</strong></div>
+                                <div>GHEs: <strong className="text-slate-900">{completion.counts?.ghes || 0}</strong></div>
                                 <div>Cargos: <strong className="text-slate-900">{completion.counts?.cargos || 0}</strong></div>
                                 <div>Atividades: <strong className="text-slate-900">{completion.counts?.activities || 0}</strong></div>
                                 <div>Riscos: <strong className="text-slate-900">{completion.counts?.risks || 0}</strong></div>
                                 <div>Avaliados: <strong className="text-slate-900">{completion.counts?.assessedRisks || 0}</strong></div>
+                                <div>Conclusoes assinadas: <strong className="text-slate-900">{completion.counts?.technicalConclusions || 0}</strong></div>
                                 <div>Acoes: <strong className="text-slate-900">{completion.counts?.actionPlanItems || 0}</strong></div>
                               </div>
                             </div>
@@ -368,7 +392,8 @@ const RiskSurveyCycles = () => {
                       <Link to={`/levantamento-riscos/ambientes?cycleId=${cycle.id}`} className="btn-secondary"><Layers3 className="h-4 w-4" />Ambientes</Link>
                       <Link to={`/levantamento-riscos/execucao?cycleId=${cycle.id}`} className="btn-secondary"><ArrowRight className="h-4 w-4" />Abrir execucao atual</Link>
                       {canFinalize && cycle.status !== 'in_review' && cycle.status !== 'published' && cycle.status !== 'superseded' ? <button type="button" className="btn-secondary" onClick={() => handleStartReview(cycle.id)}><ShieldCheck className="h-4 w-4" />Iniciar revisao</button> : null}
-                      {canFinalize && cycle.status !== 'published' && cycle.status !== 'superseded' ? <button type="button" className="btn-primary" onClick={() => handlePublish(cycle.id)}><Rocket className="h-4 w-4" />Publicar ciclo</button> : null}
+                      {canApprove && cycle.status !== 'approved' && cycle.status !== 'published' && cycle.status !== 'superseded' ? <button type="button" className="btn-secondary" onClick={() => handleApprove(cycle.id)}><ShieldCheck className="h-4 w-4" />Aprovar tecnicamente</button> : null}
+                      {canFinalize && cycle.status === 'approved' ? <button type="button" className="btn-primary" onClick={() => handlePublish(cycle.id)}><Rocket className="h-4 w-4" />Publicar ciclo</button> : null}
                       {cycle.status === 'published' ? <button type="button" className="btn-secondary" onClick={() => openSnapshotModal(cycle)}><Eye className="h-4 w-4" />Ver snapshot</button> : null}
                     </div>
                   </div>

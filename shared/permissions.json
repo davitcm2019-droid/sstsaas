@@ -64,7 +64,11 @@
     "nr:read",
     "reports:read",
     "riskSurvey:read",
-    "riskSurvey:write"
+    "riskSurvey:write",
+    "riskSurvey:approve",
+    "riskSurvey:sign",
+    "ghe:write",
+    "documents:issue"
   ],
   "administrador": [
     "companies:read",
@@ -98,7 +102,13 @@
     "users:manage",
     "riskSurvey:read",
     "riskSurvey:write",
+    "riskSurvey:approve",
+    "riskSurvey:sign",
     "riskSurvey:finalize",
-    "riskSurvey:configure"
+    "riskSurvey:configure",
+    "ghe:write",
+    "workers:write",
+    "documents:issue",
+    "documents:invalidate"
   ]
 }

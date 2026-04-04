@@ -1,10 +1,17 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const { requirePermission } = require('../middleware/rbac');
 const { requireFeatureFlag } = require('../middleware/featureFlags');
 const { createSearchRegex } = require('../utils/regex');
 const { sendSuccess, sendError } = require('../utils/response');
+const {
+  DOCUMENT_TEMPLATE_CODES,
+  GHE_STATUS_TYPES,
+  TECHNICAL_CONCLUSION_STATUS_TYPES,
+  models: { RiskSurveyGhe, RiskTechnicalConclusion, IssuedDocumentVersion, RTSignatureRecord }
+} = require('../safety/models');
 
 const router = express.Router();
 
@@ -32,8 +39,8 @@ const MEASUREMENT_TYPES = [
   'radiacao_nao_ionizante',
   'outro'
 ];
-const SURVEY_CYCLE_STATUS = ['draft', 'in_review', 'published', 'superseded'];
-const SURVEY_CYCLE_OPEN_STATUS = ['draft', 'in_review'];
+const SURVEY_CYCLE_STATUS = ['draft', 'in_review', 'approved', 'published', 'superseded'];
+const SURVEY_CYCLE_OPEN_STATUS = ['draft', 'in_review', 'approved'];
 const SURVEY_CYCLE_REVIEW_REASONS = [
   'implantacao_inicial',
   'revisao_periodica',
@@ -44,6 +51,8 @@ const SURVEY_CYCLE_REVIEW_REASONS = [
   'outro'
 ];
 const SURVEY_CYCLE_METHODOLOGIES = ['gro_pgr', 'gro_pgr_iso45001', 'customizada'];
+const TECHNICAL_RESULT_TYPES = ['neutro', 'insalubre', 'periculoso', 'monitoramento', 'medida_imediata'];
+const DOCUMENT_IMPACT_STATUS = ['sem_impacto', 'revisao_pendente', 'reemitido'];
 const LEGACY_ACTIVITY_NAME = 'Atividade migrada - modelo anterior';
 
 const DEFAULT_RANGES = {
@@ -144,6 +153,7 @@ const cargoSchema = new mongoose.Schema(
   {
     cycleId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyCycle', default: null, index: true },
     environmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyEnvironment', required: true, index: true },
+    gheId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyGhe', default: null, index: true },
     empresaId: { type: String, required: true, index: true },
     unidade: { type: String, required: true },
     estabelecimento: { type: String, default: '' },
@@ -160,6 +170,7 @@ const activitySchema = new mongoose.Schema(
     cycleId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyCycle', default: null, index: true },
     environmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyEnvironment', required: true, index: true },
     cargoId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyCargo', required: true, index: true },
+    gheId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyGhe', default: null, index: true },
     empresaId: { type: String, required: true, index: true },
     nome: { type: String, required: true },
     funcaoCargo: { type: String, default: '' },
@@ -188,6 +199,7 @@ const riskItemSchema = new mongoose.Schema(
     cycleId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyCycle', default: null, index: true },
     activityId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyActivity', required: true, index: true },
     environmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyEnvironment', required: true, index: true },
+    gheId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskSurveyGhe', default: null, index: true },
     riskLibraryId: { type: mongoose.Schema.Types.ObjectId, ref: 'RiskLibrary', default: null, index: true },
     empresaId: { type: String, required: true, index: true },
     titulo: { type: String, default: '' },
@@ -366,7 +378,16 @@ const surveyCycleSchema = new mongoose.Schema(
       nome: { type: String, default: '' },
       email: { type: String, default: '' },
       perfil: { type: String, default: '' }
-    }
+    },
+    approvedAt: { type: Date, default: null },
+    approvedBy: {
+      id: { type: String, default: null },
+      nome: { type: String, default: '' },
+      email: { type: String, default: '' },
+      perfil: { type: String, default: '' }
+    },
+    signatureHash: { type: String, default: '' },
+    documentImpactStatus: { type: String, enum: DOCUMENT_IMPACT_STATUS, default: 'sem_impacto' }
   },
   { timestamps: true }
 );
@@ -501,6 +522,7 @@ const mapCargo = (doc) => {
     id: doc._id?.toString(),
     cycleId: doc.cycleId?.toString() || null,
     environmentId: doc.environmentId?.toString(),
+    gheId: doc.gheId?.toString() || null,
     empresaId: doc.empresaId,
     unidade: doc.unidade,
     estabelecimento: doc.estabelecimento || '',
@@ -520,6 +542,7 @@ const mapActivity = (doc) => {
     cycleId: doc.cycleId?.toString() || null,
     environmentId: doc.environmentId?.toString(),
     cargoId: doc.cargoId?.toString(),
+    gheId: doc.gheId?.toString() || null,
     empresaId: doc.empresaId,
     nome: doc.nome,
     funcaoCargo: doc.funcaoCargo,
@@ -546,6 +569,7 @@ const mapRisk = (doc) => {
     cycleId: doc.cycleId?.toString() || null,
     activityId: doc.activityId?.toString(),
     environmentId: doc.environmentId?.toString(),
+    gheId: doc.gheId?.toString() || null,
     riskLibraryId: doc.riskLibraryId?.toString() || null,
     empresaId: doc.empresaId,
     titulo: doc.titulo || '',
@@ -691,8 +715,12 @@ const mapSurveyCycle = (doc) => {
     clonedFromCycleId: doc.clonedFromCycleId?.toString() || null,
     createdBy: doc.createdBy || null,
     updatedBy: doc.updatedBy || null,
+    approvedAt: doc.approvedAt || null,
+    approvedBy: doc.approvedBy || null,
     publishedAt: doc.publishedAt || null,
     publishedBy: doc.publishedBy || null,
+    signatureHash: doc.signatureHash || '',
+    documentImpactStatus: doc.documentImpactStatus || 'sem_impacto',
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt
   };
@@ -733,6 +761,55 @@ const mapActionPlanItem = (doc) => {
     updatedAt: doc.updatedAt
   };
 };
+
+const mapGhe = (doc) => {
+  if (!doc) return null;
+  return {
+    id: doc._id?.toString(),
+    cycleId: doc.cycleId?.toString(),
+    environmentId: doc.environmentId?.toString(),
+    empresaId: doc.empresaId,
+    unidade: doc.unidade,
+    estabelecimento: doc.estabelecimento || '',
+    setor: doc.setor,
+    nomeTecnico: doc.nomeTecnico,
+    descricaoSimilaridade: doc.descricaoSimilaridade || '',
+    headcount: doc.headcount || 1,
+    cargoIds: Array.isArray(doc.cargoIds) ? doc.cargoIds.map((item) => String(item)) : [],
+    status: doc.status || 'ativo',
+    reviewHistory: Array.isArray(doc.reviewHistory) ? doc.reviewHistory : [],
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt
+  };
+};
+
+const mapTechnicalConclusion = (doc) => {
+  if (!doc) return null;
+  return {
+    id: doc._id?.toString(),
+    cycleId: doc.cycleId?.toString(),
+    riskItemId: doc.riskItemId?.toString(),
+    gheId: doc.gheId?.toString() || null,
+    environmentId: doc.environmentId?.toString(),
+    activityId: doc.activityId?.toString(),
+    empresaId: doc.empresaId,
+    habitualidade: doc.habitualidade || '',
+    enquadramentoNormativo: doc.enquadramentoNormativo || '',
+    resultadoTecnico: doc.resultadoTecnico || '',
+    justificativaTecnica: doc.justificativaTecnica || '',
+    responsavelTecnico: doc.responsavelTecnico || { nome: '', email: '', registro: '' },
+    status: doc.status || 'draft',
+    version: doc.version || 1,
+    signedAt: doc.signedAt || null,
+    signedBy: doc.signedBy || null,
+    signatureHash: doc.signatureHash || '',
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt
+  };
+};
+
+const hashStructuredPayload = (payload) =>
+  crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex');
 
 const diff = (before, after) => {
   if (!before && !after) return null;
@@ -888,14 +965,17 @@ const computeCycleCompletion = async (cycleId) => {
   }
 
   const riskIds = await RiskSurveyItem.find({ cycleId: validCycleId }).distinct('_id');
-  const [environmentCount, cargoCount, activityCount, risks, assessments, actionPlanItems] = await Promise.all([
-    RiskSurveyEnvironment.countDocuments({ cycleId: validCycleId }),
-    RiskSurveyCargo.countDocuments({ cycleId: validCycleId }),
-    RiskSurveyActivity.countDocuments({ cycleId: validCycleId }),
-    RiskSurveyItem.find({ cycleId: validCycleId }).lean(),
-    RiskAssessment.find({ riskItemId: { $in: riskIds } }).lean(),
-    RiskSurveyActionPlanItem.find({ cycleId: validCycleId }).lean()
-  ]);
+  const [environmentCount, gheCount, cargoCount, activityCount, risks, assessments, actionPlanItems, conclusions] =
+    await Promise.all([
+      RiskSurveyEnvironment.countDocuments({ cycleId: validCycleId }),
+      RiskSurveyGhe.countDocuments({ cycleId: validCycleId, status: 'ativo' }),
+      RiskSurveyCargo.countDocuments({ cycleId: validCycleId }),
+      RiskSurveyActivity.countDocuments({ cycleId: validCycleId }),
+      RiskSurveyItem.find({ cycleId: validCycleId }).lean(),
+      RiskAssessment.find({ riskItemId: { $in: riskIds } }).lean(),
+      RiskSurveyActionPlanItem.find({ cycleId: validCycleId }).lean(),
+      RiskTechnicalConclusion.find({ cycleId: validCycleId, riskItemId: { $in: riskIds } }).lean()
+    ]);
 
   const assessedRiskIds = new Set(assessments.map((item) => String(item.riskItemId)));
   const actionByRisk = new Map();
@@ -907,8 +987,10 @@ const computeCycleCompletion = async (cycleId) => {
 
   let risksWithExposure = 0;
   let risksWithControls = 0;
+  let risksWithGhe = 0;
   let highOrCritical = 0;
   let highOrCriticalCovered = 0;
+  let signedConclusions = 0;
 
   for (const risk of risks) {
     if (toText(risk.fonteGeradora) && toText(risk.descricaoExposicao)) {
@@ -917,8 +999,15 @@ const computeCycleCompletion = async (cycleId) => {
     if (hasAnyStructuredControl(risk.controlesEstruturados)) {
       risksWithControls += 1;
     }
+    if (risk.gheId) {
+      risksWithGhe += 1;
+    }
 
     const assessment = assessments.find((item) => String(item.riskItemId) === String(risk._id));
+    const conclusion = conclusions.find((item) => String(item.riskItemId) === String(risk._id));
+    if (conclusion?.status === 'signed') {
+      signedConclusions += 1;
+    }
     if (assessment?.classificacao === 'alto' || assessment?.classificacao === 'critico') {
       highOrCritical += 1;
       const linkedActions = actionByRisk.get(String(risk._id)) || [];
@@ -934,20 +1023,23 @@ const computeCycleCompletion = async (cycleId) => {
       Boolean(toText(context.scopeSummary)) &&
       Boolean(toText(context.operationDescription)) &&
       Boolean(toText(context.workerParticipation)),
-    estrutura: environmentCount > 0 && cargoCount > 0 && activityCount > 0,
-    riscos: risks.length > 0 && risksWithExposure === risks.length,
+    estrutura: environmentCount > 0 && gheCount > 0 && cargoCount > 0 && activityCount > 0,
+    riscos: risks.length > 0 && risksWithExposure === risks.length && risksWithGhe === risks.length,
     avaliacao: risks.length > 0 && assessedRiskIds.size === risks.length,
     controles: risks.length > 0 && risksWithControls === risks.length,
+    conclusaoTecnica: risks.length > 0 && signedConclusions === risks.length,
     planoAcao: highOrCritical === 0 || highOrCriticalCovered === highOrCritical
   };
 
   const blockers = [];
   if (!completionBlocks.contexto) blockers.push('Preencher contexto do ciclo');
-  if (!completionBlocks.estrutura) blockers.push('Completar ambientes, cargos e atividades');
-  if (!completionBlocks.riscos) blockers.push('Completar fonte geradora e exposição dos riscos');
+  if (!completionBlocks.estrutura) blockers.push('Completar ambientes, GHEs, cargos e atividades');
+  if (!completionBlocks.riscos) blockers.push('Completar fonte geradora, exposição e vínculo ao GHE de todos os riscos');
   if (!completionBlocks.avaliacao) blockers.push('Concluir avaliação qualitativa de todos os riscos');
   if (!completionBlocks.controles) blockers.push('Estruturar controles de todos os riscos');
-  if (!completionBlocks.planoAcao) blockers.push('Criar plano de ação para riscos alto/crítico');
+  if (!completionBlocks.conclusaoTecnica) blockers.push('Registrar e assinar conclusao tecnica de todos os riscos');
+  if (!toText(cycle.responsibleTechnical?.registro)) blockers.push('Informar registro profissional do RT');
+  if (!completionBlocks.planoAcao) blockers.push('Criar plano de ação para riscos alto ou crítico');
 
   const totalBlocks = Object.keys(completionBlocks).length;
   const completedBlocks = Object.values(completionBlocks).filter(Boolean).length;
@@ -957,11 +1049,14 @@ const computeCycleCompletion = async (cycleId) => {
     status: cycle.status,
     counts: {
       environments: environmentCount,
+      ghes: gheCount,
       cargos: cargoCount,
       activities: activityCount,
       risks: risks.length,
       assessedRisks: assessedRiskIds.size,
+      technicalConclusions: signedConclusions,
       risksWithExposure,
+      risksWithGhe,
       risksWithControls,
       highOrCritical,
       highOrCriticalCovered,
@@ -973,6 +1068,244 @@ const computeCycleCompletion = async (cycleId) => {
     totalBlocks,
     percentage: Math.round((completedBlocks / totalBlocks) * 100),
     readyToPublish: blockers.length === 0
+  };
+};
+
+const getInitialDocumentImpactStatus = async ({ empresaId, unidade, estabelecimento }) => {
+  const activeDocuments = await IssuedDocumentVersion.countDocuments({
+    empresaId,
+    unidade,
+    estabelecimento,
+    status: 'active'
+  });
+
+  return activeDocuments > 0 ? 'revisao_pendente' : 'sem_impacto';
+};
+
+const buildCycleSnapshotPayload = async (cycle, completion = null) => {
+  const cycleId = cycle?._id || cycle?.id;
+  const validCycleId = toId(cycleId, 'cycleId');
+  const riskIds = await RiskSurveyItem.find({ cycleId: validCycleId }).distinct('_id');
+
+  const [environments, ghes, cargos, activities, risks, assessments, measurements, actions, conclusions] =
+    await Promise.all([
+      RiskSurveyEnvironment.find({ cycleId: validCycleId }).lean(),
+      RiskSurveyGhe.find({ cycleId: validCycleId }).lean(),
+      RiskSurveyCargo.find({ cycleId: validCycleId }).lean(),
+      RiskSurveyActivity.find({ cycleId: validCycleId }).lean(),
+      RiskSurveyItem.find({ cycleId: validCycleId }).lean(),
+      RiskAssessment.find({ riskItemId: { $in: riskIds } }).lean(),
+      RiskMeasurement.find({ riskItemId: { $in: riskIds } }).lean(),
+      RiskSurveyActionPlanItem.find({ cycleId: validCycleId }).lean(),
+      RiskTechnicalConclusion.find({ cycleId: validCycleId, riskItemId: { $in: riskIds } }).lean()
+    ]);
+
+  const assessmentMap = new Map(assessments.map((item) => [String(item.riskItemId), item]));
+  const conclusionMap = new Map(conclusions.map((item) => [String(item.riskItemId), item]));
+  const measurementMap = new Map();
+  const actionMap = new Map();
+
+  for (const measurement of measurements) {
+    const key = String(measurement.riskItemId);
+    if (!measurementMap.has(key)) measurementMap.set(key, []);
+    measurementMap.get(key).push(mapMeasurement(measurement));
+  }
+
+  for (const action of actions) {
+    const key = String(action.riskItemId);
+    if (!actionMap.has(key)) actionMap.set(key, []);
+    actionMap.get(key).push(mapActionPlanItem(action));
+  }
+
+  const risksByActivity = new Map();
+  for (const risk of risks) {
+    const key = String(risk.activityId);
+    if (!risksByActivity.has(key)) risksByActivity.set(key, []);
+    risksByActivity.get(key).push({
+      ...mapRisk(risk),
+      assessment: mapAssessment(assessmentMap.get(String(risk._id))),
+      measurements: measurementMap.get(String(risk._id)) || [],
+      actionPlanItems: actionMap.get(String(risk._id)) || [],
+      technicalConclusion: mapTechnicalConclusion(conclusionMap.get(String(risk._id)))
+    });
+  }
+
+  const activitiesByCargo = new Map();
+  for (const activity of activities) {
+    const key = String(activity.cargoId || 'sem_cargo');
+    if (!activitiesByCargo.has(key)) activitiesByCargo.set(key, []);
+    activitiesByCargo.get(key).push({
+      ...mapActivity(activity),
+      risks: risksByActivity.get(String(activity._id)) || []
+    });
+  }
+
+  const cargosByGhe = new Map();
+  const directCargosByEnvironment = new Map();
+  for (const cargo of cargos) {
+    const payload = {
+      ...mapCargo(cargo),
+      activities: activitiesByCargo.get(String(cargo._id)) || []
+    };
+
+    if (cargo.gheId) {
+      const key = String(cargo.gheId);
+      if (!cargosByGhe.has(key)) cargosByGhe.set(key, []);
+      cargosByGhe.get(key).push(payload);
+      continue;
+    }
+
+    const envKey = String(cargo.environmentId);
+    if (!directCargosByEnvironment.has(envKey)) directCargosByEnvironment.set(envKey, []);
+    directCargosByEnvironment.get(envKey).push(payload);
+  }
+
+  const ghesByEnvironment = new Map();
+  for (const ghe of ghes) {
+    const envKey = String(ghe.environmentId);
+    if (!ghesByEnvironment.has(envKey)) ghesByEnvironment.set(envKey, []);
+    ghesByEnvironment.get(envKey).push({
+      ...mapGhe(ghe),
+      cargos: cargosByGhe.get(String(ghe._id)) || []
+    });
+  }
+
+  return {
+    cycle: mapSurveyCycle(cycle.toObject ? cycle.toObject() : cycle),
+    completion: completion || (await computeCycleCompletion(validCycleId)),
+    environments: environments.map((environment) => ({
+      ...mapEnvironment(environment),
+      ghes: ghesByEnvironment.get(String(environment._id)) || [],
+      cargosSemGhe: directCargosByEnvironment.get(String(environment._id)) || []
+    })),
+    actionPlanItems: actions.map(mapActionPlanItem)
+  };
+};
+
+const collectPayloadEntityIds = (payload = {}) => {
+  const source = payload || {};
+  const summary = {
+    environments: [],
+    ghes: [],
+    cargos: [],
+    activities: [],
+    risks: [],
+    technicalConclusions: [],
+    actionPlanItems: Array.isArray(source.actionPlanItems) ? source.actionPlanItems.map((item) => item.id) : []
+  };
+
+  for (const environment of source.environments || []) {
+    if (environment?.id) summary.environments.push(environment.id);
+
+    for (const ghe of environment.ghes || []) {
+      if (ghe?.id) summary.ghes.push(ghe.id);
+      for (const cargo of ghe.cargos || []) {
+        if (cargo?.id) summary.cargos.push(cargo.id);
+        for (const activity of cargo.activities || []) {
+          if (activity?.id) summary.activities.push(activity.id);
+          for (const risk of activity.risks || []) {
+            if (risk?.id) summary.risks.push(risk.id);
+            if (risk?.technicalConclusion?.id) summary.technicalConclusions.push(risk.technicalConclusion.id);
+          }
+        }
+      }
+    }
+
+    for (const cargo of environment.cargosSemGhe || []) {
+      if (cargo?.id) summary.cargos.push(cargo.id);
+      for (const activity of cargo.activities || []) {
+        if (activity?.id) summary.activities.push(activity.id);
+        for (const risk of activity.risks || []) {
+          if (risk?.id) summary.risks.push(risk.id);
+          if (risk?.technicalConclusion?.id) summary.technicalConclusions.push(risk.technicalConclusion.id);
+        }
+      }
+    }
+  }
+
+  return summary;
+};
+
+const compareEntityLists = (before = [], after = []) => {
+  const beforeSet = new Set(before);
+  const afterSet = new Set(after);
+
+  return {
+    added: after.filter((item) => !beforeSet.has(item)),
+    removed: before.filter((item) => !afterSet.has(item))
+  };
+};
+
+const buildCycleSnapshotDiff = (previousPayload, currentPayload) => {
+  const previousIds = collectPayloadEntityIds(previousPayload);
+  const currentIds = collectPayloadEntityIds(currentPayload);
+  const entityDiff = {
+    environments: compareEntityLists(previousIds.environments, currentIds.environments),
+    ghes: compareEntityLists(previousIds.ghes, currentIds.ghes),
+    cargos: compareEntityLists(previousIds.cargos, currentIds.cargos),
+    activities: compareEntityLists(previousIds.activities, currentIds.activities),
+    risks: compareEntityLists(previousIds.risks, currentIds.risks),
+    technicalConclusions: compareEntityLists(previousIds.technicalConclusions, currentIds.technicalConclusions),
+    actionPlanItems: compareEntityLists(previousIds.actionPlanItems, currentIds.actionPlanItems)
+  };
+
+  return {
+    previousCounts: previousPayload?.completion?.counts || null,
+    currentCounts: currentPayload?.completion?.counts || null,
+    entities: entityDiff,
+    changed:
+      Object.values(entityDiff).some((entry) => entry.added.length > 0 || entry.removed.length > 0) ||
+      JSON.stringify(previousPayload?.completion?.counts || {}) !== JSON.stringify(currentPayload?.completion?.counts || {})
+  };
+};
+
+const getComparablePublishedSnapshot = async (cycle) => {
+  if (!cycle) return null;
+
+  const previousCycle = await RiskSurveyCycle.findOne({
+    _id: { $ne: cycle._id },
+    empresaId: cycle.empresaId,
+    unidade: cycle.unidade,
+    estabelecimento: cycle.estabelecimento,
+    status: { $in: ['published', 'superseded'] }
+  })
+    .sort({ version: -1, publishedAt: -1 })
+    .lean();
+
+  if (!previousCycle) return null;
+
+  const snapshot = await RiskSurveyCycleSnapshot.findOne({ cycleId: previousCycle._id }).sort({ createdAt: -1 }).lean();
+  if (!snapshot) return null;
+
+  return {
+    cycle: mapSurveyCycle(previousCycle),
+    snapshot: mapCycleSnapshot(snapshot)
+  };
+};
+
+const getCycleDocumentImpact = async (cycle) => {
+  const activeDocuments = await IssuedDocumentVersion.find({
+    empresaId: cycle.empresaId,
+    unidade: cycle.unidade,
+    estabelecimento: cycle.estabelecimento,
+    status: 'active'
+  })
+    .sort({ issuedAt: -1 })
+    .lean();
+
+  return {
+    status: cycle.documentImpactStatus || 'sem_impacto',
+    hasActiveDocuments: activeDocuments.length > 0,
+    activeDocuments: activeDocuments.map((document) => ({
+      id: document._id?.toString(),
+      cycleId: document.cycleId?.toString(),
+      templateCode: document.templateCode,
+      documentType: document.documentType,
+      title: document.title,
+      version: document.version,
+      status: document.status,
+      issuedAt: document.issuedAt
+    }))
   };
 };
 
@@ -989,6 +1322,59 @@ const ensureEditableEnvironment = (environment) => {
     error.code = 'SURVEY_FINALIZED';
     throw error;
   }
+};
+
+const ensureApprovedSurveyCycle = (cycle) => {
+  if (!cycle) {
+    const error = new Error('Ciclo de levantamento nao encontrado');
+    error.status = 404;
+    error.code = 'SURVEY_CYCLE_NOT_FOUND';
+    throw error;
+  }
+
+  if (cycle.status !== 'approved') {
+    const error = new Error('Ciclo precisa estar aprovado tecnicamente antes da publicacao');
+    error.status = 409;
+    error.code = 'SURVEY_CYCLE_NOT_APPROVED';
+    throw error;
+  }
+};
+
+const ensureActiveGhe = async (gheId, environment) => {
+  const validGheId = toId(gheId, 'gheId');
+  const ghe = await RiskSurveyGhe.findById(validGheId);
+  if (!ghe) {
+    const error = new Error('GHE nao encontrado');
+    error.status = 404;
+    error.code = 'GHE_NOT_FOUND';
+    throw error;
+  }
+  if (environment && String(ghe.environmentId) !== String(environment._id)) {
+    const error = new Error('GHE nao pertence ao ambiente informado');
+    error.status = 400;
+    error.code = 'GHE_ENVIRONMENT_MISMATCH';
+    throw error;
+  }
+  if (ghe.status !== 'ativo') {
+    const error = new Error('GHE inativo nao pode receber novas vinculacoes');
+    error.status = 409;
+    error.code = 'GHE_INACTIVE';
+    throw error;
+  }
+  return ghe;
+};
+
+const upsertSignatureRecord = async ({ entityType, entityId, reason, payload, signer }) => {
+  const hash = hashStructuredPayload(payload);
+  const created = await RTSignatureRecord.create({
+    entityType,
+    entityId: String(entityId),
+    reason,
+    hash,
+    signer: toActor(signer),
+    signedAt: new Date()
+  });
+  return { record: created, hash };
 };
 
 const ensureAssessmentExists = async (riskId) => {
@@ -1331,6 +1717,7 @@ router.post('/v2/cycles', requirePermission('riskSurvey:write'), async (req, res
 
     await ensureNoOpenSurveyCycle({ empresaId, unidade, estabelecimento });
     const version = await getNextSurveyCycleVersion({ empresaId, unidade, estabelecimento });
+    const documentImpactStatus = await getInitialDocumentImpactStatus({ empresaId, unidade, estabelecimento });
 
     const created = await RiskSurveyCycle.create({
       empresaId,
@@ -1340,6 +1727,7 @@ router.post('/v2/cycles', requirePermission('riskSurvey:write'), async (req, res
       description: toText(req.body?.description),
       version,
       status: 'draft',
+      documentImpactStatus,
       reviewReason,
       methodology,
       responsibleTechnical,
@@ -1382,6 +1770,11 @@ router.post('/v2/cycles/:id([a-fA-F0-9]{24})/clone', requirePermission('riskSurv
       unidade: source.unidade,
       estabelecimento: source.estabelecimento
     });
+    const documentImpactStatus = await getInitialDocumentImpactStatus({
+      empresaId: source.empresaId,
+      unidade: source.unidade,
+      estabelecimento: source.estabelecimento
+    });
 
     const created = await RiskSurveyCycle.create({
       empresaId: source.empresaId,
@@ -1391,6 +1784,7 @@ router.post('/v2/cycles/:id([a-fA-F0-9]{24})/clone', requirePermission('riskSurv
       description: source.description,
       version,
       status: 'draft',
+      documentImpactStatus,
       reviewReason: toText(req.body?.reviewReason, 'revisao_periodica'),
       methodology: source.methodology,
       responsibleTechnical: {
@@ -1483,91 +1877,70 @@ router.post('/v2/cycles/:id([a-fA-F0-9]{24})/review', requirePermission('riskSur
   }
 });
 
-router.post('/v2/cycles/:id([a-fA-F0-9]{24})/publish', requirePermission('riskSurvey:finalize'), async (req, res) => {
+router.post('/v2/cycles/:id([a-fA-F0-9]{24})/approve', requirePermission('riskSurvey:approve'), async (req, res) => {
   try {
     const cycle = await RiskSurveyCycle.findById(req.params.id);
     ensureEditableSurveyCycle(cycle);
 
     const completion = await computeCycleCompletion(req.params.id);
     if (!completion.readyToPublish) {
+      return sendError(res, { message: 'Ciclo ainda possui pendencias tecnicas', meta: { completion } }, 409);
+    }
+
+    const before = mapSurveyCycle(cycle.toObject());
+    cycle.status = 'approved';
+    cycle.approvedAt = new Date();
+    cycle.approvedBy = toActor(req.user);
+    cycle.updatedBy = toActor(req.user);
+    await cycle.save();
+
+    const after = mapSurveyCycle(cycle.toObject());
+    await logAudit({ entityType: 'survey_cycle', entityId: after.id, action: 'approve', actor: req.user, before, after });
+    return sendSuccess(res, { data: { ...after, completion }, message: 'Ciclo aprovado tecnicamente' });
+  } catch (error) {
+    return sendError(res, { message: error.message || 'Erro ao aprovar ciclo', meta: { code: error.code, details: error.message } }, error.status || 500);
+  }
+});
+
+router.post('/v2/cycles/:id([a-fA-F0-9]{24})/publish', requirePermission('riskSurvey:finalize'), async (req, res) => {
+  try {
+    const cycle = await RiskSurveyCycle.findById(req.params.id);
+    ensureApprovedSurveyCycle(cycle);
+
+    const completion = await computeCycleCompletion(req.params.id);
+    if (!completion.readyToPublish) {
       return sendError(res, { message: 'Ciclo com pendencias para publicacao', meta: { code: 'CYCLE_NOT_READY', completion } }, 409);
     }
 
-    const riskIds = await RiskSurveyItem.find({ cycleId: cycle._id }).distinct('_id');
-    const [environments, cargos, activities, risks, assessments, measurements, actions] = await Promise.all([
-      RiskSurveyEnvironment.find({ cycleId: cycle._id }).lean(),
-      RiskSurveyCargo.find({ cycleId: cycle._id }).lean(),
-      RiskSurveyActivity.find({ cycleId: cycle._id }).lean(),
-      RiskSurveyItem.find({ cycleId: cycle._id }).lean(),
-      RiskAssessment.find({ riskItemId: { $in: riskIds } }).lean(),
-      RiskMeasurement.find({ riskItemId: { $in: riskIds } }).lean(),
-      RiskSurveyActionPlanItem.find({ cycleId: cycle._id }).lean()
-    ]);
-
-    const assessmentMap = new Map(assessments.map((item) => [String(item.riskItemId), item]));
-    const measurementMap = new Map();
-    for (const measurement of measurements) {
-      const key = String(measurement.riskItemId);
-      if (!measurementMap.has(key)) measurementMap.set(key, []);
-      measurementMap.set(key, [...(measurementMap.get(key) || []), measurement]);
-    }
-
-    const actionMap = new Map();
-    for (const action of actions) {
-      const key = String(action.riskItemId);
-      if (!actionMap.has(key)) actionMap.set(key, []);
-      actionMap.set(key, [...(actionMap.get(key) || []), action]);
-    }
-
-    const risksByActivity = new Map();
-    for (const risk of risks) {
-      const key = String(risk.activityId);
-      if (!risksByActivity.has(key)) risksByActivity.set(key, []);
-      risksByActivity.get(key).push({
-        ...mapRisk(risk),
-        assessment: mapAssessment(assessmentMap.get(String(risk._id))),
-        measurements: (measurementMap.get(String(risk._id)) || []).map(mapMeasurement),
-        actionPlanItems: (actionMap.get(String(risk._id)) || []).map(mapActionPlanItem)
-      });
-    }
-
-    const activitiesByCargo = new Map();
-    for (const activity of activities) {
-      const key = String(activity.cargoId || 'sem_cargo');
-      if (!activitiesByCargo.has(key)) activitiesByCargo.set(key, []);
-      activitiesByCargo.get(key).push({
-        ...mapActivity(activity),
-        risks: risksByActivity.get(String(activity._id)) || []
-      });
-    }
-
-    const payload = {
-      cycle: mapSurveyCycle(cycle.toObject()),
-      completion,
-      environments: environments.map((environment) => ({
-        ...mapEnvironment(environment),
-        cargos: cargos
-          .filter((cargo) => String(cargo.environmentId) === String(environment._id))
-          .map((cargo) => ({
-            ...mapCargo(cargo),
-            activities: activitiesByCargo.get(String(cargo._id)) || []
-          }))
-      })),
-      actionPlanItems: actions.map(mapActionPlanItem)
-    };
+    const previousPublished = await getComparablePublishedSnapshot(cycle);
+    const payload = await buildCycleSnapshotPayload(cycle, completion);
+    const snapshotDiff = buildCycleSnapshotDiff(previousPublished?.snapshot?.payload || null, payload);
+    const signature = await upsertSignatureRecord({
+      entityType: 'survey_cycle',
+      entityId: cycle._id,
+      reason: 'cycle_publish',
+      payload,
+      signer: req.user
+    });
 
     const snapshot = await RiskSurveyCycleSnapshot.create({
       cycleId: cycle._id,
       version: cycle.version,
       publishedAt: new Date(),
       publishedBy: toActor(req.user),
-      payload
+      payload: {
+        ...payload,
+        diff: snapshotDiff,
+        signatureHash: signature.hash
+      }
     });
 
     const before = mapSurveyCycle(cycle.toObject());
     cycle.status = 'published';
     cycle.publishedAt = snapshot.publishedAt;
     cycle.publishedBy = toActor(req.user);
+    cycle.signatureHash = signature.hash;
+    cycle.documentImpactStatus = 'reemitido';
     cycle.updatedBy = toActor(req.user);
     await cycle.save();
 
@@ -1612,10 +1985,48 @@ router.get('/v2/cycles/:id([a-fA-F0-9]{24})/snapshot', requirePermission('riskSu
   }
 });
 
+router.get('/v2/cycles/:id([a-fA-F0-9]{24})/diff', requirePermission('riskSurvey:read'), async (req, res) => {
+  try {
+    const cycle = await RiskSurveyCycle.findById(req.params.id);
+    if (!cycle) return sendError(res, { message: 'Ciclo nao encontrado' }, 404);
+
+    const currentPayload =
+      cycle.status === 'published'
+        ? (await RiskSurveyCycleSnapshot.findOne({ cycleId: cycle._id }).sort({ createdAt: -1 }).lean())?.payload ||
+          (await buildCycleSnapshotPayload(cycle))
+        : await buildCycleSnapshotPayload(cycle);
+
+    const previousPublished = await getComparablePublishedSnapshot(cycle);
+    const diffPayload = buildCycleSnapshotDiff(previousPublished?.snapshot?.payload || null, currentPayload);
+
+    return sendSuccess(res, {
+      data: {
+        cycleId: cycle._id.toString(),
+        baselineCycle: previousPublished?.cycle || null,
+        baselineSnapshotId: previousPublished?.snapshot?.id || null,
+        diff: diffPayload
+      }
+    });
+  } catch (error) {
+    return sendError(res, { message: error.message || 'Erro ao calcular diff do ciclo', meta: { code: error.code, details: error.message } }, error.status || 500);
+  }
+});
+
+router.get('/v2/cycles/:id([a-fA-F0-9]{24})/document-impact', requirePermission('riskSurvey:read'), async (req, res) => {
+  try {
+    const cycle = await RiskSurveyCycle.findById(req.params.id).lean();
+    if (!cycle) return sendError(res, { message: 'Ciclo nao encontrado' }, 404);
+    const impact = await getCycleDocumentImpact(cycle);
+    return sendSuccess(res, { data: impact });
+  } catch (error) {
+    return sendError(res, { message: error.message || 'Erro ao carregar impacto documental do ciclo', meta: { code: error.code, details: error.message } }, error.status || 500);
+  }
+});
+
 router.get('/metadata', requirePermission('riskSurvey:read'), (req, res) => {
   return sendSuccess(res, {
     data: {
-      hierarchy: ['empresa', 'unidade', 'setor', 'ambiente', 'cargo', 'atividade', 'risco'],
+      hierarchy: ['empresa', 'unidade', 'setor', 'ambiente', 'ghe', 'cargo', 'atividade', 'risco', 'conclusao_tecnica'],
       environmentTypes: ENV_TYPES,
       ventilationTypes: VENT_TYPES,
       lightingTypes: LIGHT_TYPES,
@@ -1633,6 +2044,10 @@ router.get('/metadata', requirePermission('riskSurvey:read'), (req, res) => {
       actionPlanStatusTypes: ACTION_PLAN_STATUS_TYPES,
       actionPlanPriorityTypes: ACTION_PLAN_PRIORITY_TYPES,
       actionPlanTypeTypes: ACTION_PLAN_TYPE_TYPES,
+      gheStatusTypes: GHE_STATUS_TYPES,
+      technicalResultTypes: TECHNICAL_RESULT_TYPES,
+      technicalConclusionStatusTypes: TECHNICAL_CONCLUSION_STATUS_TYPES,
+      documentTemplateCodes: DOCUMENT_TEMPLATE_CODES,
       assessmentRanges: DEFAULT_RANGES,
       surveyCycleStatuses: SURVEY_CYCLE_STATUS,
       surveyCycleReviewReasons: SURVEY_CYCLE_REVIEW_REASONS,
@@ -2110,6 +2525,11 @@ router.delete('/environments/:id([a-fA-F0-9]{24})', requirePermission('riskSurve
     const environment = await RiskSurveyEnvironment.findById(req.params.id);
     ensureEditableEnvironment(environment);
 
+    const gheCount = await RiskSurveyGhe.countDocuments({ environmentId: environment._id });
+    if (gheCount > 0) {
+      return sendError(res, { message: 'Nao e possivel excluir ambiente com GHEs vinculados' }, 409);
+    }
+
     const cargoCount = await RiskSurveyCargo.countDocuments({ environmentId: environment._id });
     if (cargoCount > 0) {
       return sendError(res, { message: 'Nao e possivel excluir ambiente com cargos vinculados' }, 409);
@@ -2131,6 +2551,139 @@ router.delete('/environments/:id([a-fA-F0-9]{24})', requirePermission('riskSurve
   }
 });
 
+router.get('/environments/:id([a-fA-F0-9]{24})/ghes', requirePermission('riskSurvey:read'), async (req, res) => {
+  try {
+    const rows = await RiskSurveyGhe.find({ environmentId: req.params.id }).sort({ nomeTecnico: 1, createdAt: 1 }).lean();
+    return sendSuccess(res, { data: rows.map(mapGhe), meta: { total: rows.length } });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao listar GHEs', meta: { details: error.message } }, 500);
+  }
+});
+
+router.get('/cycles/:id([a-fA-F0-9]{24})/ghes', requirePermission('riskSurvey:read'), async (req, res) => {
+  try {
+    const rows = await RiskSurveyGhe.find({ cycleId: req.params.id }).sort({ createdAt: 1 }).lean();
+    return sendSuccess(res, { data: rows.map(mapGhe), meta: { total: rows.length } });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao listar GHEs do ciclo', meta: { details: error.message } }, 500);
+  }
+});
+
+router.post('/ghes', requirePermission('ghe:write'), async (req, res) => {
+  try {
+    const environmentId = toId(req.body?.environmentId, 'environmentId');
+    const environment = await RiskSurveyEnvironment.findById(environmentId);
+    ensureEditableEnvironment(environment);
+
+    const payload = {
+      cycleId: environment.cycleId,
+      environmentId: environment._id,
+      empresaId: environment.empresaId,
+      unidade: environment.unidade,
+      estabelecimento: environment.estabelecimento || '',
+      setor: environment.setor,
+      nomeTecnico: toText(req.body?.nomeTecnico),
+      descricaoSimilaridade: toText(req.body?.descricaoSimilaridade),
+      headcount: toNumber(req.body?.headcount, 1),
+      cargoIds: [],
+      status: toText(req.body?.status, 'ativo'),
+      reviewHistory: [
+        {
+          at: new Date(),
+          actor: toActor(req.user),
+          action: 'create',
+          note: toText(req.body?.reviewNote)
+        }
+      ]
+    };
+
+    if (!payload.nomeTecnico) {
+      return sendError(res, { message: 'Nome tecnico do GHE e obrigatorio' }, 400);
+    }
+    if (!isEnum(GHE_STATUS_TYPES, payload.status)) {
+      return sendError(res, { message: 'Status do GHE invalido' }, 400);
+    }
+
+    const created = await RiskSurveyGhe.create(payload);
+    const mapped = mapGhe(created.toObject());
+    await logAudit({ entityType: 'ghe', entityId: mapped.id, action: 'create', actor: req.user, before: null, after: mapped });
+    return sendSuccess(res, { data: mapped, message: 'GHE criado com sucesso' }, 201);
+  } catch (error) {
+    if (error?.code === 11000) {
+      return sendError(res, { message: 'Ja existe um GHE com este nome no ambiente selecionado' }, 409);
+    }
+    return sendError(res, { message: error.message || 'Erro ao criar GHE', meta: { code: error.code } }, error.status || 500);
+  }
+});
+
+router.put('/ghes/:id([a-fA-F0-9]{24})', requirePermission('ghe:write'), async (req, res) => {
+  try {
+    const ghe = await RiskSurveyGhe.findById(req.params.id);
+    if (!ghe) return sendError(res, { message: 'GHE nao encontrado' }, 404);
+
+    const environment = await RiskSurveyEnvironment.findById(ghe.environmentId);
+    ensureEditableEnvironment(environment);
+
+    const before = mapGhe(ghe.toObject());
+    if (req.body?.nomeTecnico !== undefined) ghe.nomeTecnico = toText(req.body.nomeTecnico);
+    if (req.body?.descricaoSimilaridade !== undefined) ghe.descricaoSimilaridade = toText(req.body.descricaoSimilaridade);
+    if (req.body?.headcount !== undefined) ghe.headcount = toNumber(req.body.headcount, ghe.headcount || 1);
+    if (req.body?.status !== undefined) {
+      const status = toText(req.body.status);
+      if (!isEnum(GHE_STATUS_TYPES, status)) return sendError(res, { message: 'Status do GHE invalido' }, 400);
+      ghe.status = status;
+    }
+    if (req.body?.reviewNote !== undefined) {
+      ghe.reviewHistory = [
+        ...(Array.isArray(ghe.reviewHistory) ? ghe.reviewHistory : []),
+        { at: new Date(), actor: toActor(req.user), action: 'update', note: toText(req.body.reviewNote) }
+      ];
+    }
+    await ghe.save();
+
+    const after = mapGhe(ghe.toObject());
+    await logAudit({ entityType: 'ghe', entityId: after.id, action: 'update', actor: req.user, before, after });
+    return sendSuccess(res, { data: after, message: 'GHE atualizado com sucesso' });
+  } catch (error) {
+    return sendError(res, { message: error.message || 'Erro ao atualizar GHE', meta: { code: error.code } }, error.status || 500);
+  }
+});
+
+router.delete('/ghes/:id([a-fA-F0-9]{24})', requirePermission('ghe:write'), async (req, res) => {
+  try {
+    const ghe = await RiskSurveyGhe.findById(req.params.id);
+    if (!ghe) return sendError(res, { message: 'GHE nao encontrado' }, 404);
+
+    const environment = await RiskSurveyEnvironment.findById(ghe.environmentId);
+    ensureEditableEnvironment(environment);
+
+    const [cargoCount, activityCount, riskCount, conclusionCount] = await Promise.all([
+      RiskSurveyCargo.countDocuments({ gheId: ghe._id }),
+      RiskSurveyActivity.countDocuments({ gheId: ghe._id }),
+      RiskSurveyItem.countDocuments({ gheId: ghe._id }),
+      RiskTechnicalConclusion.countDocuments({ gheId: ghe._id })
+    ]);
+
+    if (cargoCount > 0 || activityCount > 0 || riskCount > 0 || conclusionCount > 0) {
+      return sendError(
+        res,
+        {
+          message: 'Nao e possivel excluir GHE com vinculos tecnicos',
+          meta: { cargoCount, activityCount, riskCount, conclusionCount }
+        },
+        409
+      );
+    }
+
+    const before = mapGhe(ghe.toObject());
+    await RiskSurveyGhe.deleteOne({ _id: ghe._id });
+    await logAudit({ entityType: 'ghe', entityId: before.id, action: 'delete', actor: req.user, before, after: null });
+    return sendSuccess(res, { data: null, message: 'GHE removido com sucesso' });
+  } catch (error) {
+    return sendError(res, { message: error.message || 'Erro ao remover GHE', meta: { code: error.code } }, error.status || 500);
+  }
+});
+
 router.get('/environments/:id([a-fA-F0-9]{24})/cargos', requirePermission('riskSurvey:read'), async (req, res) => {
   try {
     const rows = await RiskSurveyCargo.find({ environmentId: req.params.id }).sort({ nome: 1 }).lean();
@@ -2145,10 +2698,12 @@ router.post('/cargos', requirePermission('riskSurvey:write'), async (req, res) =
     const environmentId = toId(req.body?.environmentId, 'environmentId');
     const environment = await RiskSurveyEnvironment.findById(environmentId);
     ensureEditableEnvironment(environment);
+    const ghe = await ensureActiveGhe(req.body?.gheId, environment);
 
     const payload = {
       cycleId: environment.cycleId || null,
       environmentId: environment._id,
+      gheId: ghe._id,
       empresaId: environment.empresaId,
       unidade: environment.unidade,
       estabelecimento: environment.estabelecimento || '',
@@ -2163,6 +2718,7 @@ router.post('/cargos', requirePermission('riskSurvey:write'), async (req, res) =
     }
 
     const created = await RiskSurveyCargo.create(payload);
+    await RiskSurveyGhe.updateOne({ _id: ghe._id }, { $addToSet: { cargoIds: created._id } });
     const mapped = mapCargo(created.toObject());
     await logAudit({ entityType: 'cargo', entityId: mapped.id, action: 'create', actor: req.user, before: null, after: mapped });
     return sendSuccess(res, { data: mapped, message: 'Cargo criado com sucesso' }, 201);
@@ -2183,6 +2739,15 @@ router.put('/cargos/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:write')
     ensureEditableEnvironment(environment);
 
     const before = mapCargo(cargo.toObject());
+    if (req.body?.gheId !== undefined) {
+      const ghe = await ensureActiveGhe(req.body.gheId, environment);
+      const previousGheId = cargo.gheId ? String(cargo.gheId) : null;
+      cargo.gheId = ghe._id;
+      if (previousGheId && previousGheId !== String(ghe._id)) {
+        await RiskSurveyGhe.updateOne({ _id: previousGheId }, { $pull: { cargoIds: cargo._id } });
+      }
+      await RiskSurveyGhe.updateOne({ _id: ghe._id }, { $addToSet: { cargoIds: cargo._id } });
+    }
     if (req.body?.nome !== undefined) cargo.nome = toText(req.body.nome);
     if (req.body?.descricao !== undefined) cargo.descricao = toText(req.body.descricao);
     if (req.body?.ativo !== undefined) cargo.ativo = Boolean(req.body.ativo);
@@ -2210,6 +2775,9 @@ router.delete('/cargos/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:writ
     }
 
     const before = mapCargo(cargo.toObject());
+    if (cargo.gheId) {
+      await RiskSurveyGhe.updateOne({ _id: cargo.gheId }, { $pull: { cargoIds: cargo._id } });
+    }
     await RiskSurveyCargo.deleteOne({ _id: cargo._id });
     await logAudit({ entityType: 'cargo', entityId: before.id, action: 'delete', actor: req.user, before, after: null });
     return sendSuccess(res, { data: null, message: 'Cargo removido com sucesso' });
@@ -2253,11 +2821,15 @@ router.post('/activities', requirePermission('riskSurvey:write'), async (req, re
     if (String(cargo.environmentId) !== String(environment._id)) {
       return sendError(res, { message: 'Cargo nao pertence ao ambiente informado' }, 400);
     }
+    if (!cargo.gheId) {
+      return sendError(res, { message: 'Cargo precisa estar vinculado a um GHE ativo' }, 409);
+    }
 
     const payload = {
       cycleId: environment.cycleId || null,
       environmentId,
       cargoId,
+      gheId: cargo.gheId,
       empresaId: environment.empresaId,
       nome: toText(req.body?.nome),
       funcaoCargo: toText(req.body?.funcaoCargo || cargo.nome),
@@ -2319,7 +2891,11 @@ router.put('/activities/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:wri
       if (String(cargo.environmentId) !== String(environment._id)) {
         return sendError(res, { message: 'Cargo nao pertence ao ambiente da atividade' }, 400);
       }
+      if (!cargo.gheId) {
+        return sendError(res, { message: 'Cargo precisa estar vinculado a um GHE ativo' }, 409);
+      }
       activity.cargoId = cargo._id;
+      activity.gheId = cargo.gheId;
       if (!activity.funcaoCargo) {
         activity.funcaoCargo = cargo.nome;
       }
@@ -2406,6 +2982,7 @@ router.post('/risks', requirePermission('riskSurvey:write'), async (req, res) =>
     const activityId = toId(req.body?.activityId, 'activityId');
     const activity = await RiskSurveyActivity.findById(activityId);
     if (!activity) return sendError(res, { message: 'Atividade nao encontrada' }, 404);
+    if (!activity.gheId) return sendError(res, { message: 'Atividade precisa estar vinculada a um GHE ativo' }, 409);
 
     const environment = await RiskSurveyEnvironment.findById(activity.environmentId);
     ensureEditableEnvironment(environment);
@@ -2470,6 +3047,7 @@ router.post('/risks', requirePermission('riskSurvey:write'), async (req, res) =>
       cycleId: environment.cycleId || null,
       activityId: activity._id,
       environmentId: environment._id,
+      gheId: activity.gheId,
       riskLibraryId: library._id,
       empresaId: environment.empresaId,
       titulo: toText(req.body?.tituloRisco || req.body?.titulo || library.titulo || req.body?.perigo),
@@ -2536,14 +3114,16 @@ router.get('/risks/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:read'), 
     const risk = await RiskSurveyItem.findById(req.params.id).lean();
     if (!risk) return sendError(res, { message: 'Risco nao encontrado' }, 404);
 
-    const [activity, environment, cargo, library, assessment, measurements, actionPlanItems] = await Promise.all([
+    const [activity, environment, cargo, ghe, library, assessment, conclusion, measurements, actionPlanItems] = await Promise.all([
       RiskSurveyActivity.findById(risk.activityId).lean(),
       RiskSurveyEnvironment.findById(risk.environmentId).lean(),
       RiskSurveyActivity.findById(risk.activityId).then((row) =>
         row?.cargoId ? RiskSurveyCargo.findById(row.cargoId).lean() : null
       ),
+      risk.gheId ? RiskSurveyGhe.findById(risk.gheId).lean() : null,
       risk.riskLibraryId ? RiskLibrary.findById(risk.riskLibraryId).lean() : null,
       RiskAssessment.findOne({ riskItemId: risk._id }).lean(),
+      RiskTechnicalConclusion.findOne({ riskItemId: risk._id }).lean(),
       RiskMeasurement.find({ riskItemId: risk._id }).sort({ dataMedicao: -1 }).lean(),
       RiskSurveyActionPlanItem.find({ riskItemId: risk._id }).sort({ createdAt: -1 }).lean()
     ]);
@@ -2559,9 +3139,11 @@ router.get('/risks/:id([a-fA-F0-9]{24})', requirePermission('riskSurvey:read'), 
         risk: mapRisk(risk),
         activity: mapActivity(activity),
         cargo: mapCargo(cargo),
+        ghe: mapGhe(ghe),
         environment: mapEnvironment(environment),
         library: mapRiskLibrary(library),
         assessment: mapAssessment(assessment),
+        technicalConclusion: mapTechnicalConclusion(conclusion),
         measurements: measurements.map((measurement) => ({
           ...mapMeasurement(measurement),
           device: measurement.deviceId ? deviceMap.get(String(measurement.deviceId)) || null : null
@@ -2893,6 +3475,129 @@ router.delete('/action-plan-items/:id([a-fA-F0-9]{24})', requirePermission('risk
     return sendError(
       res,
       { message: error.message || 'Erro ao remover plano de acao', meta: { code: error.code } },
+      error.status || 500
+    );
+  }
+});
+
+router.put('/risks/:id([a-fA-F0-9]{24})/technical-conclusion', requirePermission('riskSurvey:write'), async (req, res) => {
+  try {
+    const risk = await RiskSurveyItem.findById(req.params.id);
+    if (!risk) return sendError(res, { message: 'Risco nao encontrado' }, 404);
+
+    const environment = await RiskSurveyEnvironment.findById(risk.environmentId);
+    ensureEditableEnvironment(environment);
+    await ensureAssessmentExists(risk._id);
+
+    const previous = await RiskTechnicalConclusion.findOne({ riskItemId: risk._id }).lean();
+    const responsavelTecnico = {
+      nome: toText(req.body?.responsavelTecnico?.nome || req.body?.responsavelTecnicoNome || req.user?.nome),
+      email: toText(req.body?.responsavelTecnico?.email || req.user?.email),
+      registro: toText(req.body?.responsavelTecnico?.registro || req.body?.registroProfissional)
+    };
+
+    const payload = {
+      cycleId: risk.cycleId,
+      riskItemId: risk._id,
+      gheId: risk.gheId || null,
+      environmentId: risk.environmentId,
+      activityId: risk.activityId,
+      empresaId: risk.empresaId,
+      habitualidade: toText(req.body?.habitualidade, previous?.habitualidade),
+      enquadramentoNormativo: toText(req.body?.enquadramentoNormativo, previous?.enquadramentoNormativo),
+      resultadoTecnico: toText(req.body?.resultadoTecnico, previous?.resultadoTecnico),
+      justificativaTecnica: toText(req.body?.justificativaTecnica, previous?.justificativaTecnica),
+      responsavelTecnico,
+      status: 'draft',
+      version: Number(previous?.version || 0) + 1,
+      signedAt: null,
+      signedBy: { id: null, nome: '', email: '', perfil: '' },
+      signatureHash: ''
+    };
+
+    if (!payload.resultadoTecnico || !payload.habitualidade || !payload.enquadramentoNormativo) {
+      return sendError(res, { message: 'Resultado tecnico, habitualidade e enquadramento normativo sao obrigatorios' }, 400);
+    }
+    if (!isEnum(TECHNICAL_RESULT_TYPES, payload.resultadoTecnico)) {
+      return sendError(res, { message: 'Resultado tecnico invalido' }, 400);
+    }
+    if (!payload.responsavelTecnico.nome || !payload.responsavelTecnico.registro) {
+      return sendError(res, { message: 'Responsavel tecnico com registro profissional e obrigatorio' }, 400);
+    }
+
+    const updated = await RiskTechnicalConclusion.findOneAndUpdate(
+      { riskItemId: risk._id },
+      payload,
+      { upsert: true, new: true }
+    ).lean();
+
+    const mapped = mapTechnicalConclusion(updated);
+    await logAudit({
+      entityType: 'risk_technical_conclusion',
+      entityId: mapped.id,
+      action: previous ? 'update' : 'create',
+      actor: req.user,
+      before: mapTechnicalConclusion(previous),
+      after: mapped
+    });
+
+    return sendSuccess(res, { data: mapped, message: 'Conclusao tecnica salva com sucesso' });
+  } catch (error) {
+    return sendError(
+      res,
+      { message: error.message || 'Erro ao salvar conclusao tecnica', meta: { code: error.code } },
+      error.status || 500
+    );
+  }
+});
+
+router.post('/risks/:id([a-fA-F0-9]{24})/technical-conclusion/sign', requirePermission('riskSurvey:sign'), async (req, res) => {
+  try {
+    const risk = await RiskSurveyItem.findById(req.params.id).lean();
+    if (!risk) return sendError(res, { message: 'Risco nao encontrado' }, 404);
+
+    const environment = await RiskSurveyEnvironment.findById(risk.environmentId);
+    ensureEditableEnvironment(environment);
+
+    const conclusion = await RiskTechnicalConclusion.findOne({ riskItemId: risk._id });
+    if (!conclusion) {
+      return sendError(res, { message: 'Conclusao tecnica nao encontrada' }, 404);
+    }
+    if (!conclusion.responsavelTecnico?.registro) {
+      return sendError(res, { message: 'Registro profissional do RT obrigatorio para assinar' }, 400);
+    }
+
+    const signaturePayload = mapTechnicalConclusion(conclusion.toObject());
+    const { record, hash } = await upsertSignatureRecord({
+      entityType: 'risk_technical_conclusion',
+      entityId: conclusion._id.toString(),
+      reason: 'technical_conclusion',
+      payload: signaturePayload,
+      signer: req.user
+    });
+
+    const before = mapTechnicalConclusion(conclusion.toObject());
+    conclusion.status = 'signed';
+    conclusion.signedAt = record.signedAt;
+    conclusion.signedBy = toActor(req.user);
+    conclusion.signatureHash = hash;
+    await conclusion.save();
+
+    const after = mapTechnicalConclusion(conclusion.toObject());
+    await logAudit({
+      entityType: 'risk_technical_conclusion',
+      entityId: after.id,
+      action: 'sign',
+      actor: req.user,
+      before,
+      after
+    });
+
+    return sendSuccess(res, { data: after, message: 'Conclusao tecnica assinada com sucesso' });
+  } catch (error) {
+    return sendError(
+      res,
+      { message: error.message || 'Erro ao assinar conclusao tecnica', meta: { code: error.code } },
       error.status || 500
     );
   }
@@ -3235,17 +3940,19 @@ router.get('/dashboard', requirePermission('riskSurvey:read'), async (req, res) 
       baseFilter.empresaId = companyId;
     }
 
-    const [ambientes, cargos, atividades, riscos] = await Promise.all([
+    const [ambientes, ghes, cargos, atividades, riscos] = await Promise.all([
       RiskSurveyEnvironment.countDocuments(baseFilter),
+      RiskSurveyGhe.countDocuments(baseFilter),
       RiskSurveyCargo.countDocuments(baseFilter),
       RiskSurveyActivity.countDocuments(baseFilter),
       RiskSurveyItem.find(riskFilter).select({ _id: 1 }).lean()
     ]);
 
     const riskIds = riscos.map((risk) => risk._id);
-    const [avaliacoes, medicoes] = await Promise.all([
+    const [avaliacoes, medicoes, conclusoes] = await Promise.all([
       riskIds.length ? RiskAssessment.find({ riskItemId: { $in: riskIds } }).lean() : [],
-      riskIds.length ? RiskMeasurement.countDocuments({ riskItemId: { $in: riskIds } }) : 0
+      riskIds.length ? RiskMeasurement.countDocuments({ riskItemId: { $in: riskIds } }) : 0,
+      riskIds.length ? RiskTechnicalConclusion.countDocuments({ riskItemId: { $in: riskIds }, status: 'signed' }) : 0
     ]);
     const riskRows = riskIds.length
       ? await RiskSurveyItem.find({ _id: { $in: riskIds } }).select({ riskType: 1, legacyMigrated: 1 }).lean()
@@ -3279,10 +3986,12 @@ router.get('/dashboard', requirePermission('riskSurvey:read'), async (req, res) 
       data: {
         counts: {
           ambientes,
+          ghes,
           cargos,
           atividades,
           riscos: riskIds.length,
           avaliacoes: avaliacoes.length,
+          conclusoes,
           medicoes,
           acoesNecessarias: classificacao.alto + classificacao.critico,
           riscosMigrados: legacyCount

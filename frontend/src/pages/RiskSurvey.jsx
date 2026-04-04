@@ -79,6 +79,18 @@ const EMPTY_MEASUREMENT = {
   dataMedicao: ''
 };
 
+const EMPTY_TECHNICAL_CONCLUSION = {
+  resultadoTecnico: 'neutro',
+  habitualidade: 'habitual_intermitente',
+  enquadramentoNormativo: '',
+  justificativaTecnica: '',
+  responsavelTecnico: {
+    nome: '',
+    email: '',
+    registro: ''
+  }
+};
+
 const scoreLabel = (score) => {
   if (score <= 4) return 'baixo';
   if (score <= 9) return 'medio';
@@ -98,6 +110,7 @@ const RiskSurvey = () => {
   const { hasPermission } = useAuth();
   const canConfigure = hasPermission('riskSurvey:configure');
   const canWrite = hasPermission('riskSurvey:write');
+  const canSign = hasPermission('riskSurvey:sign');
   const canFinalize = hasPermission('riskSurvey:finalize');
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -134,6 +147,7 @@ const RiskSurvey = () => {
   const [riskEditForm, setRiskEditForm] = useState(EMPTY_RISK);
   const [assessmentForm, setAssessmentForm] = useState(EMPTY_ASSESSMENT);
   const [measurementForm, setMeasurementForm] = useState(EMPTY_MEASUREMENT);
+  const [technicalConclusionForm, setTechnicalConclusionForm] = useState(EMPTY_TECHNICAL_CONCLUSION);
   const [actionPlanForm, setActionPlanForm] = useState(EMPTY_ACTION_PLAN);
 
   const selectedEnvironment = useMemo(
@@ -186,7 +200,7 @@ const RiskSurvey = () => {
     const requestedCycleId = searchParams.get('cycleId');
     const preferredCycle =
       cycleRows.find((item) => String(item.id) === String(requestedCycleId)) ||
-      cycleRows.find((item) => item.status === 'draft' || item.status === 'in_review') ||
+      cycleRows.find((item) => item.status === 'draft' || item.status === 'in_review' || item.status === 'approved') ||
       cycleRows[0] ||
       null;
 
@@ -262,6 +276,14 @@ const RiskSurvey = () => {
       setRiskEditForm(EMPTY_RISK);
       setAssessmentForm(EMPTY_ASSESSMENT);
       setMeasurementForm(EMPTY_MEASUREMENT);
+      setTechnicalConclusionForm({
+        ...EMPTY_TECHNICAL_CONCLUSION,
+        responsavelTecnico: {
+          nome: selectedCycle?.responsibleTechnical?.nome || '',
+          email: selectedCycle?.responsibleTechnical?.email || '',
+          registro: selectedCycle?.responsibleTechnical?.registro || ''
+        }
+      });
       setActionPlanForm(EMPTY_ACTION_PLAN);
       return;
     }
@@ -317,6 +339,29 @@ const RiskSurvey = () => {
       ...prev,
       deviceId: detail?.measurements?.[0]?.deviceId || prev.deviceId || ''
     }));
+    setTechnicalConclusionForm(
+      detail?.technicalConclusion
+        ? {
+            resultadoTecnico: detail.technicalConclusion.resultadoTecnico || 'neutro',
+            habitualidade: detail.technicalConclusion.habitualidade || 'habitual_intermitente',
+            enquadramentoNormativo: detail.technicalConclusion.enquadramentoNormativo || '',
+            justificativaTecnica: detail.technicalConclusion.justificativaTecnica || '',
+            responsavelTecnico: {
+              nome: detail.technicalConclusion.responsavelTecnico?.nome || selectedCycle?.responsibleTechnical?.nome || '',
+              email: detail.technicalConclusion.responsavelTecnico?.email || selectedCycle?.responsibleTechnical?.email || '',
+              registro: detail.technicalConclusion.responsavelTecnico?.registro || selectedCycle?.responsibleTechnical?.registro || ''
+            }
+          }
+        : {
+            ...EMPTY_TECHNICAL_CONCLUSION,
+            habitualidade: detail?.risk?.habitualidade || 'habitual_intermitente',
+            responsavelTecnico: {
+              nome: selectedCycle?.responsibleTechnical?.nome || '',
+              email: selectedCycle?.responsibleTechnical?.email || '',
+              registro: selectedCycle?.responsibleTechnical?.registro || ''
+            }
+          }
+    );
     setActionPlanForm((prev) => ({ ...prev, responsavel: prev.responsavel || selectedCycle?.responsibleTechnical?.nome || '' }));
   };
 
@@ -526,6 +571,29 @@ const RiskSurvey = () => {
     }
   };
 
+  const onSaveTechnicalConclusion = async (event) => {
+    event.preventDefault();
+    if (!riskDetail?.risk?.id) return;
+
+    try {
+      await riskSurveyService.upsertTechnicalConclusion(riskDetail.risk.id, technicalConclusionForm);
+      await Promise.all([loadRiskDetail(), loadDashboard()]);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Erro ao salvar conclusão técnica.');
+    }
+  };
+
+  const onSignTechnicalConclusion = async () => {
+    if (!riskDetail?.risk?.id) return;
+
+    try {
+      await riskSurveyService.signTechnicalConclusion(riskDetail.risk.id);
+      await Promise.all([loadRiskDetail(), loadDashboard()]);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Erro ao assinar conclusão técnica.');
+    }
+  };
+
   const onDeleteMeasurement = async (measurementId) => {
     try {
       await riskSurveyService.deleteMeasurement(measurementId);
@@ -702,6 +770,7 @@ const RiskSurvey = () => {
         <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-gray-200 pb-3">
           <button className={`rounded-lg px-3 py-1.5 text-sm ${tab === 'identificacao' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`} onClick={() => setTab('identificacao')}>Identificação</button>
           <button className={`rounded-lg px-3 py-1.5 text-sm ${tab === 'avaliacao' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`} onClick={() => setTab('avaliacao')}>Avaliação Qualitativa</button>
+          <button className={`rounded-lg px-3 py-1.5 text-sm ${tab === 'conclusao' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`} onClick={() => setTab('conclusao')}>Conclusão Técnica</button>
           <button className={`rounded-lg px-3 py-1.5 text-sm ${tab === 'medicoes' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`} onClick={() => setTab('medicoes')}>Avaliação Quantitativa</button>
           <button className={`rounded-lg px-3 py-1.5 text-sm ${tab === 'controles' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`} onClick={() => setTab('controles')}>Controles</button>
           <button className={`rounded-lg px-3 py-1.5 text-sm ${tab === 'plano' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`} onClick={() => setTab('plano')}>Plano de Ação</button>
@@ -715,7 +784,10 @@ const RiskSurvey = () => {
             <div className="grid grid-cols-1 gap-4 rounded-lg border border-gray-200 p-4 md:grid-cols-3">
               <div><span className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Ambiente</span><div className="mt-1 text-sm font-semibold text-gray-900">{riskDetail.environment?.nome || '-'}</div></div>
               <div><span className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Cargo</span><div className="mt-1 text-sm font-semibold text-gray-900">{riskDetail.cargo?.nome || '-'}</div></div>
+              <div><span className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">GHE</span><div className="mt-1 text-sm font-semibold text-gray-900">{riskDetail.ghe?.nomeTecnico || 'Nao vinculado'}</div></div>
               <div><span className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Atividade</span><div className="mt-1 text-sm font-semibold text-gray-900">{riskDetail.activity?.nome || '-'}</div></div>
+              <div><span className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Conclusao tecnica</span><div className="mt-1 text-sm font-semibold text-gray-900">{riskDetail.technicalConclusion?.resultadoTecnico || 'Pendente'}</div></div>
+              <div><span className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Status assinatura</span><div className="mt-1 text-sm font-semibold text-gray-900">{riskDetail.technicalConclusion?.status === 'signed' ? 'Assinada' : 'Rascunho'}</div></div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -761,6 +833,32 @@ const RiskSurvey = () => {
             </div>
             <textarea className="input-field min-h-[100px]" value={assessmentForm.justificativaTecnica} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, justificativaTecnica: event.target.value }))} placeholder="Justificativa técnica (obrigatória para alto/crítico)" />
             {canWrite && !isEnvironmentFinalized && <button className="btn-primary" type="submit"><Save className="mr-2 inline h-4 w-4" />Salvar qualitativa</button>}
+          </form>
+        )}
+
+        {riskDetail?.risk && tab === 'conclusao' && (
+          <form className="space-y-4" onSubmit={onSaveTechnicalConclusion}>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <select className="input-field" value={technicalConclusionForm.resultadoTecnico} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setTechnicalConclusionForm((prev) => ({ ...prev, resultadoTecnico: event.target.value }))}>
+                {metadata?.technicalResultTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+              <select className="input-field" value={technicalConclusionForm.habitualidade} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setTechnicalConclusionForm((prev) => ({ ...prev, habitualidade: event.target.value }))}>
+                {metadata?.exposureHabitualityTypes?.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+              <input className="input-field md:col-span-2" placeholder="Enquadramento normativo" value={technicalConclusionForm.enquadramentoNormativo} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setTechnicalConclusionForm((prev) => ({ ...prev, enquadramentoNormativo: event.target.value }))} />
+              <textarea className="input-field min-h-[120px] md:col-span-2" placeholder="Justificativa técnica conclusiva" value={technicalConclusionForm.justificativaTecnica} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setTechnicalConclusionForm((prev) => ({ ...prev, justificativaTecnica: event.target.value }))} />
+              <input className="input-field" placeholder="Responsável técnico" value={technicalConclusionForm.responsavelTecnico.nome} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setTechnicalConclusionForm((prev) => ({ ...prev, responsavelTecnico: { ...prev.responsavelTecnico, nome: event.target.value } }))} />
+              <input className="input-field" placeholder="Registro profissional" value={technicalConclusionForm.responsavelTecnico.registro} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setTechnicalConclusionForm((prev) => ({ ...prev, responsavelTecnico: { ...prev.responsavelTecnico, registro: event.target.value } }))} />
+              <input className="input-field md:col-span-2" type="email" placeholder="Email técnico" value={technicalConclusionForm.responsavelTecnico.email} disabled={!canWrite || isEnvironmentFinalized} onChange={(event) => setTechnicalConclusionForm((prev) => ({ ...prev, responsavelTecnico: { ...prev.responsavelTecnico, email: event.target.value } }))} />
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+              Status atual: <strong className="text-slate-900">{riskDetail.technicalConclusion?.status === 'signed' ? 'Assinada' : 'Rascunho'}</strong>
+              {riskDetail.technicalConclusion?.signedAt ? ` • Assinada em ${new Date(riskDetail.technicalConclusion.signedAt).toLocaleString('pt-BR')}` : ''}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {canWrite && !isEnvironmentFinalized ? <button className="btn-primary" type="submit"><Save className="mr-2 inline h-4 w-4" />Salvar conclusão</button> : null}
+              {canSign && !isEnvironmentFinalized ? <button className="btn-secondary" type="button" onClick={onSignTechnicalConclusion}>Assinar conclusão</button> : null}
+            </div>
           </form>
         )}
 
