@@ -11,6 +11,7 @@ const EFFECTIVENESS_TYPES = ['nao_avaliada', 'adequado', 'parcial', 'ineficaz'];
 const ACTION_STATUS = ['pendente', 'em_andamento', 'concluida', 'cancelada'];
 const DOCUMENT_TYPES = ['inventario', 'pgr', 'ltcat', 'laudo_insalubridade', 'laudo_periculosidade', 'laudo_tecnico'];
 const DOCUMENT_STATUS = ['draft', 'issued', 'superseded', 'invalidated'];
+const DOCUMENT_SCOPE_TYPES = ['assessment', 'sector', 'establishment'];
 const CATALOG_TYPES = ['hazard', 'risk_factor', 'agent', 'control', 'normative_reference'];
 
 const actorSchema = new Schema(
@@ -188,9 +189,60 @@ const assessmentRevisionSchema = new Schema(
   { timestamps: true, collection: 'sst_assessment_revisions' }
 );
 
+const documentModelEditableSchema = new Schema(
+  {
+    resumo: { type: String, default: '' },
+    notas: { type: String, default: '' },
+    ressalvas: { type: String, default: '' }
+  },
+  { _id: false }
+);
+
+const documentModelAnnexSchema = new Schema(
+  {
+    title: { type: String, required: true },
+    content: { type: String, default: '' },
+    order: { type: Number, default: 1 }
+  },
+  { _id: true }
+);
+
+const documentModelLayersSchema = new Schema(
+  {
+    fixed: { type: String, default: '' },
+    editable: { type: documentModelEditableSchema, default: () => ({}) },
+    annexes: { type: [documentModelAnnexSchema], default: [] }
+  },
+  { _id: false }
+);
+
+const documentModelSchema = new Schema(
+  {
+    empresaId: { type: String, default: '', index: true },
+    code: { type: String, required: true },
+    title: { type: String, required: true },
+    description: { type: String, default: '' },
+    documentType: { type: String, enum: DOCUMENT_TYPES, required: true, index: true },
+    allowedScopeTypes: {
+      type: [{ type: String, enum: DOCUMENT_SCOPE_TYPES }],
+      default: ['assessment']
+    },
+    layers: { type: documentModelLayersSchema, default: () => ({}) },
+    active: { type: Boolean, default: true, index: true },
+    isSystem: { type: Boolean, default: false, index: true },
+    createdBy: { type: actorSchema, default: () => ({}) },
+    updatedBy: { type: actorSchema, default: () => ({}) }
+  },
+  { timestamps: true, collection: 'sst_document_models' }
+);
+documentModelSchema.index({ empresaId: 1, code: 1 }, { unique: true });
+
 const issuedTechnicalDocumentSchema = new Schema(
   {
     documentType: { type: String, enum: DOCUMENT_TYPES, required: true, index: true },
+    documentModelId: { type: objectId, ref: 'SstDocumentModel', default: null, index: true },
+    documentModelCode: { type: String, default: '', index: true },
+    documentModelTitle: { type: String, default: '' },
     scopeType: { type: String, enum: ['assessment', 'sector', 'establishment'], required: true, index: true },
     scopeRefId: { type: String, required: true, index: true },
     empresaId: { type: String, required: true, index: true },
@@ -202,12 +254,14 @@ const issuedTechnicalDocumentSchema = new Schema(
   },
   { timestamps: true, collection: 'sst_issued_documents' }
 );
-issuedTechnicalDocumentSchema.index({ documentType: 1, scopeType: 1, scopeRefId: 1 }, { unique: true });
+issuedTechnicalDocumentSchema.index({ documentType: 1, scopeType: 1, scopeRefId: 1, documentModelCode: 1 }, { unique: true });
 
 const issuedTechnicalDocumentVersionSchema = new Schema(
   {
     documentId: { type: objectId, ref: 'SstIssuedTechnicalDocument', required: true, index: true },
     documentType: { type: String, enum: DOCUMENT_TYPES, required: true, index: true },
+    documentModelId: { type: objectId, ref: 'SstDocumentModel', default: null, index: true },
+    documentModelTitle: { type: String, default: '' },
     version: { type: Number, required: true },
     status: { type: String, enum: DOCUMENT_STATUS, default: 'issued' },
     sourceAssessmentIds: { type: [objectId], default: [] },
@@ -264,6 +318,7 @@ const SstAssessmentConclusion =
   mongoose.models.SstAssessmentConclusion || mongoose.model('SstAssessmentConclusion', assessmentConclusionSchema);
 const SstAssessmentRevision =
   mongoose.models.SstAssessmentRevision || mongoose.model('SstAssessmentRevision', assessmentRevisionSchema);
+const SstDocumentModel = mongoose.models.SstDocumentModel || mongoose.model('SstDocumentModel', documentModelSchema);
 const SstIssuedTechnicalDocument =
   mongoose.models.SstIssuedTechnicalDocument || mongoose.model('SstIssuedTechnicalDocument', issuedTechnicalDocumentSchema);
 const SstIssuedTechnicalDocumentVersion =
@@ -280,6 +335,7 @@ module.exports = {
   ACTION_STATUS,
   DOCUMENT_TYPES,
   DOCUMENT_STATUS,
+  DOCUMENT_SCOPE_TYPES,
   CATALOG_TYPES,
   buildHash,
   models: {
@@ -290,6 +346,7 @@ module.exports = {
     SstAssessmentRisk,
     SstAssessmentConclusion,
     SstAssessmentRevision,
+    SstDocumentModel,
     SstIssuedTechnicalDocument,
     SstIssuedTechnicalDocumentVersion,
     SstTechnicalCatalogItem,

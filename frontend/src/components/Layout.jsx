@@ -64,6 +64,7 @@ const navigationConfig = [
   {
     group: 'Documentacao e Gestao',
     items: [
+      { name: 'Modelos', href: '/sst/documentos/modelos', icon: Layers3, permission: 'sst:read' },
       { name: 'Documentos Tecnicos', href: '/sst/documentos', icon: FileText, permission: 'sst:read' },
       { name: 'Catalogos', href: '/sst/governanca/catalogos', icon: BookMarked, permission: 'sst:read' },
       { name: 'Auditoria SST', href: '/sst/governanca/auditoria', icon: Settings2, permission: 'sst:read' },
@@ -86,6 +87,7 @@ const routeDescriptions = {
   '/sst/avaliacoes/acoes': 'Plano de acao derivado diretamente dos riscos avaliados.',
   '/sst/dashboard': 'Painel sintetico para acompanhar conformidade e acao.',
   '/sst/documentos': 'Emissao rastreavel de inventario, PGR, LTCAT e laudos.',
+  '/sst/documentos/modelos': 'Governanca dos modelos documentais com camadas fixas, editaveis e anexos.',
   '/sst/governanca/catalogos': 'Catalogos tecnicos controlados de perigos, agentes, fatores e referencias.',
   '/sst/governanca/auditoria': 'Trilha tecnica separada para mudancas estruturais e documentais.',
   '/checklists': 'Inspecoes e requisitos normativos em execucao.',

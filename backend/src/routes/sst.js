@@ -10,6 +10,7 @@ const {
   ACTION_STATUS,
   DOCUMENT_TYPES,
   DOCUMENT_STATUS,
+  DOCUMENT_SCOPE_TYPES,
   CATALOG_TYPES,
   buildHash,
   models: {
@@ -20,6 +21,7 @@ const {
     SstAssessmentRisk,
     SstAssessmentConclusion,
     SstAssessmentRevision,
+    SstDocumentModel,
     SstIssuedTechnicalDocument,
     SstIssuedTechnicalDocumentVersion,
     SstTechnicalCatalogItem,
@@ -36,7 +38,16 @@ const {
   ensureAssessmentCanPublish,
   buildLegacyExportManifest
 } = require('../sst/rules');
-const { getTemplates, findTemplateByCode, buildDocumentContent, hashDocumentPayload } = require('../sst/documentEngine');
+const {
+  getDefaultDocumentModels,
+  findDefaultDocumentModelByCode,
+  mapDocumentModel,
+  normalizeEditableLayer,
+  normalizeAnnexes,
+  buildDocumentContent,
+  hashDocumentPayload
+} = require('../sst/documentEngine');
+const { buildIssuedDocumentPdfFilename, renderIssuedDocumentPdfBuffer } = require('../sst/pdfEngine');
 
 const router = express.Router();
 
@@ -111,6 +122,22 @@ const ensureDefaultCatalogs = async () => {
   );
 };
 
+const ensureDefaultDocumentModels = async () => {
+  const existing = await SstDocumentModel.find({ isSystem: true }).select('empresaId code').lean();
+  const existingKeys = new Set(existing.map((item) => `${item.empresaId || ''}:${item.code}`));
+  const missing = getDefaultDocumentModels().filter((item) => !existingKeys.has(`${item.empresaId || ''}:${item.code}`));
+  if (!missing.length) return;
+
+  await SstDocumentModel.insertMany(
+    missing.map((item) => ({
+      ...item,
+      createdBy: { nome: 'system', email: '', perfil: 'sistema', id: null },
+      updatedBy: { nome: 'system', email: '', perfil: 'sistema', id: null }
+    })),
+    { ordered: false }
+  );
+};
+
 const mapEstablishment = (doc) => {
   const row = mapMongoEntity(doc);
   return { ...row, status: row.status || 'ativo' };
@@ -155,6 +182,19 @@ const mapAssessmentRisk = (doc) => {
 const mapConclusion = (doc) => mapMongoEntity(doc);
 const mapCatalogItem = (doc) => mapMongoEntity(doc);
 const mapAuditItem = (doc) => mapMongoEntity(doc);
+const mapDocumentModelItem = (doc) => {
+  const row = mapMongoEntity(doc);
+  return {
+    ...row,
+    empresaId: row.empresaId || '',
+    allowedScopeTypes: Array.isArray(row.allowedScopeTypes) ? row.allowedScopeTypes : ['assessment'],
+    layers: {
+      fixed: String(row.layers?.fixed || '').trim(),
+      editable: normalizeEditableLayer(row.layers?.editable || {}),
+      annexes: normalizeAnnexes(row.layers?.annexes || [])
+    }
+  };
+};
 
 const mapIssuedDocument = (doc, latestVersion = null) => {
   const row = mapMongoEntity(doc);
@@ -257,6 +297,34 @@ const sanitizeConclusionPayload = (payload = {}, current = null) => ({
   basis: String(payload.basis ?? current?.basis ?? '').trim(),
   normativeFrame: String(payload.normativeFrame ?? current?.normativeFrame ?? '').trim()
 });
+
+const sanitizeDocumentModelPayload = (payload = {}, current = null) => {
+  const normalizedCode = String(payload.code ?? current?.code ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+  const allowedScopeTypes = Array.isArray(payload.allowedScopeTypes ?? current?.allowedScopeTypes)
+    ? (payload.allowedScopeTypes ?? current?.allowedScopeTypes)
+        .map((scopeType) => String(scopeType).trim())
+        .filter((scopeType) => DOCUMENT_SCOPE_TYPES.includes(scopeType))
+    : ['assessment'];
+
+  return {
+    empresaId: String(payload.empresaId ?? current?.empresaId ?? '').trim(),
+    code: normalizedCode,
+    title: String(payload.title ?? current?.title ?? '').trim(),
+    description: String(payload.description ?? current?.description ?? '').trim(),
+    documentType: DOCUMENT_TYPES.includes(payload.documentType) ? payload.documentType : current?.documentType || 'inventario',
+    allowedScopeTypes: allowedScopeTypes.length ? allowedScopeTypes : ['assessment'],
+    active: payload.active === undefined ? Boolean(current?.active ?? true) : Boolean(payload.active),
+    isSystem: Boolean(current?.isSystem),
+    layers: {
+      fixed: String(payload.layers?.fixed ?? current?.layers?.fixed ?? '').trim(),
+      editable: normalizeEditableLayer(payload.layers?.editable ?? current?.layers?.editable ?? {}),
+      annexes: normalizeAnnexes(payload.layers?.annexes ?? current?.layers?.annexes ?? [])
+    }
+  };
+};
 
 const sanitizeCatalogPayload = (payload = {}, current = null) => ({
   catalogType: CATALOG_TYPES.includes(payload.catalogType) ? payload.catalogType : current?.catalogType || 'hazard',
@@ -1366,11 +1434,113 @@ const getScopeAssessments = async ({ scopeType, scopeRefId }) => {
   return published;
 };
 
+router.get('/documents/models', requirePermission('sst:read'), async (req, res) => {
+  try {
+    await ensureDefaultDocumentModels();
+
+    const filters = {};
+    if (req.query.documentType) filters.documentType = String(req.query.documentType).trim();
+    if (req.query.active !== undefined) filters.active = req.query.active === 'true';
+
+    const empresaId = String(req.query.empresaId || '').trim();
+    if (empresaId) filters.$or = [{ empresaId: '' }, { empresaId }];
+
+    const rows = await SstDocumentModel.find(filters).sort({ empresaId: -1, documentType: 1, title: 1 }).lean();
+    return sendSuccess(res, { data: rows.map(mapDocumentModelItem), meta: { total: rows.length } });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao listar modelos documentais', meta: { details: error.message } }, error.status || 500);
+  }
+});
+
+router.post('/documents/models', requirePermission('sst:configure'), async (req, res) => {
+  try {
+    const actor = toActor(req.user);
+    const payload = sanitizeDocumentModelPayload(req.body);
+    if (!payload.code || !payload.title || !payload.documentType) {
+      return sendError(res, { message: 'code, title e documentType sao obrigatorios' }, 400);
+    }
+
+    const created = await SstDocumentModel.create({
+      ...payload,
+      isSystem: false,
+      createdBy: actor,
+      updatedBy: actor
+    });
+
+    await recordAudit({
+      entityType: 'document_model',
+      entityId: created._id,
+      action: 'create',
+      summary: `Modelo documental ${created.title} criado`,
+      after: created.toObject(),
+      actor
+    });
+
+    return sendSuccess(res, { data: mapDocumentModelItem(created), message: 'Modelo documental criado com sucesso' }, 201);
+  } catch (error) {
+    const status = error?.code === 11000 ? 409 : error.status || 500;
+    const message = error?.code === 11000 ? 'Ja existe modelo com este codigo para a empresa informada' : 'Erro ao criar modelo documental';
+    return sendError(res, { message, meta: { details: error.message } }, status);
+  }
+});
+
+router.put('/documents/models/:id', requirePermission('sst:configure'), async (req, res) => {
+  try {
+    const actor = toActor(req.user);
+    const modelId = requireObjectId(req.params.id, 'Modelo documental invalido');
+    const current = await SstDocumentModel.findById(modelId);
+    if (!current) return sendError(res, { message: 'Modelo documental nao encontrado' }, 404);
+
+    const payload = sanitizeDocumentModelPayload(req.body, current.toObject());
+    if (!payload.title) return sendError(res, { message: 'title e obrigatorio' }, 400);
+
+    if (current.isSystem) {
+      payload.code = current.code;
+      payload.documentType = current.documentType;
+      payload.empresaId = current.empresaId;
+      payload.isSystem = true;
+    }
+
+    const before = current.toObject();
+    current.set({
+      ...payload,
+      updatedBy: actor
+    });
+    await current.save();
+
+    await recordAudit({
+      entityType: 'document_model',
+      entityId: current._id,
+      action: 'update',
+      summary: `Modelo documental ${current.title} atualizado`,
+      before,
+      after: current.toObject(),
+      actor
+    });
+
+    return sendSuccess(res, { data: mapDocumentModelItem(current), message: 'Modelo documental atualizado com sucesso' });
+  } catch (error) {
+    const status = error?.code === 11000 ? 409 : error.status || 500;
+    const message = error?.code === 11000 ? 'Ja existe modelo com este codigo para a empresa informada' : 'Erro ao atualizar modelo documental';
+    return sendError(res, { message, meta: { details: error.message } }, status);
+  }
+});
+
 router.get('/documents/templates', requirePermission('sst:read'), async (req, res) => {
   try {
+    await ensureDefaultDocumentModels();
+    const empresaId = String(req.query.empresaId || '').trim();
+    const filters = { active: true };
+    if (empresaId) {
+      filters.$or = [{ empresaId: '' }, { empresaId }];
+    } else {
+      filters.empresaId = '';
+    }
+    const rows = await SstDocumentModel.find(filters).sort({ empresaId: -1, documentType: 1, title: 1 }).lean();
+
     return sendSuccess(res, {
       data: {
-        templates: getTemplates(),
+        templates: rows.map(mapDocumentModelItem),
         ppp: {
           title: 'PPP',
           status: 'prepared',
@@ -1380,7 +1550,7 @@ router.get('/documents/templates', requirePermission('sst:read'), async (req, re
       }
     });
   } catch (error) {
-    return sendError(res, { message: 'Erro ao listar templates tecnicos', meta: { details: error.message } }, error.status || 500);
+    return sendError(res, { message: 'Erro ao listar modelos tecnicos', meta: { details: error.message } }, error.status || 500);
   }
 });
 
@@ -1415,12 +1585,22 @@ router.get('/documents/issued', requirePermission('sst:read'), async (req, res) 
 router.post('/documents/issue', requirePermission('sst:sign'), async (req, res) => {
   try {
     const actor = toActor(req.user);
+    await ensureDefaultDocumentModels();
     const templateCode = String(req.body?.templateCode || '').trim();
+    const documentModelId = sanitizeObjectId(req.body?.documentModelId || req.body?.modelId);
     const scopeType = String(req.body?.scopeType || '').trim();
     const scopeRefId = String(req.body?.scopeRefId || '').trim();
-    const template = findTemplateByCode(templateCode);
+    const documentModel = documentModelId
+      ? await SstDocumentModel.findById(documentModelId)
+      : await SstDocumentModel.findOne({ code: templateCode, empresaId: '', active: true });
+    const fallbackModel = !documentModel && templateCode ? findDefaultDocumentModelByCode(templateCode) : null;
+    const resolvedModel = documentModel ? mapDocumentModelItem(documentModel) : fallbackModel ? mapDocumentModel(fallbackModel) : null;
 
-    if (!template) return sendError(res, { message: 'templateCode invalido' }, 400);
+    if (!resolvedModel) return sendError(res, { message: 'Modelo documental invalido' }, 400);
+    if (!resolvedModel.active) return sendError(res, { message: 'Modelo documental inativo' }, 409);
+    if (!resolvedModel.allowedScopeTypes.includes(scopeType)) {
+      return sendError(res, { message: 'Modelo documental nao suporta o escopo informado' }, 409);
+    }
 
     const assessments = await getScopeAssessments({ scopeType, scopeRefId });
     const assessmentIds = assessments.map((assessment) => assessment._id);
@@ -1456,7 +1636,8 @@ router.post('/documents/issue', requirePermission('sst:sign'), async (req, res) 
 
     const assessmentContents = assessments.map((assessment) =>
       buildDocumentContent({
-        documentType: template.documentType,
+        documentType: resolvedModel.documentType,
+        model: resolvedModel,
         assessment,
         establishment: establishmentMap.get(String(assessment.establishmentId)) || null,
         sector: sectorMap.get(String(assessment.sectorId)) || null,
@@ -1468,23 +1649,38 @@ router.post('/documents/issue', requirePermission('sst:sign'), async (req, res) 
     );
 
     const baseAssessment = assessments[0];
-    const title = `${template.title} - ${scopeType} ${scopeRefId}`;
-    const existingDocument = await SstIssuedTechnicalDocument.findOne({ documentType: template.documentType, scopeType, scopeRefId });
+    const requestedEmpresaId = String(req.body?.empresaId || '').trim();
+    if (requestedEmpresaId && requestedEmpresaId !== baseAssessment.empresaId) {
+      return sendError(res, { message: 'A empresa informada nao corresponde ao escopo das avaliacoes selecionadas' }, 409);
+    }
+    if (resolvedModel.empresaId && resolvedModel.empresaId !== baseAssessment.empresaId) {
+      return sendError(res, { message: 'O modelo selecionado pertence a outra empresa' }, 409);
+    }
+
+    const mergedEditable = {
+      ...resolvedModel.layers.editable,
+      ...normalizeEditableLayer(req.body?.editable || {})
+    };
+    const title = `${resolvedModel.title} - ${baseAssessment.empresaId} - ${scopeType}`;
+    const existingDocument = await SstIssuedTechnicalDocument.findOne({
+      documentType: resolvedModel.documentType,
+      scopeType,
+      scopeRefId,
+      documentModelCode: resolvedModel.code
+    });
     const nextVersion = Number(existingDocument?.latestVersion || 0) + 1;
     const payload = {
-      templateCode,
-      documentType: template.documentType,
+      documentModelId: documentModel?._id?.toString?.() || null,
+      templateCode: resolvedModel.code,
+      documentType: resolvedModel.documentType,
       scopeType,
       scopeRefId,
       sourceAssessmentIds: assessmentIds.map((id) => id.toString()),
       content: {
-        template,
+        model: resolvedModel,
         assessments: assessmentContents,
-        editable: {
-          resumo: String(req.body?.editable?.resumo || '').trim(),
-          notas: String(req.body?.editable?.notas || '').trim(),
-          ressalvas: String(req.body?.editable?.ressalvas || '').trim()
-        }
+        editable: mergedEditable,
+        annexes: resolvedModel.layers.annexes
       }
     };
     const hash = hashDocumentPayload(payload);
@@ -1497,6 +1693,9 @@ router.post('/documents/issue', requirePermission('sst:sign'), async (req, res) 
               latestVersion: nextVersion,
               status: 'issued',
               title,
+              documentModelId: documentModel?._id || null,
+              documentModelCode: resolvedModel.code,
+              documentModelTitle: resolvedModel.title,
               empresaId: baseAssessment.empresaId,
               establishmentId: baseAssessment.establishmentId,
               sectorId: baseAssessment.sectorId
@@ -1505,7 +1704,10 @@ router.post('/documents/issue', requirePermission('sst:sign'), async (req, res) 
           { new: true }
         )
       : await SstIssuedTechnicalDocument.create({
-          documentType: template.documentType,
+          documentType: resolvedModel.documentType,
+          documentModelId: documentModel?._id || null,
+          documentModelCode: resolvedModel.code,
+          documentModelTitle: resolvedModel.title,
           scopeType,
           scopeRefId,
           empresaId: baseAssessment.empresaId,
@@ -1523,12 +1725,14 @@ router.post('/documents/issue', requirePermission('sst:sign'), async (req, res) 
 
     const createdVersion = await SstIssuedTechnicalDocumentVersion.create({
       documentId: document._id,
-      documentType: template.documentType,
+      documentType: resolvedModel.documentType,
+      documentModelId: documentModel?._id || null,
+      documentModelTitle: resolvedModel.title,
       version: nextVersion,
       status: 'issued',
       sourceAssessmentIds: assessmentIds,
       hash,
-      templateCode,
+      templateCode: resolvedModel.code,
       summary: {
         assessments: assessments.length,
         risks: risks.length
@@ -1542,15 +1746,40 @@ router.post('/documents/issue', requirePermission('sst:sign'), async (req, res) 
       entityType: 'issued_document',
       entityId: document._id,
       action: 'issue',
-      summary: `Documento ${template.title} emitido na versao ${nextVersion}`,
+      summary: `Documento ${resolvedModel.title} emitido na versao ${nextVersion}`,
       after: createdVersion.toObject(),
-      meta: { scopeType, scopeRefId, sourceAssessmentIds: assessmentIds.map((id) => id.toString()) },
+      meta: {
+        scopeType,
+        scopeRefId,
+        documentModelCode: resolvedModel.code,
+        sourceAssessmentIds: assessmentIds.map((id) => id.toString())
+      },
       actor
     });
 
     return sendSuccess(res, { data: mapIssuedDocument(document, createdVersion), message: 'Documento tecnico emitido com sucesso' }, 201);
   } catch (error) {
     return sendError(res, { message: 'Erro ao emitir documento tecnico', meta: { details: error.message } }, error.status || 500);
+  }
+});
+
+router.get('/documents/issued/:id/pdf', requirePermission('sst:read'), async (req, res) => {
+  try {
+    const documentId = requireObjectId(req.params.id, 'Documento invalido');
+    const document = await SstIssuedTechnicalDocument.findById(documentId).lean();
+    if (!document) return sendError(res, { message: 'Documento nao encontrado' }, 404);
+
+    const version = await SstIssuedTechnicalDocumentVersion.findOne({ documentId }).sort({ version: -1 }).lean();
+    if (!version) return sendError(res, { message: 'Nenhuma versao emitida encontrada para este documento' }, 404);
+
+    const pdfBuffer = await renderIssuedDocumentPdfBuffer({ document, version });
+    const filename = buildIssuedDocumentPdfFilename(document, version);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.status(200).send(pdfBuffer);
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao gerar PDF do documento tecnico', meta: { details: error.message } }, error.status || 500);
   }
 });
 

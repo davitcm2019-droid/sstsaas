@@ -285,10 +285,14 @@ export const sstService = {
   upsertAssessmentConclusion: (assessmentId, data) => api.put(`/sst/assessments/${assessmentId}/conclusion`, data),
   signAssessmentConclusion: (assessmentId) => api.post(`/sst/assessments/${assessmentId}/conclusion/sign`),
 
-  getDocumentTemplates: () => api.get('/sst/documents/templates'),
+  listDocumentModels: (params = {}) => api.get('/sst/documents/models', { params }),
+  createDocumentModel: (data) => api.post('/sst/documents/models', data),
+  updateDocumentModel: (id, data) => api.put(`/sst/documents/models/${id}`, data),
+  getDocumentTemplates: (params = {}) => api.get('/sst/documents/templates', { params }),
   listIssuedDocuments: (params = {}) => api.get('/sst/documents/issued', { params }),
   issueDocument: (data) => api.post('/sst/documents/issue', data),
   invalidateDocument: (id, data) => api.post(`/sst/documents/issued/${id}/invalidate`, data),
+  downloadIssuedDocumentPdf: (id) => api.get(`/sst/documents/issued/${id}/pdf`, { responseType: 'blob' }),
 
   listCatalogs: (params = {}) => api.get('/sst/catalogs', { params }),
   createCatalogItem: (data) => api.post('/sst/catalogs', data),

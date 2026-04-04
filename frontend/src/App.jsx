@@ -26,6 +26,7 @@ const SstEstablishments = lazy(() => import('./pages/SstEstablishments'));
 const SstSectors = lazy(() => import('./pages/SstSectors'));
 const SstRoles = lazy(() => import('./pages/SstRoles'));
 const SstAssessments = lazy(() => import('./pages/SstAssessments'));
+const SstDocumentModels = lazy(() => import('./pages/SstDocumentModels'));
 const SstTechnicalDocuments = lazy(() => import('./pages/SstTechnicalDocuments'));
 const SstCatalogs = lazy(() => import('./pages/SstCatalogs'));
 const SstAudit = lazy(() => import('./pages/SstAudit'));
@@ -71,6 +72,7 @@ const AppRoutes = () => {
       <Route path="/sst/avaliacoes" element={renderProtectedPage(SstAssessments, 'sst:read')} />
       <Route path="/sst/avaliacoes/riscos" element={renderProtectedPage(SstAssessments, 'sst:read')} />
       <Route path="/sst/avaliacoes/acoes" element={renderProtectedPage(SstAssessments, 'sst:read')} />
+      <Route path="/sst/documentos/modelos" element={renderProtectedPage(SstDocumentModels, 'sst:read')} />
       <Route path="/sst/documentos" element={renderProtectedPage(SstTechnicalDocuments, 'sst:read')} />
       <Route path="/sst/governanca/catalogos" element={renderProtectedPage(SstCatalogs, 'sst:read')} />
       <Route path="/sst/governanca/auditoria" element={renderProtectedPage(SstAudit, 'sst:read')} />
