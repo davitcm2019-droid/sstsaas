@@ -138,6 +138,53 @@ const ensureDefaultDocumentModels = async () => {
   );
 };
 
+let issuedDocumentIndexSyncPromise = null;
+
+const ensureIssuedDocumentIndexes = async () => {
+  if (issuedDocumentIndexSyncPromise) {
+    return issuedDocumentIndexSyncPromise;
+  }
+
+  issuedDocumentIndexSyncPromise = (async () => {
+    const collection = SstIssuedTechnicalDocument.collection;
+    const indexes = await collection.indexes();
+    const legacyIndex = indexes.find((index) => {
+      const keys = index?.key || {};
+      return (
+        index.unique &&
+        keys.documentType === 1 &&
+        keys.scopeType === 1 &&
+        keys.scopeRefId === 1 &&
+        keys.documentModelCode === undefined
+      );
+    });
+
+    if (legacyIndex?.name) {
+      try {
+        await collection.dropIndex(legacyIndex.name);
+      } catch (error) {
+        if (!['IndexNotFound', 'NamespaceNotFound'].includes(error?.codeName)) {
+          throw error;
+        }
+      }
+    }
+
+    await collection.createIndex(
+      { documentType: 1, scopeType: 1, scopeRefId: 1, documentModelCode: 1 },
+      {
+        unique: true,
+        name: 'documentType_1_scopeType_1_scopeRefId_1_documentModelCode_1'
+      }
+    );
+  })();
+
+  try {
+    await issuedDocumentIndexSyncPromise;
+  } finally {
+    issuedDocumentIndexSyncPromise = null;
+  }
+};
+
 const mapEstablishment = (doc) => {
   const row = mapMongoEntity(doc);
   return { ...row, status: row.status || 'ativo' };
@@ -1556,6 +1603,7 @@ router.get('/documents/templates', requirePermission('sst:read'), async (req, re
 
 router.get('/documents/issued', requirePermission('sst:read'), async (req, res) => {
   try {
+    await ensureIssuedDocumentIndexes();
     const filters = {};
     if (req.query.documentType) filters.documentType = String(req.query.documentType);
     if (req.query.scopeType) filters.scopeType = String(req.query.scopeType);
@@ -1586,6 +1634,7 @@ router.post('/documents/issue', requirePermission('sst:sign'), async (req, res) 
   try {
     const actor = toActor(req.user);
     await ensureDefaultDocumentModels();
+    await ensureIssuedDocumentIndexes();
     const templateCode = String(req.body?.templateCode || '').trim();
     const documentModelId = sanitizeObjectId(req.body?.documentModelId || req.body?.modelId);
     const scopeType = String(req.body?.scopeType || '').trim();
@@ -1662,12 +1711,19 @@ router.post('/documents/issue', requirePermission('sst:sign'), async (req, res) 
       ...normalizeEditableLayer(req.body?.editable || {})
     };
     const title = `${resolvedModel.title} - ${baseAssessment.empresaId} - ${scopeType}`;
-    const existingDocument = await SstIssuedTechnicalDocument.findOne({
-      documentType: resolvedModel.documentType,
-      scopeType,
-      scopeRefId,
-      documentModelCode: resolvedModel.code
-    });
+    const existingDocument =
+      (await SstIssuedTechnicalDocument.findOne({
+        documentType: resolvedModel.documentType,
+        scopeType,
+        scopeRefId,
+        documentModelCode: resolvedModel.code
+      })) ||
+      (await SstIssuedTechnicalDocument.findOne({
+        documentType: resolvedModel.documentType,
+        scopeType,
+        scopeRefId,
+        $or: [{ documentModelCode: { $exists: false } }, { documentModelCode: '' }, { documentModelCode: null }]
+      }));
     const nextVersion = Number(existingDocument?.latestVersion || 0) + 1;
     const payload = {
       documentModelId: documentModel?._id?.toString?.() || null,
@@ -1759,7 +1815,12 @@ router.post('/documents/issue', requirePermission('sst:sign'), async (req, res) 
 
     return sendSuccess(res, { data: mapIssuedDocument(document, createdVersion), message: 'Documento tecnico emitido com sucesso' }, 201);
   } catch (error) {
-    return sendError(res, { message: 'Erro ao emitir documento tecnico', meta: { details: error.message } }, error.status || 500);
+    const status = error?.code === 11000 ? 409 : error.status || 500;
+    const message =
+      error?.code === 11000
+        ? 'Conflito ao emitir documento tecnico. A base ainda possuia um indice legado; tente novamente.'
+        : 'Erro ao emitir documento tecnico';
+    return sendError(res, { message, meta: { details: error.message } }, status);
   }
 });
 
