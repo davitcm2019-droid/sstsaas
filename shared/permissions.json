@@ -33,7 +33,8 @@
     "nr:read",
     "reports:read",
     "audit:read",
-    "riskSurvey:read"
+    "riskSurvey:read",
+    "sst:read"
   ],
   "tecnico_seguranca": [
     "companies:read",
@@ -67,6 +68,11 @@
     "riskSurvey:write",
     "riskSurvey:approve",
     "riskSurvey:sign",
+    "sst:read",
+    "sst:write",
+    "sst:approve",
+    "sst:sign",
+    "sst:configure",
     "ghe:write",
     "documents:issue"
   ],
@@ -106,6 +112,11 @@
     "riskSurvey:sign",
     "riskSurvey:finalize",
     "riskSurvey:configure",
+    "sst:read",
+    "sst:write",
+    "sst:approve",
+    "sst:sign",
+    "sst:configure",
     "ghe:write",
     "workers:write",
     "documents:issue",

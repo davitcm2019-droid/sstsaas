@@ -22,9 +22,13 @@ const Agenda = lazy(() => import('./pages/Agenda'));
 const Documentos = lazy(() => import('./pages/Documentos'));
 const Relatorios = lazy(() => import('./pages/Relatorios'));
 const Usuarios = lazy(() => import('./pages/Usuarios'));
-const RiskSurveyCycles = lazy(() => import('./pages/RiskSurveyCycles'));
-const RiskSurvey = lazy(() => import('./pages/RiskSurvey'));
-const RiskSurveyEnvironments = lazy(() => import('./pages/RiskSurveyEnvironments'));
+const SstEstablishments = lazy(() => import('./pages/SstEstablishments'));
+const SstSectors = lazy(() => import('./pages/SstSectors'));
+const SstRoles = lazy(() => import('./pages/SstRoles'));
+const SstAssessments = lazy(() => import('./pages/SstAssessments'));
+const SstTechnicalDocuments = lazy(() => import('./pages/SstTechnicalDocuments'));
+const SstCatalogs = lazy(() => import('./pages/SstCatalogs'));
+const SstAudit = lazy(() => import('./pages/SstAudit'));
 
 const PageLoader = () => (
   <div className="flex min-h-screen items-center justify-center bg-slate-950">
@@ -59,14 +63,24 @@ const AppRoutes = () => {
 
       <Route path="/dashboard" element={renderProtectedPage(Dashboard)} />
       <Route path="/empresas" element={renderProtectedPage(Empresas, 'companies:read')} />
-      <Route path="/sst" element={renderProtectedPage(SstDashboard, 'checklists:read')} />
+      <Route path="/sst/dashboard" element={renderProtectedPage(SstDashboard, 'checklists:read')} />
+      <Route path="/sst" element={renderProtectedPage(() => <Navigate to="/sst/avaliacoes" replace />, 'sst:read', false)} />
+      <Route path="/sst/estrutura/estabelecimentos" element={renderProtectedPage(SstEstablishments, 'sst:read')} />
+      <Route path="/sst/estrutura/setores" element={renderProtectedPage(SstSectors, 'sst:read')} />
+      <Route path="/sst/estrutura/cargos" element={renderProtectedPage(SstRoles, 'sst:read')} />
+      <Route path="/sst/avaliacoes" element={renderProtectedPage(SstAssessments, 'sst:read')} />
+      <Route path="/sst/avaliacoes/riscos" element={renderProtectedPage(SstAssessments, 'sst:read')} />
+      <Route path="/sst/avaliacoes/acoes" element={renderProtectedPage(SstAssessments, 'sst:read')} />
+      <Route path="/sst/documentos" element={renderProtectedPage(SstTechnicalDocuments, 'sst:read')} />
+      <Route path="/sst/governanca/catalogos" element={renderProtectedPage(SstCatalogs, 'sst:read')} />
+      <Route path="/sst/governanca/auditoria" element={renderProtectedPage(SstAudit, 'sst:read')} />
       <Route path="/empresas/:id" element={renderProtectedPage(EmpresaDetalhes, 'companies:read')} />
       <Route path="/empresas/:id/sst" element={renderProtectedPage(EmpresaSstDashboard, 'checklists:read')} />
       <Route path="/tarefas" element={renderProtectedPage(Tarefas, 'tasks:read')} />
       <Route path="/checklists" element={renderProtectedPage(Checklists, 'checklists:read')} />
-      <Route path="/levantamento-riscos" element={renderProtectedPage(RiskSurveyCycles, 'riskSurvey:read')} />
-      <Route path="/levantamento-riscos/execucao" element={renderProtectedPage(RiskSurvey, 'riskSurvey:read')} />
-      <Route path="/levantamento-riscos/ambientes" element={renderProtectedPage(RiskSurveyEnvironments, 'riskSurvey:read')} />
+      <Route path="/levantamento-riscos" element={renderProtectedPage(() => <Navigate to="/sst/avaliacoes" replace />, 'sst:read', false)} />
+      <Route path="/levantamento-riscos/execucao" element={renderProtectedPage(() => <Navigate to="/sst/avaliacoes" replace />, 'sst:read', false)} />
+      <Route path="/levantamento-riscos/ambientes" element={renderProtectedPage(() => <Navigate to="/sst/estrutura/setores" replace />, 'sst:read', false)} />
       <Route path="/incidentes" element={renderProtectedPage(Incidentes, 'incidents:read')} />
       <Route path="/cipa" element={renderProtectedPage(Cipa, 'cipas:read')} />
       <Route path="/treinamentos" element={renderProtectedPage(Treinamentos, 'trainings:read')} />

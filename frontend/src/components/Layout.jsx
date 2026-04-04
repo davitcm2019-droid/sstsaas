@@ -41,14 +41,18 @@ const navigationConfig = [
     group: 'Estrutura Organizacional',
     items: [
       { name: 'Empresas', href: '/empresas', icon: Building2, permission: 'companies:read' },
-      { name: 'Ambientes SST', href: '/levantamento-riscos/ambientes', icon: Layers3, permission: 'riskSurvey:read' }
+      { name: 'Estabelecimentos', href: '/sst/estrutura/estabelecimentos', icon: Building2, permission: 'sst:read' },
+      { name: 'Setores', href: '/sst/estrutura/setores', icon: Layers3, permission: 'sst:read' },
+      { name: 'Cargos', href: '/sst/estrutura/cargos', icon: Briefcase, permission: 'sst:read' }
     ]
   },
   {
     group: 'Operacao SST',
     items: [
-      { name: 'Levantamento de Riscos', href: '/levantamento-riscos', icon: AlertTriangle, permission: 'riskSurvey:read' },
-      { name: 'Dashboard SST', href: '/sst', icon: Shield, permission: 'checklists:read' },
+      { name: 'Avaliacoes', href: '/sst/avaliacoes', icon: AlertTriangle, permission: 'sst:read' },
+      { name: 'Riscos da Avaliacao', href: '/sst/avaliacoes/riscos', icon: Shield, permission: 'sst:read' },
+      { name: 'Planos de Acao', href: '/sst/avaliacoes/acoes', icon: Briefcase, permission: 'sst:read' },
+      { name: 'Dashboard SST', href: '/sst/dashboard', icon: Shield, permission: 'checklists:read' },
       { name: 'Checklists', href: '/checklists', icon: ClipboardCheck, permission: 'checklists:read' },
       { name: 'Tarefas', href: '/tarefas', icon: CheckSquare, permission: 'tasks:read' },
       { name: 'Treinamentos', href: '/treinamentos', icon: BookMarked, permission: 'trainings:read' },
@@ -60,6 +64,9 @@ const navigationConfig = [
   {
     group: 'Documentacao e Gestao',
     items: [
+      { name: 'Documentos Tecnicos', href: '/sst/documentos', icon: FileText, permission: 'sst:read' },
+      { name: 'Catalogos', href: '/sst/governanca/catalogos', icon: BookMarked, permission: 'sst:read' },
+      { name: 'Auditoria SST', href: '/sst/governanca/auditoria', icon: Settings2, permission: 'sst:read' },
       { name: 'Documentos', href: '/documentos', icon: FileText, permission: 'documents:read' },
       { name: 'Usuarios', href: '/usuarios', icon: Users, permission: 'users:manage' }
     ]
@@ -71,10 +78,16 @@ const routeDescriptions = {
   '/agenda': 'Janela de compromissos, vencimentos e renovacoes.',
   '/relatorios': 'Analises, exportacoes e pacotes documentais.',
   '/empresas': 'Carteira de clientes com filtros tecnicos e conformidade.',
-  '/levantamento-riscos/ambientes': 'Ambientes e pontos de exposicao por contexto operacional.',
-  '/levantamento-riscos': 'Ciclos, versoes e governanca do levantamento ocupacional.',
-  '/levantamento-riscos/execucao': 'Execucao detalhada do fluxo atual de ambientes, atividades e riscos.',
-  '/sst': 'Painel sintetico para acompanhar conformidade e acao.',
+  '/sst/estrutura/estabelecimentos': 'Base fisica dos estabelecimentos vinculados ao novo modulo SST.',
+  '/sst/estrutura/setores': 'Unidade-base organizacional do SST para cargos e avaliacoes.',
+  '/sst/estrutura/cargos': 'Cargos vinculados a setores, prontos para abrir avaliacoes.',
+  '/sst/avaliacoes': 'Workspace central do fluxo setor -> cargo -> avaliacao -> riscos.',
+  '/sst/avaliacoes/riscos': 'Camada tecnica dos riscos registrados dentro de cada avaliacao.',
+  '/sst/avaliacoes/acoes': 'Plano de acao derivado diretamente dos riscos avaliados.',
+  '/sst/dashboard': 'Painel sintetico para acompanhar conformidade e acao.',
+  '/sst/documentos': 'Emissao rastreavel de inventario, PGR, LTCAT e laudos.',
+  '/sst/governanca/catalogos': 'Catalogos tecnicos controlados de perigos, agentes, fatores e referencias.',
+  '/sst/governanca/auditoria': 'Trilha tecnica separada para mudancas estruturais e documentais.',
   '/checklists': 'Inspecoes e requisitos normativos em execucao.',
   '/tarefas': 'Fila de execucao, responsaveis e prazos.',
   '/treinamentos': 'Capacitacoes, evidencias e ciclos de renovacao.',

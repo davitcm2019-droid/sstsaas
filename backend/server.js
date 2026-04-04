@@ -42,6 +42,8 @@ const eventosRoutes = require('./src/routes/eventos');
 const treinamentosRoutes = require('./src/routes/treinamentos');
 const acoesRoutes = require('./src/routes/acoes');
 const riskSurveyRoutes = require('./src/routes/riskSurvey');
+const sstRoutes = require('./src/routes/sst');
+void riskSurveyRoutes;
 
 // Health check (público)
 app.get('/api/health', (req, res) => {
@@ -72,7 +74,7 @@ app.use('/api/documents', documentsRoutes);
 app.use('/api/eventos', eventosRoutes);
 app.use('/api/treinamentos', treinamentosRoutes);
 app.use('/api/acoes', acoesRoutes);
-app.use('/api/risk-survey', riskSurveyRoutes);
+app.use('/api/sst', sstRoutes);
 
 // 404
 app.use('*', (req, res) => {

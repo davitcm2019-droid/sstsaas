@@ -248,6 +248,55 @@ export const riskSurveyService = {
   listAudit: (params = {}) => api.get('/risk-survey/audit', { params })
 };
 
+// Servicos do novo modulo SST clean slate
+export const sstService = {
+  getMetadata: () => api.get('/sst/metadata'),
+  exportLegacy: () => api.post('/sst/legacy/export'),
+
+  listEstablishments: (params = {}) => api.get('/sst/establishments', { params }),
+  createEstablishment: (data) => api.post('/sst/establishments', data),
+  updateEstablishment: (id, data) => api.put(`/sst/establishments/${id}`, data),
+  deleteEstablishment: (id) => api.delete(`/sst/establishments/${id}`),
+
+  listSectors: (params = {}) => api.get('/sst/sectors', { params }),
+  createSector: (data) => api.post('/sst/sectors', data),
+  updateSector: (id, data) => api.put(`/sst/sectors/${id}`, data),
+  deleteSector: (id) => api.delete(`/sst/sectors/${id}`),
+
+  listRoles: (params = {}) => api.get('/sst/roles', { params }),
+  createRole: (data) => api.post('/sst/roles', data),
+  updateRole: (id, data) => api.put(`/sst/roles/${id}`, data),
+  deleteRole: (id) => api.delete(`/sst/roles/${id}`),
+
+  listAssessments: (params = {}) => api.get('/sst/assessments', { params }),
+  getAssessment: (id) => api.get(`/sst/assessments/${id}`),
+  createAssessment: (data) => api.post('/sst/assessments', data),
+  updateAssessment: (id, data) => api.put(`/sst/assessments/${id}`, data),
+  startReview: (id) => api.post(`/sst/assessments/${id}/review`),
+  createRevision: (id, data = {}) => api.post(`/sst/assessments/${id}/revision`, data),
+  publishAssessment: (id) => api.post(`/sst/assessments/${id}/publish`),
+
+  listAssessmentRisks: (assessmentId) => api.get(`/sst/assessments/${assessmentId}/risks`),
+  createAssessmentRisk: (assessmentId, data) => api.post(`/sst/assessments/${assessmentId}/risks`, data),
+  updateAssessmentRisk: (id, data) => api.put(`/sst/assessment-risks/${id}`, data),
+  deleteAssessmentRisk: (id) => api.delete(`/sst/assessment-risks/${id}`),
+
+  getAssessmentConclusion: (assessmentId) => api.get(`/sst/assessments/${assessmentId}/conclusion`),
+  upsertAssessmentConclusion: (assessmentId, data) => api.put(`/sst/assessments/${assessmentId}/conclusion`, data),
+  signAssessmentConclusion: (assessmentId) => api.post(`/sst/assessments/${assessmentId}/conclusion/sign`),
+
+  getDocumentTemplates: () => api.get('/sst/documents/templates'),
+  listIssuedDocuments: (params = {}) => api.get('/sst/documents/issued', { params }),
+  issueDocument: (data) => api.post('/sst/documents/issue', data),
+  invalidateDocument: (id, data) => api.post(`/sst/documents/issued/${id}/invalidate`, data),
+
+  listCatalogs: (params = {}) => api.get('/sst/catalogs', { params }),
+  createCatalogItem: (data) => api.post('/sst/catalogs', data),
+  updateCatalogItem: (id, data) => api.put(`/sst/catalogs/${id}`, data),
+
+  listAudit: (params = {}) => api.get('/sst/audit', { params })
+};
+
 // Serviços de Incidentes
 export const incidentsService = {
   getAll: (params = {}) => api.get('/incidents', { params }),
