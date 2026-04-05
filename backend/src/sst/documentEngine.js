@@ -4,6 +4,7 @@ const DOCUMENT_MODEL_CODES = {
   inventario: 'inventario_base',
   pgr: 'pgr_programa',
   ltcat: 'ltcat_base',
+  ordem_servico: 'ordem_servico_base',
   laudo_insalubridade: 'laudo_insalubridade_base',
   laudo_periculosidade: 'laudo_periculosidade_base',
   laudo_tecnico: 'laudo_tecnico_base'
@@ -64,6 +65,22 @@ const DEFAULT_DOCUMENT_MODELS = [
       fixed: 'Conteudo automatico com identificacao da empresa, estabelecimento e RT.',
       editable: {
         resumo: 'Resumo tecnico das condicoes ambientais do trabalho avaliadas.',
+        notas: '',
+        ressalvas: ''
+      },
+      annexes: []
+    }
+  },
+  {
+    code: DOCUMENT_MODEL_CODES.ordem_servico,
+    documentType: 'ordem_servico',
+    title: 'Ordem de Servico',
+    description: 'Modelo formal para instrucoes de SST por escopo, setor, cargo e riscos consolidados.',
+    allowedScopeTypes: ['assessment', 'sector', 'establishment'],
+    layers: {
+      fixed: 'Conteudo automatico com identificacao da empresa, escopo, riscos e responsabilidades basicas.',
+      editable: {
+        resumo: 'Diretrizes de seguranca, saude e conduta operacional por escopo.',
         notas: '',
         ressalvas: ''
       },

@@ -44,6 +44,13 @@ const SECTION_BLUEPRINTS = {
     { key: 'metas_prioridades_controle', title: '3 - PLANO DE ACAO' },
     { key: 'encerramento', title: '4 - ENCERRAMENTO' }
   ],
+  ordem_servico: [
+    { key: 'identificacao_empresa', title: '1 - IDENTIFICACAO DA EMPRESA' },
+    { key: 'area_abrangencia', title: '2 - ESCOPO E ABRANGENCIA' },
+    { key: 'inventario_riscos', title: '3 - RISCOS E ORIENTACOES OPERACIONAIS' },
+    { key: 'metas_prioridades_controle', title: '4 - RESPONSABILIDADES E CONTROLES' },
+    { key: 'encerramento', title: '5 - ENCERRAMENTO' }
+  ],
   laudo_insalubridade: [
     { key: 'identificacao_empresa', title: '1 - IDENTIFICACAO DA EMPRESA' },
     { key: 'analise_riscos_ambiente_trabalho', title: '2 - ANALISE TECNICA' },

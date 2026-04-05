@@ -293,6 +293,12 @@ export const sstService = {
   listIssuedDocuments: (params = {}) => api.get('/sst/documents/issued', { params }),
   issueDocument: (data) => api.post('/sst/documents/issue', data),
   invalidateDocument: (id, data) => api.post(`/sst/documents/issued/${id}/invalidate`, data),
+  getIssuedDocumentHtmlPreview: (id) =>
+    api.get(`/sst/documents/issued/${id}/html-preview`, {
+      responseType: 'text',
+      transformResponse: [(data) => data]
+    }),
+  getIssuedDocumentAssets: (id) => api.get(`/sst/documents/issued/${id}/assets`),
   downloadIssuedDocumentPdf: (id) => api.get(`/sst/documents/issued/${id}/pdf`, { responseType: 'blob' }),
 
   listCatalogs: (params = {}) => api.get('/sst/catalogs', { params }),

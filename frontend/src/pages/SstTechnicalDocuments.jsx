@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Download, FileStack, FileText, Layers3, ShieldCheck, Sparkles } from 'lucide-react';
+import {
+  AlertTriangle,
+  Download,
+  ExternalLink,
+  Eye,
+  FileStack,
+  FileText,
+  Layers3,
+  ShieldCheck,
+  Sparkles
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import EmptyState from '../components/ui/EmptyState';
@@ -40,6 +50,7 @@ const DOCUMENT_TYPE_LABELS = {
   inventario: 'Inventario',
   pgr: 'PGR',
   ltcat: 'LTCAT',
+  ordem_servico: 'Ordem de Servico',
   laudo_insalubridade: 'Laudo de Insalubridade',
   laudo_periculosidade: 'Laudo de Periculosidade',
   laudo_tecnico: 'Laudo Tecnico'
@@ -50,6 +61,13 @@ const formatMissingField = (item) => {
   if (typeof item === 'string') return item;
   const section = item.section ? `[${item.section}] ` : '';
   return `${section}${item.message || item.field || item.code || 'Pendencia tecnica.'}`;
+};
+
+const getAssetBadge = (asset = null) => {
+  if (!asset) return 'Nao gerado';
+  if (asset.provider === 's3') return 'S3/MinIO';
+  if (asset.absolutePath || asset.relativePath) return 'Local';
+  return asset.provider || 'Gerado';
 };
 
 const SstTechnicalDocuments = () => {
@@ -69,6 +87,10 @@ const SstTechnicalDocuments = () => {
   const [seededModelId, setSeededModelId] = useState('');
   const [downloadingId, setDownloadingId] = useState('');
   const [issuing, setIssuing] = useState(false);
+  const [previewDocumentId, setPreviewDocumentId] = useState('');
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [previewAssets, setPreviewAssets] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [form, setForm] = useState({
     empresaId: '',
     documentModelId: '',
@@ -85,6 +107,11 @@ const SstTechnicalDocuments = () => {
   const selectedAssessment = useMemo(
     () => assessments.find((item) => String(item.id) === String(form.scopeRefId)) || null,
     [assessments, form.scopeRefId]
+  );
+
+  const selectedPreviewDocument = useMemo(
+    () => documents.find((item) => String(item.id) === String(previewDocumentId)) || null,
+    [documents, previewDocumentId]
   );
 
   const metrics = useMemo(
@@ -108,12 +135,18 @@ const SstTechnicalDocuments = () => {
     const nextCompanies = companiesResponse.data.data || [];
     const nextModels = templatesResponse.data.data?.templates || [];
     const nextAssessments = assessmentsResponse.data.data || [];
+    const nextDocuments = documentsResponse.data.data || [];
 
     setCompanies(nextCompanies);
     setModels(nextModels);
     setPppStatus(templatesResponse.data.data?.ppp || null);
     setAssessments(nextAssessments);
-    setDocuments(documentsResponse.data.data || []);
+    setDocuments(nextDocuments);
+    if (previewDocumentId && !nextDocuments.some((item) => String(item.id) === String(previewDocumentId))) {
+      setPreviewDocumentId('');
+      setPreviewHtml('');
+      setPreviewAssets(null);
+    }
     setForm((prev) => ({
       ...prev,
       documentModelId: nextModels.some((item) => String(item.id) === String(prev.documentModelId)) ? prev.documentModelId : nextModels[0]?.id || '',
@@ -171,9 +204,7 @@ const SstTechnicalDocuments = () => {
         setReadiness({
           emitible: false,
           blocking: true,
-          missingFields: [
-            requestError?.response?.data?.message || 'Erro ao calcular prontidao documental.'
-          ]
+          missingFields: [requestError?.response?.data?.message || 'Erro ao calcular prontidao documental.']
         });
       } finally {
         if (active) setReadinessLoading(false);
@@ -184,6 +215,26 @@ const SstTechnicalDocuments = () => {
       active = false;
     };
   }, [selectedModel?.documentType, form.scopeRefId, form.scopeType]);
+
+  const loadPreview = async (documentId) => {
+    try {
+      setPreviewLoading(true);
+      setError('');
+      setPreviewDocumentId(documentId);
+      const [htmlResponse, assetsResponse] = await Promise.all([
+        sstService.getIssuedDocumentHtmlPreview(documentId),
+        sstService.getIssuedDocumentAssets(documentId)
+      ]);
+      setPreviewHtml(htmlResponse.data || '');
+      setPreviewAssets(assetsResponse.data?.data?.assets || null);
+    } catch (requestError) {
+      setPreviewHtml('');
+      setPreviewAssets(null);
+      setError(requestError?.response?.data?.message || 'Erro ao carregar preview do documento.');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   const handleIssue = async (event) => {
     event.preventDefault();
@@ -229,6 +280,9 @@ const SstTechnicalDocuments = () => {
       setError('');
       await sstService.invalidateDocument(documentId, { reason });
       await loadData(form.empresaId);
+      if (String(previewDocumentId) === String(documentId)) {
+        await loadPreview(documentId);
+      }
     } catch (requestError) {
       setError(requestError?.response?.data?.message || 'Erro ao invalidar documento.');
     }
@@ -248,6 +302,10 @@ const SstTechnicalDocuments = () => {
       anchor.click();
       anchor.remove();
       window.URL.revokeObjectURL(url);
+      if (String(previewDocumentId) === String(documentId)) {
+        const assetsResponse = await sstService.getIssuedDocumentAssets(documentId);
+        setPreviewAssets(assetsResponse.data?.data?.assets || null);
+      }
     } catch (requestError) {
       setError(requestError?.response?.data?.message || 'Erro ao baixar PDF do documento.');
     } finally {
@@ -255,14 +313,20 @@ const SstTechnicalDocuments = () => {
     }
   };
 
-  if (loading) return <div className="flex h-64 items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary-500" /></div>;
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Documentacao tecnica"
-        title="Emitidos em PDF"
-        description="Emissao por empresa e modelo, com download imediato do PDF e rastreabilidade da versao emitida."
+        title="Emitidos com preview HTML"
+        description="Emissao por empresa e modelo, com preview institucional em HTML, download imediato do PDF e armazenamento externo quando configurado."
         actions={<button type="button" className="btn-secondary" onClick={() => navigate('/sst/documentos/modelos')}><Layers3 className="h-4 w-4" />Modelos</button>}
       />
 
@@ -310,15 +374,7 @@ const SstTechnicalDocuments = () => {
             <button
               type="submit"
               className="btn-primary"
-              disabled={
-                !canSign ||
-                !form.empresaId ||
-                !form.documentModelId ||
-                !form.scopeRefId ||
-                issuing ||
-                readinessLoading ||
-                Boolean(readiness?.blocking)
-              }
+              disabled={!canSign || !form.empresaId || !form.documentModelId || !form.scopeRefId || issuing || readinessLoading || Boolean(readiness?.blocking)}
             >
               {issuing ? 'Emitindo...' : 'Emitir PDF'}
             </button>
@@ -378,43 +434,129 @@ const SstTechnicalDocuments = () => {
         ) : null}
       </section>
 
-      <section className="panel-surface p-6">
-        {documents.length === 0 ? (
-          <EmptyState icon={Sparkles} title="Nenhum documento emitido" description="Os documentos emitidos aparecerao aqui com versao, hash e download em PDF." />
-        ) : (
-          <div className="space-y-3">
-            {documents.map((document) => (
-              <article key={document.id} className="rounded-[1.35rem] border border-slate-200/80 bg-white/90 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`status-pill ${document.status === 'invalidated' ? 'status-danger' : document.status === 'superseded' ? 'status-warning' : 'status-success'}`}>{document.status}</span>
-                      <span className="status-pill status-info">{DOCUMENT_TYPE_LABELS[document.documentType] || document.documentType}</span>
-                      <span className="status-pill status-info">{document.documentModelTitle || document.latestIssuedVersion?.documentModelTitle || 'Modelo padrao'}</span>
-                    </div>
-                    <h3 className="mt-3 text-lg font-semibold text-slate-950">{document.title}</h3>
-                    <p className="mt-2 text-sm text-slate-600">Empresa: {document.empresaId} • Escopo: {document.scopeType} • Ref: {document.scopeRefId}</p>
-                    <p className="mt-2 text-xs text-slate-500">Ultima versao: v{document.latestIssuedVersion?.version || document.latestVersion} • Hash: {document.latestIssuedVersion?.hash || 'n/a'}</p>
-                    <p className="mt-2 text-xs text-slate-500">Emitido em {formatDate(document.latestIssuedVersion?.issuedAt)}</p>
-                  </div>
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(420px,0.9fr)]">
+        <div className="panel-surface p-6">
+          {documents.length === 0 ? (
+            <EmptyState icon={Sparkles} title="Nenhum documento emitido" description="Os documentos emitidos aparecerao aqui com versao, hash, preview HTML e download em PDF." />
+          ) : (
+            <div className="space-y-3">
+              {documents.map((document) => {
+                const latestVersion = document.latestIssuedVersion || {};
+                const assets = latestVersion.assets || {};
 
-                  <div className="flex min-w-[220px] flex-col gap-2">
-                    <button type="button" className="btn-secondary" disabled={downloadingId === document.id} onClick={() => handleDownload(document.id)}>
-                      <Download className="h-4 w-4" />
-                      {downloadingId === document.id ? 'Gerando PDF...' : 'Baixar PDF'}
-                    </button>
-                    {canSign && document.status === 'issued' ? (
-                      <button type="button" className="btn-secondary text-red-600" onClick={() => handleInvalidate(document.id)}>
-                        <AlertTriangle className="h-4 w-4" />
-                        Invalidar
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              </article>
-            ))}
+                return (
+                  <article key={document.id} className="rounded-[1.35rem] border border-slate-200/80 bg-white/90 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`status-pill ${document.status === 'invalidated' ? 'status-danger' : document.status === 'superseded' ? 'status-warning' : 'status-success'}`}>{document.status}</span>
+                          <span className="status-pill status-info">{DOCUMENT_TYPE_LABELS[document.documentType] || document.documentType}</span>
+                          <span className="status-pill status-info">{document.documentModelTitle || latestVersion.documentModelTitle || 'Modelo padrao'}</span>
+                        </div>
+                        <h3 className="mt-3 text-lg font-semibold text-slate-950">{document.title}</h3>
+                        <p className="mt-2 text-sm text-slate-600">Empresa: {document.empresaId} • Escopo: {document.scopeType} • Ref: {document.scopeRefId}</p>
+                        <p className="mt-2 text-xs text-slate-500">Ultima versao: v{latestVersion.version || document.latestVersion} • Hash: {latestVersion.hash || 'n/a'}</p>
+                        <p className="mt-2 text-xs text-slate-500">Emitido em {formatDate(latestVersion.issuedAt)}</p>
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                          <span className="status-pill status-info">HTML: {getAssetBadge(assets.html)}</span>
+                          <span className="status-pill status-info">PDF: {getAssetBadge(assets.pdf)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex min-w-[240px] flex-col gap-2">
+                        <button type="button" className="btn-secondary" disabled={previewLoading && previewDocumentId === document.id} onClick={() => loadPreview(document.id)}>
+                          <Eye className="h-4 w-4" />
+                          {previewLoading && previewDocumentId === document.id ? 'Carregando preview...' : 'Preview HTML'}
+                        </button>
+                        <button type="button" className="btn-secondary" disabled={downloadingId === document.id} onClick={() => handleDownload(document.id)}>
+                          <Download className="h-4 w-4" />
+                          {downloadingId === document.id ? 'Gerando PDF...' : 'Baixar PDF'}
+                        </button>
+                        {canSign && document.status === 'issued' ? (
+                          <button type="button" className="btn-secondary text-red-600" onClick={() => handleInvalidate(document.id)}>
+                            <AlertTriangle className="h-4 w-4" />
+                            Invalidar
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <aside className="panel-surface p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Preview documental</p>
+              <h2 className="mt-1 text-2xl font-semibold text-slate-950">HTML institucional</h2>
+            </div>
+            {selectedPreviewDocument ? (
+              <button type="button" className="btn-secondary" onClick={() => loadPreview(selectedPreviewDocument.id)} disabled={previewLoading}>
+                <Eye className="h-4 w-4" />
+                Atualizar
+              </button>
+            ) : null}
           </div>
-        )}
+
+          {!selectedPreviewDocument ? (
+            <div className="mt-6">
+              <EmptyState icon={Eye} title="Nenhum preview carregado" description="Selecione um documento emitido para visualizar o HTML consolidado e os links de armazenamento." />
+            </div>
+          ) : (
+            <div className="mt-5 space-y-4">
+              <div className="rounded-[1.2rem] border border-slate-200/80 bg-slate-50/70 p-4">
+                <p className="text-sm font-semibold text-slate-950">{selectedPreviewDocument.title}</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {DOCUMENT_TYPE_LABELS[selectedPreviewDocument.documentType] || selectedPreviewDocument.documentType} • {selectedPreviewDocument.documentModelTitle || 'Modelo padrao'}
+                </p>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-[1.1rem] border border-slate-200/80 bg-white/80 p-4">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Asset HTML</p>
+                  <p className="mt-2 text-sm text-slate-700">{getAssetBadge(previewAssets?.html)}</p>
+                  {previewAssets?.html?.url ? (
+                    <a className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-sky-700" href={previewAssets.html.url} target="_blank" rel="noreferrer">
+                      <ExternalLink className="h-4 w-4" />
+                      Abrir link externo
+                    </a>
+                  ) : null}
+                </div>
+                <div className="rounded-[1.1rem] border border-slate-200/80 bg-white/80 p-4">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Asset PDF</p>
+                  <p className="mt-2 text-sm text-slate-700">{getAssetBadge(previewAssets?.pdf)}</p>
+                  {previewAssets?.pdf?.url ? (
+                    <a className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-sky-700" href={previewAssets.pdf.url} target="_blank" rel="noreferrer">
+                      <ExternalLink className="h-4 w-4" />
+                      Abrir link externo
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-[1.4rem] border border-slate-200/80 bg-white">
+                {previewLoading ? (
+                  <div className="flex h-[720px] items-center justify-center">
+                    <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary-500" />
+                  </div>
+                ) : previewHtml ? (
+                  <iframe
+                    title={`preview-${selectedPreviewDocument.id}`}
+                    srcDoc={previewHtml}
+                    className="h-[720px] w-full bg-white"
+                  />
+                ) : (
+                  <div className="flex h-[720px] items-center justify-center px-6 text-center text-sm text-slate-500">
+                    Nao foi possivel montar o preview HTML deste documento.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </aside>
       </section>
     </div>
   );

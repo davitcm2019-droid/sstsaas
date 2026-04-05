@@ -21,6 +21,7 @@ const DOCUMENT_TYPE_LABELS = {
   inventario: 'Inventario de Riscos',
   pgr: 'Programa de Gerenciamento de Riscos (PGR)',
   ltcat: 'LTCAT - Laudo Tecnico das Condicoes Ambientais do Trabalho',
+  ordem_servico: 'Ordem de Servico de Seguranca e Saude no Trabalho',
   laudo_insalubridade: 'Laudo de Insalubridade',
   laudo_periculosidade: 'Laudo de Periculosidade',
   laudo_tecnico: 'Laudo Tecnico'

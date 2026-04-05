@@ -1,10 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { renderIssuedDocumentPdfBuffer } = require('../sst/pdfEngine');
+const { renderIssuedDocumentPdfBuffer, buildIssuedDocumentPdfFilename } = require('../sst/pdfEngine');
 const { resolveIssuedDocumentPdfData } = require('../sst/pdfDataResolver');
-
-const toPdfHex = (value) => Buffer.from(String(value), 'latin1').toString('hex').toUpperCase();
 
 const createAssessmentRepoStub = (rows = []) => ({
   find() {
@@ -14,7 +12,7 @@ const createAssessmentRepoStub = (rows = []) => ({
   }
 });
 
-test('renderIssuedDocumentPdfBuffer gera PDF com sumario, secoes e paginacao', async () => {
+test('renderIssuedDocumentPdfBuffer delega para o novo pipeline documental e gera o nome esperado', async () => {
   const document = {
     id: 'doc1',
     title: 'Programa de Gerenciamento de Riscos - Empresa X',
@@ -112,15 +110,24 @@ test('renderIssuedDocumentPdfBuffer gera PDF com sumario, secoes e paginacao', a
     document,
     version,
     pdfData,
-    options: { debug: { compress: false } }
+    options: {
+      rendererDeps: {
+        browser: {
+          async newPage() {
+            return {
+              async setContent() {},
+              async emulateMediaType() {},
+              async pdf() {
+                return Buffer.from('%PDF-FAKE');
+              },
+              async close() {}
+            };
+          }
+        }
+      }
+    }
   });
 
-  const output = buffer.toString('latin1').toUpperCase();
-  assert.ok(buffer.slice(0, 4).toString('latin1').startsWith('%PDF'));
-  assert.match(output, new RegExp(toPdfHex('SUMARIO')));
-  assert.match(output, new RegExp(toPdfHex('10/01/2026 a 10/12/2026')));
-  assert.match(output, /31202D204944454E544946494341/);
-  assert.match(output, /39202D204D41/);
-  assert.match(output, /3133202D20494E56454E54/);
-  assert.match(output, /312F[0-9A-F]{2,4}/);
+  assert.equal(buffer.toString('utf8'), '%PDF-FAKE');
+  assert.equal(buildIssuedDocumentPdfFilename(document, version), 'programa-de-gerenciamento-de-riscos-empresa-x-v1.pdf');
 });

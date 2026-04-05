@@ -47,10 +47,13 @@ const {
   buildDocumentContent,
   hashDocumentPayload
 } = require('../sst/documentEngine');
-const { buildIssuedDocumentPdfFilename, renderIssuedDocumentPdfBuffer } = require('../sst/pdfEngine');
-const { resolveIssuedDocumentPdfData } = require('../sst/pdfDataResolver');
-const { composeDocumentPayload } = require('../sst/documentComposer');
 const { evaluateDocumentReadiness } = require('../sst/documentReadiness');
+const {
+  listSupportedDocumentTypes,
+  previewIssuedDocumentHtml,
+  downloadIssuedDocumentPdf,
+  getIssuedDocumentAssets
+} = require('../modules/documents/controllers/sstDocumentsController');
 
 const router = express.Router();
 
@@ -1753,6 +1756,8 @@ router.get('/documents/issued', requirePermission('sst:read'), async (req, res) 
   }
 });
 
+router.get('/documents/types', requirePermission('sst:read'), listSupportedDocumentTypes);
+
 router.post('/documents/issue', requirePermission('sst:sign'), async (req, res) => {
   try {
     const actor = toActor(req.user);
@@ -1965,27 +1970,10 @@ router.post('/documents/issue', requirePermission('sst:sign'), async (req, res) 
   }
 });
 
-router.get('/documents/issued/:id/pdf', requirePermission('sst:read'), async (req, res) => {
-  try {
-    const documentId = requireObjectId(req.params.id, 'Documento invalido');
-    const document = await SstIssuedTechnicalDocument.findById(documentId).lean();
-    if (!document) return sendError(res, { message: 'Documento nao encontrado' }, 404);
+router.get('/documents/issued/:id/html-preview', requirePermission('sst:read'), previewIssuedDocumentHtml);
+router.get('/documents/issued/:id/assets', requirePermission('sst:read'), getIssuedDocumentAssets);
 
-    const version = await SstIssuedTechnicalDocumentVersion.findOne({ documentId }).sort({ version: -1 }).lean();
-    if (!version) return sendError(res, { message: 'Nenhuma versao emitida encontrada para este documento' }, 404);
-
-    const pdfData = await resolveIssuedDocumentPdfData({ document, version });
-    const composedDocument = composeDocumentPayload({ document, version, pdfData });
-    const pdfBuffer = await renderIssuedDocumentPdfBuffer({ document, version, pdfData, composedDocument });
-    const filename = buildIssuedDocumentPdfFilename(document, version);
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    return res.status(200).send(pdfBuffer);
-  } catch (error) {
-    return sendError(res, { message: 'Erro ao gerar PDF do documento tecnico', meta: { details: error.message } }, error.status || 500);
-  }
-});
+router.get('/documents/issued/:id/pdf', requirePermission('sst:read'), downloadIssuedDocumentPdf);
 
 router.post('/documents/issued/:id/invalidate', requirePermission('sst:sign'), async (req, res) => {
   try {

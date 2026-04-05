@@ -9,7 +9,7 @@ const ACTIVITY_STATUS = ['ativo', 'inativo'];
 const CONTROL_TYPES = ['eliminacao', 'substituicao', 'engenharia', 'administrativo', 'epi', 'epc'];
 const EFFECTIVENESS_TYPES = ['nao_avaliada', 'adequado', 'parcial', 'ineficaz'];
 const ACTION_STATUS = ['pendente', 'em_andamento', 'concluida', 'cancelada'];
-const DOCUMENT_TYPES = ['inventario', 'pgr', 'ltcat', 'laudo_insalubridade', 'laudo_periculosidade', 'laudo_tecnico'];
+const DOCUMENT_TYPES = ['inventario', 'pgr', 'ltcat', 'laudo_insalubridade', 'laudo_periculosidade', 'laudo_tecnico', 'ordem_servico'];
 const DOCUMENT_STATUS = ['draft', 'issued', 'superseded', 'invalidated'];
 const DOCUMENT_SCOPE_TYPES = ['assessment', 'sector', 'establishment'];
 const CATALOG_TYPES = ['hazard', 'risk_factor', 'agent', 'control', 'normative_reference'];
@@ -275,6 +275,10 @@ const issuedTechnicalDocumentVersionSchema = new Schema(
     templateCode: { type: String, required: true },
     summary: { type: Schema.Types.Mixed, default: {} },
     content: { type: Schema.Types.Mixed, required: true },
+    assets: {
+      html: { type: Schema.Types.Mixed, default: null },
+      pdf: { type: Schema.Types.Mixed, default: null }
+    },
     issuedAt: { type: Date, default: Date.now },
     issuedBy: { type: actorSchema, default: () => ({}) }
   },

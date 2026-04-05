@@ -40,6 +40,12 @@ const NORMATIVE_LIBRARY = {
     entry('conclusao', 'Conclusao', 'A conclusao formal depende de assinatura tecnica valida e enquadramento normativo devidamente registrado.'),
     entry('consideracoes_finais', 'Consideracoes finais', 'A manutencao do LTCAT exige revisoes sempre que houver alteracao de condicao ambiental ou de exposicao.'),
     entry('referencias_bibliograficas', 'Referencias', 'As referencias listadas combinam base normativa aplicavel e rastreio da versao emitida.')
+  ],
+  ordem_servico: [
+    entry('identificacao_empresa', 'Identificacao', 'Ordem de servico emitida a partir da base publicada do modulo SST, com rastreabilidade por escopo e versao.'),
+    entry('area_abrangencia', 'Escopo', 'A abrangencia da ordem de servico decorre do escopo tecnico consolidado por estabelecimento, setor e cargo.'),
+    entry('inventario_riscos', 'Riscos e orientacoes', 'As orientacoes operacionais devem refletir os riscos, agentes, controles e medidas registradas na base tecnica.'),
+    entry('metas_prioridades_controle', 'Responsabilidades e controles', 'As responsabilidades e medidas de controle precisam ser comunicadas e mantidas atualizadas conforme o risco residual.')
   ]
 };
 

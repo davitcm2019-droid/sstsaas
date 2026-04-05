@@ -40,6 +40,20 @@ const parseOptionalBoolean = (name, fallback = false) => {
   throw new Error(`Invalid boolean environment variable: ${name}`);
 };
 
+const parseOptionalEnum = (name, allowedValues = [], fallback = '') => {
+  const raw = process.env[name];
+  if (typeof raw !== 'string' || raw.trim() === '') {
+    return fallback;
+  }
+
+  const normalized = raw.trim().toLowerCase();
+  if (!allowedValues.includes(normalized)) {
+    throw new Error(`Invalid value for ${name}. Allowed values: ${allowedValues.join(', ')}`);
+  }
+
+  return normalized;
+};
+
 const parseCorsOrigins = (rawOrigins) =>
   rawOrigins
     .split(',')
@@ -71,6 +85,19 @@ const config = {
   },
   security: {
     bcryptSaltRounds: parseOptionalInt('BCRYPT_SALT_ROUNDS', 10)
+  },
+  documents: {
+    storage: {
+      provider: parseOptionalEnum('DOCUMENT_STORAGE_PROVIDER', ['local', 's3'], 'local'),
+      bucket: parseOptionalString('DOCUMENT_STORAGE_BUCKET', ''),
+      region: parseOptionalString('DOCUMENT_STORAGE_REGION', 'us-east-1'),
+      endpoint: parseOptionalString('DOCUMENT_STORAGE_ENDPOINT', ''),
+      accessKeyId: parseOptionalString('DOCUMENT_STORAGE_ACCESS_KEY_ID', ''),
+      secretAccessKey: parseOptionalString('DOCUMENT_STORAGE_SECRET_ACCESS_KEY', ''),
+      publicBaseUrl: parseOptionalString('DOCUMENT_STORAGE_PUBLIC_BASE_URL', ''),
+      forcePathStyle: parseOptionalBoolean('DOCUMENT_STORAGE_FORCE_PATH_STYLE', true),
+      signedUrlTtlSeconds: parseOptionalInt('DOCUMENT_STORAGE_SIGNED_URL_TTL_SECONDS', 900)
+    }
   },
   features: {
     structuredRiskSurvey: parseOptionalBoolean('FEATURE_STRUCTURED_RISK_SURVEY', true)

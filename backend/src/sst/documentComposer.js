@@ -22,6 +22,11 @@ const COVER_META_BY_TYPE = {
     formalTitle: 'Inventario de Riscos',
     normativeLabel: ''
   },
+  ordem_servico: {
+    acronym: 'OS',
+    formalTitle: 'Ordem de Servico',
+    normativeLabel: 'NR 01'
+  },
   laudo_insalubridade: {
     acronym: 'LI',
     formalTitle: 'Laudo de Insalubridade',
@@ -246,6 +251,8 @@ const buildNarrativeBySection = ({ sectionKey, readiness, summary, methodology, 
       return readiness.missingFields.length
         ? ['Emissao concluida com dados complementares nao criticos. Verifique pendencias no bloco de dados complementares.']
         : ['Emissao concluida com completude tecnica para o escopo selecionado.'];
+    case 'responsabilidades_controles':
+      return ['As responsabilidades operacionais e controles preventivos devem ser comunicados aos trabalhadores e liderancas do escopo.'];
     case 'introducao':
       return ['O LTCAT foi consolidado com base nas avaliacoes publicadas e conclusoes tecnicas assinadas no escopo vigente.'];
     case 'elementos_construtivos_ltcat':
