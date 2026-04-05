@@ -52,12 +52,19 @@ test('resolveIssuedDocumentPdfData aplica fallbacks e lookup de empresa', async 
       empresaRepo: {
         findById: async () => null
       },
-      assessmentRepo: createAssessmentRepoStub([])
+      assessmentRepo: createAssessmentRepoStub([
+        {
+          _id: 'a1',
+          abrangenciaInicio: '',
+          abrangenciaFim: ''
+        }
+      ])
     }
   });
 
   assert.equal(pdfData.labels.documentTypeLabel, 'Programa de Gerenciamento de Riscos (PGR)');
   assert.equal(pdfData.empresa.nome, 'Nao informado');
   assert.ok(pdfData.missingData.includes('Nome da empresa'));
+  assert.ok(pdfData.missingData.includes('Periodo de abrangencia da avaliacao'));
   assert.ok(pdfData.sectionsPlan.some((section) => section.key === 'inventario_riscos'));
 });

@@ -96,6 +96,35 @@ const requireObjectId = (value, message) => {
   return normalized;
 };
 
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const normalizeDateOnly = (value) => {
+  const normalized = String(value || '').trim();
+  if (!normalized) return '';
+  if (!DATE_ONLY_PATTERN.test(normalized)) {
+    throw createRuleError('Datas de abrangencia devem estar no formato YYYY-MM-DD', 'ASSESSMENT_COVERAGE_DATE_INVALID', 400);
+  }
+  return normalized;
+};
+
+const validateCoverageRange = (start, end) => {
+  if (!start && !end) return;
+  if (!start || !end) {
+    throw createRuleError(
+      'Informe inicio e fim da abrangencia da avaliacao',
+      'ASSESSMENT_COVERAGE_RANGE_INCOMPLETE',
+      400
+    );
+  }
+  if (end < start) {
+    throw createRuleError(
+      'A data final da abrangencia nao pode ser anterior a data inicial',
+      'ASSESSMENT_COVERAGE_RANGE_INVALID',
+      400
+    );
+  }
+};
+
 const recordAudit = async ({ entityType, entityId, action, summary, before = null, after = null, meta = {}, actor, origin = 'manual' }) => {
   await SstTechnicalAudit.create({
     entityType,
@@ -281,28 +310,36 @@ const sanitizeRolePayload = (payload = {}, current = null) => ({
   status: ACTIVITY_STATUS.includes(payload.status) ? payload.status : current?.status || 'ativo'
 });
 
-const sanitizeAssessmentPayload = (payload = {}, current = null) => ({
-  title: String(payload.title ?? current?.title ?? '').trim(),
-  reviewReason: String(payload.reviewReason ?? current?.reviewReason ?? 'implantacao_inicial').trim() || 'implantacao_inicial',
-  context: {
-    processoPrincipal: String(payload.context?.processoPrincipal ?? current?.context?.processoPrincipal ?? '').trim(),
-    localAreaPosto: String(payload.context?.localAreaPosto ?? current?.context?.localAreaPosto ?? '').trim(),
-    jornadaTurno: String(payload.context?.jornadaTurno ?? current?.context?.jornadaTurno ?? '').trim(),
-    quantidadeExpostos: Number(payload.context?.quantidadeExpostos ?? current?.context?.quantidadeExpostos ?? 1) || 1,
-    condicaoOperacional: String(payload.context?.condicaoOperacional ?? current?.context?.condicaoOperacional ?? '').trim(),
-    metodologia: String(payload.context?.metodologia ?? current?.context?.metodologia ?? '').trim(),
-    instrumentosUtilizados: String(payload.context?.instrumentosUtilizados ?? current?.context?.instrumentosUtilizados ?? '').trim(),
-    criteriosAvaliacao: String(payload.context?.criteriosAvaliacao ?? current?.context?.criteriosAvaliacao ?? '').trim(),
-    matrizRisco: String(payload.context?.matrizRisco ?? current?.context?.matrizRisco ?? '').trim(),
-    atividadesBase: sanitizeStringArray(payload.context?.atividadesBase ?? current?.context?.atividadesBase ?? []),
-    observations: String(payload.context?.observations ?? current?.context?.observations ?? '').trim()
-  },
-  responsibleTechnical: {
-    nome: String(payload.responsibleTechnical?.nome ?? current?.responsibleTechnical?.nome ?? '').trim(),
-    email: String(payload.responsibleTechnical?.email ?? current?.responsibleTechnical?.email ?? '').trim(),
-    registro: String(payload.responsibleTechnical?.registro ?? current?.responsibleTechnical?.registro ?? '').trim()
-  }
-});
+const sanitizeAssessmentPayload = (payload = {}, current = null) => {
+  const abrangenciaInicio = normalizeDateOnly(payload.abrangenciaInicio ?? current?.abrangenciaInicio ?? '');
+  const abrangenciaFim = normalizeDateOnly(payload.abrangenciaFim ?? current?.abrangenciaFim ?? '');
+  validateCoverageRange(abrangenciaInicio, abrangenciaFim);
+
+  return {
+    title: String(payload.title ?? current?.title ?? '').trim(),
+    abrangenciaInicio,
+    abrangenciaFim,
+    reviewReason: String(payload.reviewReason ?? current?.reviewReason ?? 'implantacao_inicial').trim() || 'implantacao_inicial',
+    context: {
+      processoPrincipal: String(payload.context?.processoPrincipal ?? current?.context?.processoPrincipal ?? '').trim(),
+      localAreaPosto: String(payload.context?.localAreaPosto ?? current?.context?.localAreaPosto ?? '').trim(),
+      jornadaTurno: String(payload.context?.jornadaTurno ?? current?.context?.jornadaTurno ?? '').trim(),
+      quantidadeExpostos: Number(payload.context?.quantidadeExpostos ?? current?.context?.quantidadeExpostos ?? 1) || 1,
+      condicaoOperacional: String(payload.context?.condicaoOperacional ?? current?.context?.condicaoOperacional ?? '').trim(),
+      metodologia: String(payload.context?.metodologia ?? current?.context?.metodologia ?? '').trim(),
+      instrumentosUtilizados: String(payload.context?.instrumentosUtilizados ?? current?.context?.instrumentosUtilizados ?? '').trim(),
+      criteriosAvaliacao: String(payload.context?.criteriosAvaliacao ?? current?.context?.criteriosAvaliacao ?? '').trim(),
+      matrizRisco: String(payload.context?.matrizRisco ?? current?.context?.matrizRisco ?? '').trim(),
+      atividadesBase: sanitizeStringArray(payload.context?.atividadesBase ?? current?.context?.atividadesBase ?? []),
+      observations: String(payload.context?.observations ?? current?.context?.observations ?? '').trim()
+    },
+    responsibleTechnical: {
+      nome: String(payload.responsibleTechnical?.nome ?? current?.responsibleTechnical?.nome ?? '').trim(),
+      email: String(payload.responsibleTechnical?.email ?? current?.responsibleTechnical?.email ?? '').trim(),
+      registro: String(payload.responsibleTechnical?.registro ?? current?.responsibleTechnical?.registro ?? '').trim()
+    }
+  };
+};
 
 const sanitizeRiskPayload = (payload = {}, current = null) => {
   const probability = Number(payload.probability ?? current?.probability ?? 1) || 1;
@@ -947,6 +984,8 @@ router.post('/assessments', requirePermission('sst:write'), async (req, res) => 
       establishmentId: role.establishmentId,
       sectorId: role.sectorId,
       roleId: role._id,
+      abrangenciaInicio: payload.abrangenciaInicio,
+      abrangenciaFim: payload.abrangenciaFim,
       version,
       status: 'draft',
       title,
@@ -1005,6 +1044,8 @@ router.put('/assessments/:id', requirePermission('sst:write'), async (req, res) 
     const payload = sanitizeAssessmentPayload(req.body, current);
 
     current.title = payload.title || current.title;
+    current.abrangenciaInicio = payload.abrangenciaInicio;
+    current.abrangenciaFim = payload.abrangenciaFim;
     current.reviewReason = payload.reviewReason;
     current.context = payload.context;
     current.responsibleTechnical = payload.responsibleTechnical;
@@ -1078,6 +1119,8 @@ router.post('/assessments/:id/revision', requirePermission('sst:write'), async (
       sectorId: bundle.assessment.sectorId,
       roleId: bundle.assessment.roleId,
       title: `${bundle.assessment.title} - revisao v${nextVersion}`,
+      abrangenciaInicio: bundle.assessment.abrangenciaInicio || '',
+      abrangenciaFim: bundle.assessment.abrangenciaFim || '',
       version: nextVersion,
       status: 'draft',
       reviewReason: String(req.body?.reviewReason || 'revisao_periodica').trim(),

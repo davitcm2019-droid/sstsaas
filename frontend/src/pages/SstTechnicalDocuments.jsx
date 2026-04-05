@@ -19,6 +19,23 @@ const formatDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? 'Data invalida' : parsed.toLocaleString('pt-BR');
 };
 
+const formatDateOnly = (value) => {
+  const normalized = String(value || '').trim();
+  if (!normalized) return 'Sem data';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    const [year, month, day] = normalized.split('-');
+    return `${day}/${month}/${year}`;
+  }
+  return formatDate(normalized);
+};
+
+const formatCoverageRange = (start, end) => {
+  const normalizedStart = String(start || '').trim();
+  const normalizedEnd = String(end || '').trim();
+  if (!normalizedStart || !normalizedEnd) return 'Abrangencia nao informada';
+  return `${formatDateOnly(normalizedStart)} a ${formatDateOnly(normalizedEnd)}`;
+};
+
 const DOCUMENT_TYPE_LABELS = {
   inventario: 'Inventario',
   pgr: 'PGR',
@@ -63,6 +80,11 @@ const SstTechnicalDocuments = () => {
   const selectedModel = useMemo(
     () => models.find((item) => String(item.id) === String(form.documentModelId)) || null,
     [models, form.documentModelId]
+  );
+
+  const selectedAssessment = useMemo(
+    () => assessments.find((item) => String(item.id) === String(form.scopeRefId)) || null,
+    [assessments, form.scopeRefId]
   );
 
   const metrics = useMemo(
@@ -277,7 +299,7 @@ const SstTechnicalDocuments = () => {
 
           <select className="input-field" value={form.scopeRefId} onChange={(event) => setForm((prev) => ({ ...prev, scopeRefId: event.target.value }))} required>
             <option value="">Selecione a avaliacao publicada</option>
-            {assessments.map((assessment) => <option key={assessment.id} value={assessment.id}>{assessment.title}</option>)}
+            {assessments.map((assessment) => <option key={assessment.id} value={assessment.id}>{`${assessment.title} • ${formatCoverageRange(assessment.abrangenciaInicio, assessment.abrangenciaFim)} • v${assessment.version}`}</option>)}
           </select>
 
           <textarea className="input-field min-h-[110px]" value={form.editable.resumo} onChange={(event) => setForm((prev) => ({ ...prev, editable: { ...prev.editable, resumo: event.target.value } }))} placeholder="Resumo tecnico editavel" />
@@ -329,6 +351,12 @@ const SstTechnicalDocuments = () => {
                 Prontidao documental validada para <strong>{DOCUMENT_TYPE_LABELS[selectedModel.documentType] || selectedModel.documentType}</strong>.
               </p>
             )}
+          </div>
+        ) : null}
+
+        {selectedAssessment ? (
+          <div className="mt-4 rounded-[1.1rem] border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm text-slate-700">
+            Avaliacao selecionada: <strong className="text-slate-950">{selectedAssessment.title}</strong> • {formatCoverageRange(selectedAssessment.abrangenciaInicio, selectedAssessment.abrangenciaFim)}
           </div>
         ) : null}
 

@@ -8,6 +8,8 @@ test('evaluateDocumentReadiness bloqueia pgr com lacunas obrigatorias', () => {
     _id: 'a1',
     status: 'published',
     responsibleTechnical: { nome: 'RT', registro: '' },
+    abrangenciaInicio: '',
+    abrangenciaFim: '',
     context: {
       processoPrincipal: '',
       localAreaPosto: 'Linha 1',
@@ -46,6 +48,7 @@ test('evaluateDocumentReadiness bloqueia pgr com lacunas obrigatorias', () => {
   assert.equal(readiness.emitible, false);
   assert.equal(readiness.blocking, true);
   assert.ok(readiness.missingFields.some((item) => item.code === 'ASSESSMENT_CONCLUSION_NOT_SIGNED'));
+  assert.ok(readiness.missingFields.some((item) => item.code === 'ASSESSMENT_COVERAGE_RANGE_REQUIRED'));
   assert.ok(readiness.missingFields.some((item) => item.code === 'PGR_RISK_MATRIX_REQUIRED'));
 });
 
@@ -54,6 +57,8 @@ test('evaluateDocumentReadiness libera pgr completo', () => {
     _id: 'a1',
     status: 'published',
     responsibleTechnical: { nome: 'RT', registro: '123' },
+    abrangenciaInicio: '2026-01-10',
+    abrangenciaFim: '2026-12-10',
     context: {
       processoPrincipal: 'Operacao',
       localAreaPosto: 'Linha 1',

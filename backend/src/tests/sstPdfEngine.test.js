@@ -41,6 +41,8 @@ test('renderIssuedDocumentPdfBuffer gera PDF com sumario, secoes e paginacao', a
             assessment: {
               id: 'assess1',
               title: 'Avaliacao Cargo A',
+              abrangenciaInicio: '2026-01-10',
+              abrangenciaFim: '2026-12-10',
               version: 1,
               responsibleTechnical: { nome: 'RT Teste', registro: '123' }
             },
@@ -92,6 +94,8 @@ test('renderIssuedDocumentPdfBuffer gera PDF com sumario, secoes e paginacao', a
       assessmentRepo: createAssessmentRepoStub([
         {
           _id: 'assess1',
+          abrangenciaInicio: '2026-01-10',
+          abrangenciaFim: '2026-12-10',
           context: {
             processoPrincipal: 'Operacao de maquina',
             localAreaPosto: 'Linha 1',
@@ -114,6 +118,7 @@ test('renderIssuedDocumentPdfBuffer gera PDF com sumario, secoes e paginacao', a
   const output = buffer.toString('latin1').toUpperCase();
   assert.ok(buffer.slice(0, 4).toString('latin1').startsWith('%PDF'));
   assert.match(output, new RegExp(toPdfHex('SUMARIO')));
+  assert.match(output, new RegExp(toPdfHex('10/01/2026 a 10/12/2026')));
   assert.match(output, /31202D204944454E544946494341/);
   assert.match(output, /39202D204D41/);
   assert.match(output, /3133202D20494E56454E54/);

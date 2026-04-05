@@ -73,6 +73,15 @@ const collectMissingData = ({ empresa, assessments = [], assessmentContexts = ne
     missing.push('Metodologia / processo principal');
   }
 
+  if (['pgr', 'ltcat'].includes(documentType)) {
+    const hasCoverage = [...assessmentContexts.values()].every(
+      (assessment) => String(assessment?.abrangenciaInicio || '').trim() && String(assessment?.abrangenciaFim || '').trim()
+    );
+    if (!hasCoverage) {
+      missing.push('Periodo de abrangencia da avaliacao');
+    }
+  }
+
   return [...new Set(missing)];
 };
 

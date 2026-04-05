@@ -116,6 +116,8 @@ const riskAssessmentSchema = new Schema(
     sectorId: { type: objectId, ref: 'SstSector', required: true, index: true },
     roleId: { type: objectId, ref: 'SstRole', required: true, index: true },
     title: { type: String, required: true },
+    abrangenciaInicio: { type: String, default: '' },
+    abrangenciaFim: { type: String, default: '' },
     version: { type: Number, required: true, default: 1 },
     status: { type: String, enum: ['draft', 'in_review', 'published', 'superseded'], default: 'draft', index: true },
     reviewReason: { type: String, default: 'implantacao_inicial' },

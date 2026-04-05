@@ -31,6 +31,15 @@ const formatDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? 'Data invalida' : parsed.toLocaleString('pt-BR');
 };
 
+const formatDateOnly = (value) => {
+  const normalized = String(value || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    const [year, month, day] = normalized.split('-');
+    return `${day}/${month}/${year}`;
+  }
+  return normalized || 'Sem data';
+};
+
 const stringifyMissingField = (item) => {
   if (!item) return DEFAULT_FALLBACK.semDados;
   if (typeof item === 'string') return item;
@@ -95,33 +104,58 @@ const renderPendingDataBox = (doc, missingFields = []) => {
 const renderCover = (doc, payload) => {
   const meta = payload.documentMeta || {};
   const company = payload.companyProfile || {};
+  const pageWidth = doc.page.width;
+  const pageHeight = doc.page.height;
+  const marginX = 48;
+  const contentWidth = pageWidth - marginX * 2;
+  const centerX = pageWidth / 2;
+  const companyName = String(company?.nome || DEFAULT_FALLBACK.naoInformado).toUpperCase();
+  const acronym = meta.acronym || meta.documentTypeLabel || 'DOC';
+  const formalTitle = meta.formalTitle || meta.documentTypeLabel || meta.title || 'Documento Tecnico';
+  const normativeLabel = String(meta.normativeLabel || '').trim();
+  const coverageLabel = meta.coverageLabel || `${formatDateOnly(meta.abrangenciaInicio)} a ${formatDateOnly(meta.abrangenciaFim)}`;
 
-  doc.rect(0, 0, doc.page.width, 220).fill('#0f172a');
-  doc.fillColor('#8cf045').font('Helvetica-Bold').fontSize(12).text('SST SAAS', 48, 54);
-  doc
-    .fillColor('#ffffff')
-    .font('Helvetica-Bold')
-    .fontSize(23)
-    .text(meta.documentTypeLabel || meta.title || 'Documento Tecnico', 48, 92, { width: 430 });
-  doc.font('Helvetica').fontSize(11).fillColor('#cbd5e1').text(meta.title || DEFAULT_FALLBACK.naoInformado, 48, 132, { width: 430 });
+  const drawHelmetIcon = () => {
+    const iconCenterY = 112;
+    doc.save();
+    doc.lineWidth(4);
+    doc.lineCap('round');
+    doc.strokeColor('#84cc16');
+    doc.path(`M ${centerX - 34} ${iconCenterY + 18} Q ${centerX} ${iconCenterY - 26} ${centerX + 34} ${iconCenterY + 18}`).stroke();
+    doc.path(`M ${centerX - 40} ${iconCenterY + 22} L ${centerX + 40} ${iconCenterY + 22}`).stroke();
+    doc.path(`M ${centerX - 16} ${iconCenterY + 22} L ${centerX - 16} ${iconCenterY + 4}`).stroke();
+    doc.path(`M ${centerX + 16} ${iconCenterY + 22} L ${centerX + 16} ${iconCenterY + 4}`).stroke();
+    doc.path(`M ${centerX} ${iconCenterY + 22} L ${centerX} ${iconCenterY - 2}`).stroke();
+    doc.strokeColor('#475569');
+    doc.lineWidth(2.2);
+    doc.path(`M ${centerX - 26} ${iconCenterY + 28} L ${centerX + 26} ${iconCenterY + 28}`).stroke();
+    doc.restore();
+  };
 
-  doc.fillColor('#0f172a');
-  doc.y = 260;
-  writeSectionTitle(doc, 'Capa documental');
-  writeKeyValue(doc, 'Empresa', company?.nome || DEFAULT_FALLBACK.naoInformado);
-  writeKeyValue(doc, 'CNPJ', company?.cnpj || DEFAULT_FALLBACK.naoInformado);
-  writeKeyValue(doc, 'CNAE', company?.cnae || DEFAULT_FALLBACK.naoInformado);
-  writeKeyValue(
-    doc,
-    'Endereco',
-    `${company?.endereco || DEFAULT_FALLBACK.naoInformado} / ${company?.cidade || DEFAULT_FALLBACK.naoInformado} / ${company?.estado || DEFAULT_FALLBACK.naoInformado}`
-  );
-  writeKeyValue(doc, 'Escopo', `${meta.scopeType || DEFAULT_FALLBACK.naoInformado} / ${meta.scopeRefId || DEFAULT_FALLBACK.naoInformado}`);
-  writeKeyValue(doc, 'Versao', `v${meta.version || 1}`);
-  writeKeyValue(doc, 'Hash', meta.hash || 'n/a');
-  writeKeyValue(doc, 'Emitido em', formatDate(meta.issuedAt));
-  writeParagraph(doc, payload?.summary?.overview || DEFAULT_FALLBACK.semDados);
-  renderPendingDataBox(doc, payload?.readiness?.missingFields || []);
+  doc.rect(18, 18, pageWidth - 36, pageHeight - 36).lineWidth(0.75).strokeColor('#e2e8f0').stroke();
+  drawHelmetIcon();
+  doc.fillColor('#111827').font('Helvetica-Bold').fontSize(12).text(companyName, marginX, 182, {
+    width: contentWidth,
+    align: 'center'
+  });
+  doc.font('Helvetica-Bold').fontSize(acronym.length > 5 ? 28 : 34).text(acronym, marginX, 338, {
+    width: contentWidth,
+    align: 'center'
+  });
+  doc.font('Helvetica-Bold').fontSize(16).text(formalTitle, marginX + 36, 430, {
+    width: contentWidth - 72,
+    align: 'center'
+  });
+  if (normativeLabel) {
+    doc.font('Helvetica-Bold').fontSize(12).text(normativeLabel, marginX, 540, {
+      width: contentWidth,
+      align: 'center'
+    });
+  }
+  doc.font('Helvetica').fontSize(11).fillColor('#0f172a').text(coverageLabel, marginX, 690, {
+    width: contentWidth,
+    align: 'center'
+  });
 };
 
 const renderSummaryPage = (doc, { summaryPageIndex, sections, payload }) => {
@@ -342,6 +376,7 @@ const renderSection = (doc, section, payload) => {
 };
 
 const renderPageChrome = (doc, payload, pageIndex, totalPages) => {
+  if (pageIndex === 0) return;
   const headerY = 26;
   const footerY = doc.page.height - 32;
   doc.font('Helvetica-Bold').fontSize(8).fillColor('#64748b').text(`${pageIndex + 1}/${totalPages}`, 48, headerY, {

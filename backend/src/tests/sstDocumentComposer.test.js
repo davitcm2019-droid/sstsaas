@@ -56,7 +56,9 @@ test('composeDocumentPayload monta dto canonico e ordena riscos por criticidade'
             instrumentosUtilizados: 'Dosimetro',
             criteriosAvaliacao: 'PxS',
             matrizRisco: '5x5'
-          }
+          },
+          abrangenciaInicio: '2026-01-10',
+          abrangenciaFim: '2026-12-10'
         }
       ]
     ])
@@ -65,6 +67,8 @@ test('composeDocumentPayload monta dto canonico e ordena riscos por criticidade'
   const composed = composeDocumentPayload({ document, version, pdfData });
   assert.equal(composed.sections[0].key, 'identificacao_empresa');
   assert.equal(composed.riskInventory[0].hazard, 'Critico');
+  assert.equal(composed.documentMeta.coverageLabel, '10/01/2026 a 10/12/2026');
+  assert.equal(composed.documentMeta.acronym, 'PGR');
   assert.ok(composed.sections.some((section) => section.key === 'inventario_riscos'));
   assert.ok(composed.sections.some((section) => section.key === 'metas_prioridades_controle'));
 });

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRightCircle, ClipboardCheck, FileCheck2, FilePlus2, Plus, ShieldCheck, Sparkles } from 'lucide-react';
+import { AlertTriangle, ArrowRightCircle, ClipboardCheck, FileCheck2, FilePlus2, Pencil, Plus, ShieldCheck, Sparkles } from 'lucide-react';
 
 import FormModal from '../components/FormModal';
 import EmptyState from '../components/ui/EmptyState';
@@ -16,6 +16,23 @@ const formatDate = (value) => {
   if (!value) return 'Sem data';
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? 'Data invalida' : parsed.toLocaleDateString('pt-BR');
+};
+
+const formatDateOnly = (value) => {
+  const normalized = String(value || '').trim();
+  if (!normalized) return 'Sem data';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    const [year, month, day] = normalized.split('-');
+    return `${day}/${month}/${year}`;
+  }
+  return formatDate(normalized);
+};
+
+const formatCoverageRange = (start, end) => {
+  const normalizedStart = String(start || '').trim();
+  const normalizedEnd = String(end || '').trim();
+  if (!normalizedStart || !normalizedEnd) return 'Abrangencia nao informada';
+  return `${formatDateOnly(normalizedStart)} a ${formatDateOnly(normalizedEnd)}`;
 };
 
 const mapReadinessLabel = (entry) => {
@@ -44,9 +61,12 @@ const SstAssessments = () => {
   const [detail, setDetail] = useState(null);
 
   const [assessmentModalOpen, setAssessmentModalOpen] = useState(false);
+  const [editingAssessmentId, setEditingAssessmentId] = useState(null);
   const [assessmentForm, setAssessmentForm] = useState({
     roleId: '',
     title: '',
+    abrangenciaInicio: '',
+    abrangenciaFim: '',
     context: {
       processoPrincipal: '',
       localAreaPosto: '',
@@ -79,6 +99,8 @@ const SstAssessments = () => {
     setAssessmentForm({
       roleId: '',
       title: '',
+      abrangenciaInicio: '',
+      abrangenciaFim: '',
       context: {
         processoPrincipal: '',
         localAreaPosto: '',
@@ -91,6 +113,30 @@ const SstAssessments = () => {
         matrizRisco: ''
       },
       responsibleTechnical: { nome: user?.nome || '', email: user?.email || '', registro: '' }
+    });
+
+  const hydrateAssessmentForm = (assessment) =>
+    setAssessmentForm({
+      roleId: assessment?.roleId || '',
+      title: assessment?.title || '',
+      abrangenciaInicio: assessment?.abrangenciaInicio || '',
+      abrangenciaFim: assessment?.abrangenciaFim || '',
+      context: {
+        processoPrincipal: assessment?.context?.processoPrincipal || '',
+        localAreaPosto: assessment?.context?.localAreaPosto || '',
+        jornadaTurno: assessment?.context?.jornadaTurno || '',
+        quantidadeExpostos: assessment?.context?.quantidadeExpostos || 1,
+        condicaoOperacional: assessment?.context?.condicaoOperacional || '',
+        metodologia: assessment?.context?.metodologia || '',
+        instrumentosUtilizados: assessment?.context?.instrumentosUtilizados || '',
+        criteriosAvaliacao: assessment?.context?.criteriosAvaliacao || '',
+        matrizRisco: assessment?.context?.matrizRisco || ''
+      },
+      responsibleTechnical: {
+        nome: assessment?.responsibleTechnical?.nome || user?.nome || '',
+        email: assessment?.responsibleTechnical?.email || user?.email || '',
+        registro: assessment?.responsibleTechnical?.registro || ''
+      }
     });
 
   const metrics = useMemo(() => ({
@@ -200,17 +246,26 @@ const SstAssessments = () => {
     if (id) await loadDetail(id);
   };
 
-  const handleCreateAssessment = async (event) => {
+  const handleSaveAssessment = async (event) => {
     event.preventDefault();
     try {
       setAssessmentSaving(true);
       setAssessmentError('');
-      const response = await sstService.createAssessment(assessmentForm);
+      const response = editingAssessmentId
+        ? await sstService.updateAssessment(editingAssessmentId, assessmentForm)
+        : await sstService.createAssessment(assessmentForm);
+      const nextSelectedId = response.data.data?.id || editingAssessmentId || '';
       setAssessmentModalOpen(false);
       await loadBase();
-      setSelectedId(response.data.data?.id || '');
+      if (nextSelectedId) {
+        setSelectedId(nextSelectedId);
+        await loadDetail(nextSelectedId);
+      }
+      setEditingAssessmentId(null);
     } catch (requestError) {
-      setAssessmentError(requestError?.response?.data?.message || 'Erro ao criar avaliacao.');
+      setAssessmentError(
+        requestError?.response?.data?.message || (editingAssessmentId ? 'Erro ao atualizar avaliacao.' : 'Erro ao criar avaliacao.')
+      );
     } finally {
       setAssessmentSaving(false);
     }
@@ -324,7 +379,7 @@ const SstAssessments = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Levantamento de riscos" title="Avaliacoes" description="Fluxo autoritativo do SST: cargo -> avaliacao -> riscos da avaliacao." actions={canWrite ? <button type="button" className="btn-primary" onClick={() => { resetAssessmentForm(); setAssessmentError(''); setAssessmentModalOpen(true); }}><Plus className="h-4 w-4" />Nova avaliacao</button> : null}>
+      <PageHeader eyebrow="Levantamento de riscos" title="Avaliacoes" description="Fluxo autoritativo do SST: cargo -> avaliacao -> riscos da avaliacao." actions={canWrite ? <button type="button" className="btn-primary" onClick={() => { setEditingAssessmentId(null); resetAssessmentForm(); setAssessmentError(''); setAssessmentModalOpen(true); }}><Plus className="h-4 w-4" />Nova avaliacao</button> : null}>
         <div className="grid gap-3 xl:grid-cols-4">
           <select className="input-field" value={filters.empresaId} onChange={(event) => setFilters((prev) => ({ ...prev, empresaId: event.target.value, sectorId: '', roleId: '' }))}><option value="">Todas as empresas</option>{companies.map((company) => <option key={company.id} value={company.id}>{company.nome}</option>)}</select>
           <select className="input-field" value={filters.sectorId} onChange={(event) => setFilters((prev) => ({ ...prev, sectorId: event.target.value, roleId: '' }))}><option value="">Todos os setores</option>{sectors.map((sector) => <option key={sector.id} value={sector.id}>{sector.nome}</option>)}</select>
@@ -344,7 +399,7 @@ const SstAssessments = () => {
 
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.35fr]">
         <div className="panel-surface p-6">
-          {items.length === 0 ? <EmptyState icon={ClipboardCheck} title="Nenhuma avaliacao cadastrada" description="Crie a primeira avaliacao a partir de um cargo." /> : <div className="space-y-3">{items.map((item) => <button key={item.id} type="button" onClick={() => setSelectedId(item.id)} className={`w-full rounded-[1.35rem] border p-4 text-left transition-all ${String(selectedId) === String(item.id) ? 'border-lime-300 bg-lime-50/50 shadow-[0_20px_40px_rgba(132,204,22,0.12)]' : 'border-slate-200/80 bg-white/90 shadow-[0_18px_40px_rgba(15,23,42,0.05)]'}`}><div className="flex flex-wrap items-center gap-2"><span className={`status-pill ${STATUS_CLASSES[item.status] || 'status-info'}`}>{STATUS_LABELS[item.status] || item.status}</span><span className="status-pill status-info">v{item.version}</span>{item.revisionRequired ? <span className="status-pill status-warning">Revisao pendente</span> : null}</div><h3 className="mt-3 text-base font-semibold text-slate-950">{item.title}</h3><p className="mt-2 text-sm text-slate-600">Riscos: {item.riskCount || 0} • Conclusao: {item.conclusionStatus || 'pendente'}</p></button>)}</div>}
+          {items.length === 0 ? <EmptyState icon={ClipboardCheck} title="Nenhuma avaliacao cadastrada" description="Crie a primeira avaliacao a partir de um cargo." /> : <div className="space-y-3">{items.map((item) => <button key={item.id} type="button" onClick={() => setSelectedId(item.id)} className={`w-full rounded-[1.35rem] border p-4 text-left transition-all ${String(selectedId) === String(item.id) ? 'border-lime-300 bg-lime-50/50 shadow-[0_20px_40px_rgba(132,204,22,0.12)]' : 'border-slate-200/80 bg-white/90 shadow-[0_18px_40px_rgba(15,23,42,0.05)]'}`}><div className="flex flex-wrap items-center gap-2"><span className={`status-pill ${STATUS_CLASSES[item.status] || 'status-info'}`}>{STATUS_LABELS[item.status] || item.status}</span><span className="status-pill status-info">v{item.version}</span>{item.revisionRequired ? <span className="status-pill status-warning">Revisao pendente</span> : null}</div><h3 className="mt-3 text-base font-semibold text-slate-950">{item.title}</h3><p className="mt-2 text-sm text-slate-600">{formatCoverageRange(item.abrangenciaInicio, item.abrangenciaFim)}</p><p className="mt-1 text-sm text-slate-500">Riscos: {item.riskCount || 0} • Conclusao: {item.conclusionStatus || 'pendente'}</p></button>)}</div>}
         </div>
 
         <div className="panel-surface p-6">
@@ -359,10 +414,12 @@ const SstAssessments = () => {
                   </div>
                   <h2 className="mt-3 text-2xl font-semibold text-slate-950">{detail.assessment.title}</h2>
                   <p className="mt-2 text-sm text-slate-600">{detail.sector?.nome || 'Setor'} • {detail.role?.nome || 'Cargo'}</p>
+                  <p className="mt-2 text-sm text-slate-600">Abrangencia: {formatCoverageRange(detail.assessment.abrangenciaInicio, detail.assessment.abrangenciaFim)}</p>
                   <p className="mt-2 text-xs text-slate-500">Processo: {detail.assessment.context?.processoPrincipal || 'Nao informado'} • Area: {detail.assessment.context?.localAreaPosto || 'Nao informada'} • Expostos: {detail.assessment.context?.quantidadeExpostos || 1}</p>
                   <p className="mt-1 text-xs text-slate-500">Metodologia: {detail.assessment.context?.metodologia || 'Nao informada'} • Instrumentos: {detail.assessment.context?.instrumentosUtilizados || 'Nao informados'}</p>
                 </div>
                 <div className="flex min-w-[230px] flex-col gap-2">
+                  {canWrite && detail.assessment.status !== 'published' && detail.assessment.status !== 'superseded' ? <button type="button" className="btn-secondary" onClick={() => { setEditingAssessmentId(detail.assessment.id); hydrateAssessmentForm(detail.assessment); setAssessmentError(''); setAssessmentModalOpen(true); }}><Pencil className="h-4 w-4" />Editar avaliacao</button> : null}
                   {canWrite && detail.assessment.status === 'draft' ? <button type="button" className="btn-secondary" onClick={() => runAction(sstService.startReview)}><ArrowRightCircle className="h-4 w-4" />Enviar para revisao</button> : null}
                   {canWrite && (detail.assessment.status === 'published' || detail.assessment.status === 'superseded') ? <button type="button" className="btn-secondary" onClick={() => runAction((id) => sstService.createRevision(id, { reviewReason: 'revisao_periodica' }))}><FilePlus2 className="h-4 w-4" />Criar revisao</button> : null}
                   {canSign ? <button type="button" className="btn-secondary" onClick={openConclusion}><FileCheck2 className="h-4 w-4" />Conclusao tecnica</button> : null}
@@ -404,10 +461,12 @@ const SstAssessments = () => {
         </div>
       </section>
 
-      <FormModal isOpen={assessmentModalOpen} onClose={() => setAssessmentModalOpen(false)} title="Nova avaliacao" onSubmit={handleCreateAssessment} loading={assessmentSaving} error={assessmentError}>
+      <FormModal isOpen={assessmentModalOpen} onClose={() => { setAssessmentModalOpen(false); setEditingAssessmentId(null); }} title={editingAssessmentId ? 'Editar avaliacao' : 'Nova avaliacao'} onSubmit={handleSaveAssessment} loading={assessmentSaving} error={assessmentError}>
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="md:col-span-2"><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Cargo</label><select className="input-field" value={assessmentForm.roleId} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, roleId: event.target.value }))} required><option value="">Selecione o cargo</option>{filteredRoles.map((role) => <option key={role.id} value={role.id}>{role.nome}</option>)}</select></div>
+          <div className="md:col-span-2"><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Cargo</label><select className="input-field" value={assessmentForm.roleId} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, roleId: event.target.value }))} required disabled={Boolean(editingAssessmentId)}><option value="">Selecione o cargo</option>{filteredRoles.map((role) => <option key={role.id} value={role.id}>{role.nome}</option>)}</select></div>
           <div className="md:col-span-2"><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Titulo</label><input className="input-field" value={assessmentForm.title} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, title: event.target.value }))} /></div>
+          <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Abrangencia inicial</label><input className="input-field" type="date" value={assessmentForm.abrangenciaInicio} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, abrangenciaInicio: event.target.value }))} /></div>
+          <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Abrangencia final</label><input className="input-field" type="date" value={assessmentForm.abrangenciaFim} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, abrangenciaFim: event.target.value }))} /></div>
           <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Processo principal</label><input className="input-field" value={assessmentForm.context.processoPrincipal} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, context: { ...prev.context, processoPrincipal: event.target.value } }))} /></div>
           <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Area / posto</label><input className="input-field" value={assessmentForm.context.localAreaPosto} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, context: { ...prev.context, localAreaPosto: event.target.value } }))} /></div>
           <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Jornada / turno</label><input className="input-field" value={assessmentForm.context.jornadaTurno} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, context: { ...prev.context, jornadaTurno: event.target.value } }))} /></div>

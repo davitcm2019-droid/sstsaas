@@ -228,6 +228,8 @@ const buildDocumentContent = ({ documentType, model, assessment, establishment, 
       assessment: {
         id: assessment._id?.toString?.() || assessment.id,
         title: assessment.title,
+        abrangenciaInicio: assessment.abrangenciaInicio || '',
+        abrangenciaFim: assessment.abrangenciaFim || '',
         version: assessment.version,
         status: assessment.status,
         responsibleTechnical: assessment.responsibleTechnical

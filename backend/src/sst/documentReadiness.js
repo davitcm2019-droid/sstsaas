@@ -21,6 +21,9 @@ const hasValidActionItem = (item = {}) =>
   normalizeText(item.responsible) &&
   normalizeText(item.status);
 
+const hasCoverageRange = (assessment = {}) =>
+  normalizeText(assessment?.abrangenciaInicio) && normalizeText(assessment?.abrangenciaFim);
+
 const evaluateDocumentReadiness = ({ documentType, assessments = [], risksByAssessment = new Map(), conclusionsByAssessment = new Map() }) => {
   const strictMode = SUPPORTED_STRICT_TYPES.has(documentType);
 
@@ -120,6 +123,16 @@ const evaluateDocumentReadiness = ({ documentType, assessments = [], risksByAsse
         section: 'contexto',
         field: 'context.condicaoOperacional',
         message: 'Condicao operacional obrigatoria.',
+        assessmentId
+      });
+    }
+
+    if (strictMode && !hasCoverageRange(assessment)) {
+      addMissingField(missingFields, {
+        code: 'ASSESSMENT_COVERAGE_RANGE_REQUIRED',
+        section: 'capa',
+        field: 'assessment.abrangencia',
+        message: 'Periodo de abrangencia da avaliacao obrigatorio para emissao documental.',
         assessmentId
       });
     }

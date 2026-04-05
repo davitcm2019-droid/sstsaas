@@ -6,6 +6,39 @@ const FALLBACK = {
   semDados: 'Sem dados disponiveis'
 };
 
+const COVER_META_BY_TYPE = {
+  pgr: {
+    acronym: 'PGR',
+    formalTitle: 'Programa de Gerenciamento de Riscos',
+    normativeLabel: 'NR 01'
+  },
+  ltcat: {
+    acronym: 'LTCAT',
+    formalTitle: 'Laudo Tecnico das Condicoes Ambientais do Trabalho',
+    normativeLabel: 'Decreto 3.048/99'
+  },
+  inventario: {
+    acronym: 'INVENTARIO',
+    formalTitle: 'Inventario de Riscos',
+    normativeLabel: ''
+  },
+  laudo_insalubridade: {
+    acronym: 'LI',
+    formalTitle: 'Laudo de Insalubridade',
+    normativeLabel: 'NR 15'
+  },
+  laudo_periculosidade: {
+    acronym: 'LP',
+    formalTitle: 'Laudo de Periculosidade',
+    normativeLabel: 'NR 16'
+  },
+  laudo_tecnico: {
+    acronym: 'LT',
+    formalTitle: 'Laudo Tecnico',
+    normativeLabel: ''
+  }
+};
+
 const RISK_LEVEL_PRIORITY = {
   critico: 1,
   alto: 2,
@@ -16,6 +49,34 @@ const RISK_LEVEL_PRIORITY = {
 const normalizeText = (value, fallback = FALLBACK.naoInformado) => {
   const normalized = String(value || '').trim();
   return normalized || fallback;
+};
+
+const normalizeDateOnly = (value) => {
+  const normalized = String(value || '').trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : '';
+};
+
+const formatDateOnly = (value, fallback = FALLBACK.naoInformado) => {
+  const normalized = normalizeDateOnly(value);
+  if (!normalized) return fallback;
+  const [year, month, day] = normalized.split('-');
+  return `${day}/${month}/${year}`;
+};
+
+const formatCoverageLabel = (start, end) => {
+  const normalizedStart = normalizeDateOnly(start);
+  const normalizedEnd = normalizeDateOnly(end);
+  if (!normalizedStart || !normalizedEnd) return 'Sem abrangencia informada';
+  return `${formatDateOnly(normalizedStart)} a ${formatDateOnly(normalizedEnd)}`;
+};
+
+const aggregateCoverageRange = (assessmentScopes = []) => {
+  const starts = assessmentScopes.map((scope) => normalizeDateOnly(scope.abrangenciaInicio)).filter(Boolean).sort();
+  const ends = assessmentScopes.map((scope) => normalizeDateOnly(scope.abrangenciaFim)).filter(Boolean).sort();
+  return {
+    abrangenciaInicio: starts[0] || '',
+    abrangenciaFim: ends[ends.length - 1] || ''
+  };
 };
 
 const sortRisksByCriticality = (risks = []) =>
@@ -52,6 +113,8 @@ const collectAssessmentScopes = (assessments = [], assessmentContexts = new Map(
     return {
       assessmentId,
       title: normalizeText(assessment?.fixed?.assessment?.title),
+      abrangenciaInicio: normalizeDateOnly(contextRow?.abrangenciaInicio || assessment?.fixed?.assessment?.abrangenciaInicio),
+      abrangenciaFim: normalizeDateOnly(contextRow?.abrangenciaFim || assessment?.fixed?.assessment?.abrangenciaFim),
       version: assessment?.fixed?.assessment?.version || 1,
       establishment: normalizeText(assessment?.fixed?.establishment?.nome),
       sector: normalizeText(assessment?.fixed?.sector?.nome),
@@ -150,7 +213,13 @@ const buildNarrativeBySection = ({ sectionKey, readiness, summary, methodology, 
       return ['A qualidade da emissao depende da completude dos registros tecnicos em avaliacao, riscos, controles e conclusao.'];
     case 'area_abrangencia':
       return assessmentScopes.length
-        ? assessmentScopes.map((scope) => `${scope.sector} / ${scope.role} / ${scope.title} (v${scope.version})`)
+        ? assessmentScopes.map(
+            (scope) =>
+              `${scope.sector} / ${scope.role} / ${scope.title} (v${scope.version}) / ${formatCoverageLabel(
+                scope.abrangenciaInicio,
+                scope.abrangenciaFim
+              )}`
+          )
         : [FALLBACK.semDados];
     case 'criterios_risco':
     case 'criterios_avaliacoes':
@@ -203,6 +272,12 @@ const composeDocumentPayload = ({ document, version, pdfData = {} }) => {
   const sections = buildDocumentSections(document?.documentType, { includeAnnexes: annexes.length > 0 });
   const normativeBlocks = getActiveNormativeBlocks(document?.documentType);
   const assessmentScopes = collectAssessmentScopes(assessments, pdfData?.assessmentContexts || new Map());
+  const coverMeta = COVER_META_BY_TYPE[document?.documentType] || {
+    acronym: normalizeText(document?.documentTypeLabel || document?.documentType, 'DOC'),
+    formalTitle: pdfData?.labels?.documentTypeLabel || 'Documento Tecnico',
+    normativeLabel: ''
+  };
+  const coverageRange = aggregateCoverageRange(assessmentScopes);
   const riskInventory = collectRiskInventory(assessmentScopes);
   const actionPlan = collectActionPlan(riskInventory);
   const methodology = buildMethodology(assessmentScopes);
@@ -231,8 +306,14 @@ const composeDocumentPayload = ({ document, version, pdfData = {} }) => {
       documentType: document?.documentType || '',
       documentTypeLabel: pdfData?.labels?.documentTypeLabel || document?.documentType || 'Documento Tecnico',
       title: document?.title || 'Documento Tecnico',
+      acronym: coverMeta.acronym,
+      formalTitle: coverMeta.formalTitle,
+      normativeLabel: coverMeta.normativeLabel,
       scopeType: document?.scopeType || '',
       scopeRefId: document?.scopeRefId || '',
+      abrangenciaInicio: coverageRange.abrangenciaInicio,
+      abrangenciaFim: coverageRange.abrangenciaFim,
+      coverageLabel: formatCoverageLabel(coverageRange.abrangenciaInicio, coverageRange.abrangenciaFim),
       version: version?.version || document?.latestVersion || 1,
       hash: version?.hash || 'n/a',
       issuedAt: version?.issuedAt || null,
