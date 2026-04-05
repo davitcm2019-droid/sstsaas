@@ -6,6 +6,10 @@ O download do PDF continua no mesmo endpoint:
 
 `GET /api/sst/documents/issued/:id/pdf`
 
+Prontidao documental (pre-check de emissao):
+
+`GET /api/sst/documents/readiness?documentType=&scopeType=&scopeRefId=`
+
 Fluxo operacional:
 
 1. Emitir o documento no SST pela tela de documentos tecnicos.

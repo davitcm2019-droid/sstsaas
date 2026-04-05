@@ -54,6 +54,10 @@ const assessmentContextSchema = new Schema(
     jornadaTurno: { type: String, default: '' },
     quantidadeExpostos: { type: Number, default: 1 },
     condicaoOperacional: { type: String, default: '' },
+    metodologia: { type: String, default: '' },
+    instrumentosUtilizados: { type: String, default: '' },
+    criteriosAvaliacao: { type: String, default: '' },
+    matrizRisco: { type: String, default: '' },
     atividadesBase: { type: [String], default: [] },
     observations: { type: String, default: '' }
   },

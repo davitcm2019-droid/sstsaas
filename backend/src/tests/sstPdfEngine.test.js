@@ -115,7 +115,7 @@ test('renderIssuedDocumentPdfBuffer gera PDF com sumario, secoes e paginacao', a
   assert.ok(buffer.slice(0, 4).toString('latin1').startsWith('%PDF'));
   assert.match(output, new RegExp(toPdfHex('SUMARIO')));
   assert.match(output, /31202D204944454E544946494341/);
-  assert.match(output, /36202D20494E56454E54/);
-  assert.match(output, /37202D20504C414E4F2044452041/);
-  assert.match(output, /312F31[0-9A-F]{2}/);
+  assert.match(output, /39202D204D41/);
+  assert.match(output, /3133202D20494E56454E54/);
+  assert.match(output, /312F[0-9A-F]{2,4}/);
 });

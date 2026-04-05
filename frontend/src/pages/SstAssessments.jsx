@@ -18,6 +18,14 @@ const formatDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? 'Data invalida' : parsed.toLocaleDateString('pt-BR');
 };
 
+const mapReadinessLabel = (entry) => {
+  if (!entry) return 'Sem validacao';
+  if (entry.loading) return 'Validando...';
+  if (entry.error) return 'Erro na validacao';
+  if (entry.blocking) return `Bloqueado (${entry.missingFields?.length || 0})`;
+  return 'Emitivel';
+};
+
 const SstAssessments = () => {
   const { hasPermission, user } = useAuth();
   const canWrite = hasPermission('sst:write');
@@ -39,7 +47,17 @@ const SstAssessments = () => {
   const [assessmentForm, setAssessmentForm] = useState({
     roleId: '',
     title: '',
-    context: { processoPrincipal: '', localAreaPosto: '', jornadaTurno: '', quantidadeExpostos: 1, condicaoOperacional: '' },
+    context: {
+      processoPrincipal: '',
+      localAreaPosto: '',
+      jornadaTurno: '',
+      quantidadeExpostos: 1,
+      condicaoOperacional: '',
+      metodologia: '',
+      instrumentosUtilizados: '',
+      criteriosAvaliacao: '',
+      matrizRisco: ''
+    },
     responsibleTechnical: { nome: '', email: '', registro: '' }
   });
   const [assessmentError, setAssessmentError] = useState('');
@@ -55,12 +73,23 @@ const SstAssessments = () => {
   const [conclusionForm, setConclusionForm] = useState({ result: '', basis: '', normativeFrame: '' });
   const [conclusionError, setConclusionError] = useState('');
   const [conclusionSaving, setConclusionSaving] = useState(false);
+  const [documentReadiness, setDocumentReadiness] = useState({ pgr: null, ltcat: null });
 
   const resetAssessmentForm = () =>
     setAssessmentForm({
       roleId: '',
       title: '',
-      context: { processoPrincipal: '', localAreaPosto: '', jornadaTurno: '', quantidadeExpostos: 1, condicaoOperacional: '' },
+      context: {
+        processoPrincipal: '',
+        localAreaPosto: '',
+        jornadaTurno: '',
+        quantidadeExpostos: 1,
+        condicaoOperacional: '',
+        metodologia: '',
+        instrumentosUtilizados: '',
+        criteriosAvaliacao: '',
+        matrizRisco: ''
+      },
       responsibleTechnical: { nome: user?.nome || '', email: user?.email || '', registro: '' }
     });
 
@@ -127,6 +156,44 @@ const SstAssessments = () => {
   useEffect(() => {
     void loadDetail(selectedId);
   }, [selectedId]);
+
+  useEffect(() => {
+    const assessmentId = detail?.assessment?.id;
+    if (!assessmentId || detail?.assessment?.status !== 'published') {
+      setDocumentReadiness({ pgr: null, ltcat: null });
+      return;
+    }
+
+    let active = true;
+    setDocumentReadiness({
+      pgr: { loading: true },
+      ltcat: { loading: true }
+    });
+
+    void Promise.all([
+      sstService.getDocumentReadiness({ documentType: 'pgr', scopeType: 'assessment', scopeRefId: assessmentId }),
+      sstService.getDocumentReadiness({ documentType: 'ltcat', scopeType: 'assessment', scopeRefId: assessmentId })
+    ])
+      .then(([pgrResponse, ltcatResponse]) => {
+        if (!active) return;
+        setDocumentReadiness({
+          pgr: pgrResponse.data?.data || null,
+          ltcat: ltcatResponse.data?.data || null
+        });
+      })
+      .catch((requestError) => {
+        if (!active) return;
+        const message = requestError?.response?.data?.message || 'Erro ao validar prontidao documental.';
+        setDocumentReadiness({
+          pgr: { error: message, blocking: true, missingFields: [message] },
+          ltcat: { error: message, blocking: true, missingFields: [message] }
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [detail?.assessment?.id, detail?.assessment?.status]);
 
   const refreshSelected = async (id = selectedId) => {
     await loadBase();
@@ -293,6 +360,7 @@ const SstAssessments = () => {
                   <h2 className="mt-3 text-2xl font-semibold text-slate-950">{detail.assessment.title}</h2>
                   <p className="mt-2 text-sm text-slate-600">{detail.sector?.nome || 'Setor'} • {detail.role?.nome || 'Cargo'}</p>
                   <p className="mt-2 text-xs text-slate-500">Processo: {detail.assessment.context?.processoPrincipal || 'Nao informado'} • Area: {detail.assessment.context?.localAreaPosto || 'Nao informada'} • Expostos: {detail.assessment.context?.quantidadeExpostos || 1}</p>
+                  <p className="mt-1 text-xs text-slate-500">Metodologia: {detail.assessment.context?.metodologia || 'Nao informada'} • Instrumentos: {detail.assessment.context?.instrumentosUtilizados || 'Nao informados'}</p>
                 </div>
                 <div className="flex min-w-[230px] flex-col gap-2">
                   {canWrite && detail.assessment.status === 'draft' ? <button type="button" className="btn-secondary" onClick={() => runAction(sstService.startReview)}><ArrowRightCircle className="h-4 w-4" />Enviar para revisao</button> : null}
@@ -300,6 +368,20 @@ const SstAssessments = () => {
                   {canSign ? <button type="button" className="btn-secondary" onClick={openConclusion}><FileCheck2 className="h-4 w-4" />Conclusao tecnica</button> : null}
                   {canSign && detail.conclusion && detail.conclusion.status !== 'signed' ? <button type="button" className="btn-secondary" onClick={() => runAction(sstService.signAssessmentConclusion)}><ShieldCheck className="h-4 w-4" />Assinar conclusao</button> : null}
                   {canApprove && detail.assessment.status !== 'published' && detail.assessment.status !== 'superseded' ? <button type="button" className="btn-primary" onClick={() => runAction(sstService.publishAssessment)}><ShieldCheck className="h-4 w-4" />Publicar avaliacao</button> : null}
+                </div>
+              </div>
+
+              <div className="rounded-[1.35rem] border border-slate-200/80 bg-white/80 p-4">
+                <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Prontidao documental</p>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className={`rounded-[1rem] border px-3 py-3 text-sm ${documentReadiness.pgr?.blocking ? 'border-red-200 bg-red-50 text-red-700' : 'border-lime-200 bg-lime-50 text-lime-800'}`}>
+                    <p className="font-semibold">PGR: {mapReadinessLabel(documentReadiness.pgr)}</p>
+                    {documentReadiness.pgr?.blocking ? <p className="mt-1 text-xs">{documentReadiness.pgr?.missingFields?.[0]?.message || documentReadiness.pgr?.missingFields?.[0] || 'Pendencias tecnicas encontradas.'}</p> : null}
+                  </div>
+                  <div className={`rounded-[1rem] border px-3 py-3 text-sm ${documentReadiness.ltcat?.blocking ? 'border-red-200 bg-red-50 text-red-700' : 'border-lime-200 bg-lime-50 text-lime-800'}`}>
+                    <p className="font-semibold">LTCAT: {mapReadinessLabel(documentReadiness.ltcat)}</p>
+                    {documentReadiness.ltcat?.blocking ? <p className="mt-1 text-xs">{documentReadiness.ltcat?.missingFields?.[0]?.message || documentReadiness.ltcat?.missingFields?.[0] || 'Pendencias tecnicas encontradas.'}</p> : null}
+                  </div>
                 </div>
               </div>
 
@@ -331,6 +413,10 @@ const SstAssessments = () => {
           <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Jornada / turno</label><input className="input-field" value={assessmentForm.context.jornadaTurno} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, context: { ...prev.context, jornadaTurno: event.target.value } }))} /></div>
           <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Quantidade exposta</label><input className="input-field" type="number" min="1" value={assessmentForm.context.quantidadeExpostos} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, context: { ...prev.context, quantidadeExpostos: Number(event.target.value) || 1 } }))} /></div>
           <div className="md:col-span-2"><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Condicao operacional</label><textarea className="input-field min-h-[90px]" value={assessmentForm.context.condicaoOperacional} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, context: { ...prev.context, condicaoOperacional: event.target.value } }))} /></div>
+          <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Metodologia</label><input className="input-field" value={assessmentForm.context.metodologia} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, context: { ...prev.context, metodologia: event.target.value } }))} /></div>
+          <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Instrumentos utilizados</label><input className="input-field" value={assessmentForm.context.instrumentosUtilizados} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, context: { ...prev.context, instrumentosUtilizados: event.target.value } }))} /></div>
+          <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Criterios de avaliacao</label><input className="input-field" value={assessmentForm.context.criteriosAvaliacao} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, context: { ...prev.context, criteriosAvaliacao: event.target.value } }))} /></div>
+          <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Matriz de risco</label><input className="input-field" value={assessmentForm.context.matrizRisco} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, context: { ...prev.context, matrizRisco: event.target.value } }))} /></div>
           <div className="md:col-span-2"><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Responsavel tecnico</label><div className="grid gap-3 md:grid-cols-3"><input className="input-field" value={assessmentForm.responsibleTechnical.nome} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, responsibleTechnical: { ...prev.responsibleTechnical, nome: event.target.value } }))} placeholder="Nome" /><input className="input-field" value={assessmentForm.responsibleTechnical.email} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, responsibleTechnical: { ...prev.responsibleTechnical, email: event.target.value } }))} placeholder="Email" /><input className="input-field" value={assessmentForm.responsibleTechnical.registro} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, responsibleTechnical: { ...prev.responsibleTechnical, registro: event.target.value } }))} placeholder="Registro" /></div></div>
         </div>
       </FormModal>

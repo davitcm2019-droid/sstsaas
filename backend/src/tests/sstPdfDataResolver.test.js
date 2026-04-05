@@ -16,8 +16,8 @@ test('buildSectionsPlan monta secoes esperadas para pgr e ltcat', () => {
   const ltcatSections = buildSectionsPlan('ltcat');
 
   assert.equal(pgrSections[0].title, '1 - IDENTIFICACAO DA EMPRESA');
-  assert.ok(pgrSections.some((section) => section.key === 'plano'));
-  assert.ok(ltcatSections.some((section) => section.key === 'metodologia'));
+  assert.ok(pgrSections.some((section) => section.key === 'metas_prioridades_controle'));
+  assert.ok(ltcatSections.some((section) => section.key === 'metodologia_avaliacoes'));
   assert.ok(ltcatSections.some((section) => section.key === 'conclusao'));
 });
 
@@ -59,5 +59,5 @@ test('resolveIssuedDocumentPdfData aplica fallbacks e lookup de empresa', async 
   assert.equal(pdfData.labels.documentTypeLabel, 'Programa de Gerenciamento de Riscos (PGR)');
   assert.equal(pdfData.empresa.nome, 'Nao informado');
   assert.ok(pdfData.missingData.includes('Nome da empresa'));
-  assert.ok(pdfData.sectionsPlan.some((section) => section.key === 'inventario'));
+  assert.ok(pdfData.sectionsPlan.some((section) => section.key === 'inventario_riscos'));
 });

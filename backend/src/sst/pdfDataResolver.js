@@ -2,6 +2,7 @@ const empresasRepository = require('../repositories/empresasRepository');
 const {
   models: { SstRiskAssessment }
 } = require('./models');
+const { buildDocumentSections } = require('./documentSectionBuilder');
 
 const FALLBACK = {
   naoInformado: 'Nao informado',
@@ -30,40 +31,8 @@ const safeText = (value, fallback = FALLBACK.naoInformado) => {
   return normalized ? normalized : fallback;
 };
 
-const buildSectionsPlan = (documentType = '') => {
-  if (documentType === 'pgr') {
-    return [
-      { key: 'identificacao', title: '1 - IDENTIFICACAO DA EMPRESA' },
-      { key: 'avaliadores', title: '2 - AVALIADORES' },
-      { key: 'apresentacao', title: '3 - APRESENTACAO' },
-      { key: 'objetivos', title: '4 - OBJETIVOS' },
-      { key: 'abrangencia', title: '5 - AREA DE ABRANGENCIA' },
-      { key: 'inventario', title: '6 - INVENTARIO DE RISCOS' },
-      { key: 'plano', title: '7 - PLANO DE ACAO' },
-      { key: 'encerramento', title: '8 - ENCERRAMENTO' }
-    ];
-  }
-
-  if (documentType === 'ltcat') {
-    return [
-      { key: 'identificacao', title: '1 - IDENTIFICACAO DA EMPRESA' },
-      { key: 'avaliadores', title: '2 - AVALIADORES' },
-      { key: 'introducao', title: '3 - INTRODUCAO' },
-      { key: 'metodologia', title: '4 - METODOLOGIA DAS AVALIACOES' },
-      { key: 'equipamentos', title: '5 - EQUIPAMENTOS UTILIZADOS' },
-      { key: 'analise', title: '6 - RECONHECIMENTO E ANALISE DOS RISCOS' },
-      { key: 'conclusao', title: '7 - CONCLUSAO' },
-      { key: 'referencias', title: '8 - REFERENCIAS' }
-    ];
-  }
-
-  return [
-    { key: 'identificacao', title: '1 - IDENTIFICACAO DA EMPRESA' },
-    { key: 'inventario', title: '2 - INVENTARIO DE RISCOS' },
-    { key: 'plano', title: '3 - PLANO DE ACAO' },
-    { key: 'anexos', title: '4 - ANEXOS' }
-  ];
-};
+const buildSectionsPlan = (documentType = '', options = {}) =>
+  buildDocumentSections(documentType, { includeAnnexes: Boolean(options.includeAnnexes) });
 
 const ensureAnnexSection = (sectionsPlan, annexes = []) => {
   if (!Array.isArray(annexes) || annexes.length === 0) return sectionsPlan;
@@ -136,7 +105,7 @@ const resolveIssuedDocumentPdfData = async ({ document, version, deps = {} }) =>
   const content = version?.content || {};
   const assessments = Array.isArray(content.assessments) ? content.assessments : [];
   const documentType = String(document?.documentType || '').trim();
-  const sectionsPlan = ensureAnnexSection(buildSectionsPlan(documentType), content?.annexes || []);
+  const sectionsPlan = ensureAnnexSection(buildSectionsPlan(documentType, { includeAnnexes: false }), content?.annexes || []);
   const sourceAssessmentIds = Array.isArray(version?.sourceAssessmentIds) ? version.sourceAssessmentIds.filter(Boolean) : [];
   const assessmentRows =
     sourceAssessmentIds.length && typeof assessmentRepo?.find === 'function'
@@ -144,6 +113,9 @@ const resolveIssuedDocumentPdfData = async ({ document, version, deps = {} }) =>
       : [];
   const assessmentContexts = new Map(assessmentRows.map((row) => [String(row._id), row]));
   const missingData = collectMissingData({ empresa, assessments, assessmentContexts, documentType });
+  const canonicalMissingData = Array.isArray(content?.canonical?.readiness?.missingFields)
+    ? content.canonical.readiness.missingFields
+    : [];
 
   return {
     fallback: FALLBACK,
@@ -152,7 +124,7 @@ const resolveIssuedDocumentPdfData = async ({ document, version, deps = {} }) =>
     },
     empresa: normalizeEmpresa(empresa),
     sectionsPlan,
-    missingData,
+    missingData: canonicalMissingData.length ? canonicalMissingData : missingData,
     assessmentContexts,
     summary: {
       overview: buildResumoExecutivo({ documentType, assessments }),

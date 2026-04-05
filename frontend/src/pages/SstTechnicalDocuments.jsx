@@ -28,6 +28,13 @@ const DOCUMENT_TYPE_LABELS = {
   laudo_tecnico: 'Laudo Tecnico'
 };
 
+const formatMissingField = (item) => {
+  if (!item) return 'Pendencia tecnica nao detalhada.';
+  if (typeof item === 'string') return item;
+  const section = item.section ? `[${item.section}] ` : '';
+  return `${section}${item.message || item.field || item.code || 'Pendencia tecnica.'}`;
+};
+
 const SstTechnicalDocuments = () => {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
@@ -40,6 +47,8 @@ const SstTechnicalDocuments = () => {
   const [pppStatus, setPppStatus] = useState(null);
   const [assessments, setAssessments] = useState([]);
   const [documents, setDocuments] = useState([]);
+  const [readiness, setReadiness] = useState(null);
+  const [readinessLoading, setReadinessLoading] = useState(false);
   const [seededModelId, setSeededModelId] = useState('');
   const [downloadingId, setDownloadingId] = useState('');
   const [issuing, setIssuing] = useState(false);
@@ -118,11 +127,55 @@ const SstTechnicalDocuments = () => {
     setSeededModelId(String(selectedModel.id));
   }, [selectedModel, seededModelId]);
 
+  useEffect(() => {
+    if (!selectedModel?.documentType || !form.scopeRefId || !form.scopeType) {
+      setReadiness(null);
+      return;
+    }
+
+    let active = true;
+    void (async () => {
+      try {
+        setReadinessLoading(true);
+        const response = await sstService.getDocumentReadiness({
+          documentType: selectedModel.documentType,
+          scopeType: form.scopeType,
+          scopeRefId: form.scopeRefId
+        });
+        if (!active) return;
+        setReadiness(response.data?.data || null);
+      } catch (requestError) {
+        if (!active) return;
+        setReadiness({
+          emitible: false,
+          blocking: true,
+          missingFields: [
+            requestError?.response?.data?.message || 'Erro ao calcular prontidao documental.'
+          ]
+        });
+      } finally {
+        if (active) setReadinessLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedModel?.documentType, form.scopeRefId, form.scopeType]);
+
   const handleIssue = async (event) => {
     event.preventDefault();
     try {
       setIssuing(true);
       setError('');
+      if (readinessLoading) {
+        setError('Aguarde a validacao de prontidao documental.');
+        return;
+      }
+      if (readiness?.blocking) {
+        setError('Documento bloqueado por pendencias obrigatorias. Revise a prontidao antes de emitir.');
+        return;
+      }
       await sstService.issueDocument({
         empresaId: form.empresaId,
         documentModelId: form.documentModelId,
@@ -132,7 +185,16 @@ const SstTechnicalDocuments = () => {
       });
       await loadData(form.empresaId);
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || 'Erro ao emitir documento tecnico.');
+      const responseError = requestError?.response?.data || {};
+      const readinessMeta = responseError?.meta?.code === 'DOCUMENT_READINESS_BLOCKED'
+        ? {
+            emitible: false,
+            blocking: true,
+            missingFields: responseError?.meta?.missingFields || []
+          }
+        : null;
+      if (readinessMeta) setReadiness(readinessMeta);
+      setError(responseError?.message || 'Erro ao emitir documento tecnico.');
     } finally {
       setIssuing(false);
     }
@@ -223,11 +285,52 @@ const SstTechnicalDocuments = () => {
           <textarea className="input-field min-h-[110px]" value={form.editable.ressalvas} onChange={(event) => setForm((prev) => ({ ...prev, editable: { ...prev.editable, ressalvas: event.target.value } }))} placeholder="Ressalvas tecnicas" />
 
           <div className="xl:col-span-3 flex justify-end">
-            <button type="submit" className="btn-primary" disabled={!canSign || !form.empresaId || !form.documentModelId || !form.scopeRefId || issuing}>
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={
+                !canSign ||
+                !form.empresaId ||
+                !form.documentModelId ||
+                !form.scopeRefId ||
+                issuing ||
+                readinessLoading ||
+                Boolean(readiness?.blocking)
+              }
+            >
               {issuing ? 'Emitindo...' : 'Emitir PDF'}
             </button>
           </div>
         </form>
+
+        {selectedModel ? (
+          <div className={`mt-4 rounded-[1.1rem] border px-4 py-3 text-sm ${
+            readinessLoading
+              ? 'border-slate-200 bg-slate-50 text-slate-600'
+              : readiness?.blocking
+                ? 'border-red-200 bg-red-50 text-red-700'
+                : 'border-lime-200 bg-lime-50 text-lime-800'
+          }`}>
+            {readinessLoading ? (
+              'Validando prontidao documental...'
+            ) : readiness?.blocking ? (
+              <div className="space-y-2">
+                <p className="font-semibold">Emissao bloqueada por pendencias obrigatorias.</p>
+                <ul className="list-disc pl-5">
+                  {(readiness?.missingFields || []).slice(0, 8).map((item, index) => (
+                    <li key={`${index}-${typeof item === 'string' ? item : item?.code || 'missing'}`}>
+                      {formatMissingField(item)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p>
+                Prontidao documental validada para <strong>{DOCUMENT_TYPE_LABELS[selectedModel.documentType] || selectedModel.documentType}</strong>.
+              </p>
+            )}
+          </div>
+        ) : null}
 
         {selectedModel ? (
           <div className="mt-5 grid gap-3 xl:grid-cols-3">

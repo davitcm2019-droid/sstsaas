@@ -49,6 +49,8 @@ const {
 } = require('../sst/documentEngine');
 const { buildIssuedDocumentPdfFilename, renderIssuedDocumentPdfBuffer } = require('../sst/pdfEngine');
 const { resolveIssuedDocumentPdfData } = require('../sst/pdfDataResolver');
+const { composeDocumentPayload } = require('../sst/documentComposer');
+const { evaluateDocumentReadiness } = require('../sst/documentReadiness');
 
 const router = express.Router();
 
@@ -288,6 +290,10 @@ const sanitizeAssessmentPayload = (payload = {}, current = null) => ({
     jornadaTurno: String(payload.context?.jornadaTurno ?? current?.context?.jornadaTurno ?? '').trim(),
     quantidadeExpostos: Number(payload.context?.quantidadeExpostos ?? current?.context?.quantidadeExpostos ?? 1) || 1,
     condicaoOperacional: String(payload.context?.condicaoOperacional ?? current?.context?.condicaoOperacional ?? '').trim(),
+    metodologia: String(payload.context?.metodologia ?? current?.context?.metodologia ?? '').trim(),
+    instrumentosUtilizados: String(payload.context?.instrumentosUtilizados ?? current?.context?.instrumentosUtilizados ?? '').trim(),
+    criteriosAvaliacao: String(payload.context?.criteriosAvaliacao ?? current?.context?.criteriosAvaliacao ?? '').trim(),
+    matrizRisco: String(payload.context?.matrizRisco ?? current?.context?.matrizRisco ?? '').trim(),
     atividadesBase: sanitizeStringArray(payload.context?.atividadesBase ?? current?.context?.atividadesBase ?? []),
     observations: String(payload.context?.observations ?? current?.context?.observations ?? '').trim()
   },
@@ -1482,6 +1488,79 @@ const getScopeAssessments = async ({ scopeType, scopeRefId }) => {
   return published;
 };
 
+const buildDocumentSourceBundle = async ({ scopeType, scopeRefId }) => {
+  const assessments = await getScopeAssessments({ scopeType, scopeRefId });
+  const assessmentIds = assessments.map((assessment) => assessment._id);
+  const [risks, conclusions, establishments, sectors, roles] = await Promise.all([
+    SstAssessmentRisk.find({ assessmentId: { $in: assessmentIds } }).lean(),
+    SstAssessmentConclusion.find({ assessmentId: { $in: assessmentIds } }).lean(),
+    SstEstablishment.find({ _id: { $in: assessments.map((item) => item.establishmentId) } }).lean(),
+    SstSector.find({ _id: { $in: assessments.map((item) => item.sectorId) } }).lean(),
+    SstRole.find({ _id: { $in: assessments.map((item) => item.roleId) } }).lean()
+  ]);
+
+  const risksByAssessment = new Map();
+  risks.forEach((risk) => {
+    const key = String(risk.assessmentId);
+    const current = risksByAssessment.get(key) || [];
+    current.push(risk);
+    risksByAssessment.set(key, current);
+  });
+
+  return {
+    assessments,
+    assessmentIds,
+    risks,
+    conclusions,
+    maps: {
+      risksByAssessment,
+      conclusionByAssessment: new Map(conclusions.map((item) => [String(item.assessmentId), item])),
+      establishmentById: new Map(establishments.map((item) => [String(item._id), item])),
+      sectorById: new Map(sectors.map((item) => [String(item._id), item])),
+      roleById: new Map(roles.map((item) => [String(item._id), item]))
+    }
+  };
+};
+
+router.get('/documents/readiness', requirePermission('sst:read'), async (req, res) => {
+  try {
+    const documentType = String(req.query.documentType || '').trim();
+    const scopeType = String(req.query.scopeType || '').trim();
+    const scopeRefId = String(req.query.scopeRefId || '').trim();
+
+    if (!documentType || !DOCUMENT_TYPES.includes(documentType)) {
+      return sendError(res, { message: 'documentType invalido' }, 400);
+    }
+    if (!scopeType || !DOCUMENT_SCOPE_TYPES.includes(scopeType)) {
+      return sendError(res, { message: 'scopeType invalido' }, 400);
+    }
+    if (!scopeRefId) {
+      return sendError(res, { message: 'scopeRefId obrigatorio' }, 400);
+    }
+
+    const bundle = await buildDocumentSourceBundle({ scopeType, scopeRefId });
+    const readiness = evaluateDocumentReadiness({
+      documentType,
+      assessments: bundle.assessments,
+      risksByAssessment: bundle.maps.risksByAssessment,
+      conclusionsByAssessment: bundle.maps.conclusionByAssessment
+    });
+
+    return sendSuccess(res, {
+      data: {
+        documentType,
+        scope: { scopeType, scopeRefId },
+        emitible: readiness.emitible,
+        blocking: readiness.blocking,
+        missingFields: readiness.missingFields,
+        summary: readiness.summary
+      }
+    });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao calcular prontidao documental', meta: { details: error.message } }, error.status || 500);
+  }
+});
+
 router.get('/documents/models', requirePermission('sst:read'), async (req, res) => {
   try {
     await ensureDefaultDocumentModels();
@@ -1652,27 +1731,37 @@ router.post('/documents/issue', requirePermission('sst:sign'), async (req, res) 
       return sendError(res, { message: 'Modelo documental nao suporta o escopo informado' }, 409);
     }
 
-    const assessments = await getScopeAssessments({ scopeType, scopeRefId });
-    const assessmentIds = assessments.map((assessment) => assessment._id);
-    const [risks, conclusions, establishments, sectors, roles] = await Promise.all([
-      SstAssessmentRisk.find({ assessmentId: { $in: assessmentIds } }).lean(),
-      SstAssessmentConclusion.find({ assessmentId: { $in: assessmentIds } }).lean(),
-      SstEstablishment.find({ _id: { $in: assessments.map((item) => item.establishmentId) } }).lean(),
-      SstSector.find({ _id: { $in: assessments.map((item) => item.sectorId) } }).lean(),
-      SstRole.find({ _id: { $in: assessments.map((item) => item.roleId) } }).lean()
-    ]);
+    const bundle = await buildDocumentSourceBundle({ scopeType, scopeRefId });
+    const { assessments, assessmentIds, risks } = bundle;
+    const riskByAssessment = bundle.maps.risksByAssessment;
+    const conclusionMap = bundle.maps.conclusionByAssessment;
+    const establishmentMap = bundle.maps.establishmentById;
+    const sectorMap = bundle.maps.sectorById;
+    const roleMap = bundle.maps.roleById;
 
-    const riskByAssessment = new Map();
-    risks.forEach((risk) => {
-      const key = String(risk.assessmentId);
-      const current = riskByAssessment.get(key) || [];
-      current.push(risk);
-      riskByAssessment.set(key, current);
+    const readiness = evaluateDocumentReadiness({
+      documentType: resolvedModel.documentType,
+      assessments,
+      risksByAssessment: riskByAssessment,
+      conclusionsByAssessment: conclusionMap
     });
-    const conclusionMap = new Map(conclusions.map((item) => [String(item.assessmentId), item]));
-    const establishmentMap = new Map(establishments.map((item) => [String(item._id), item]));
-    const sectorMap = new Map(sectors.map((item) => [String(item._id), item]));
-    const roleMap = new Map(roles.map((item) => [String(item._id), item]));
+
+    if (readiness.blocking) {
+      return sendError(
+        res,
+        {
+          message: 'Documento nao pode ser emitido por pendencias obrigatorias',
+          meta: {
+            code: 'DOCUMENT_READINESS_BLOCKED',
+            documentType: resolvedModel.documentType,
+            scope: { scopeType, scopeRefId },
+            blocking: true,
+            missingFields: readiness.missingFields
+          }
+        },
+        409
+      );
+    }
 
     for (const assessment of assessments) {
       const conclusion = conclusionMap.get(String(assessment._id));
@@ -1737,7 +1826,15 @@ router.post('/documents/issue', requirePermission('sst:sign'), async (req, res) 
         model: resolvedModel,
         assessments: assessmentContents,
         editable: mergedEditable,
-        annexes: resolvedModel.layers.annexes
+        annexes: resolvedModel.layers.annexes,
+        canonical: {
+          readiness: {
+            emitible: readiness.emitible,
+            blocking: readiness.blocking,
+            missingFields: readiness.missingFields,
+            summary: readiness.summary
+          }
+        }
       }
     };
     const hash = hashDocumentPayload(payload);
@@ -1835,7 +1932,8 @@ router.get('/documents/issued/:id/pdf', requirePermission('sst:read'), async (re
     if (!version) return sendError(res, { message: 'Nenhuma versao emitida encontrada para este documento' }, 404);
 
     const pdfData = await resolveIssuedDocumentPdfData({ document, version });
-    const pdfBuffer = await renderIssuedDocumentPdfBuffer({ document, version, pdfData });
+    const composedDocument = composeDocumentPayload({ document, version, pdfData });
+    const pdfBuffer = await renderIssuedDocumentPdfBuffer({ document, version, pdfData, composedDocument });
     const filename = buildIssuedDocumentPdfFilename(document, version);
 
     res.setHeader('Content-Type', 'application/pdf');

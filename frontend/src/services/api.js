@@ -289,6 +289,7 @@ export const sstService = {
   createDocumentModel: (data) => api.post('/sst/documents/models', data),
   updateDocumentModel: (id, data) => api.put(`/sst/documents/models/${id}`, data),
   getDocumentTemplates: (params = {}) => api.get('/sst/documents/templates', { params }),
+  getDocumentReadiness: (params = {}) => api.get('/sst/documents/readiness', { params }),
   listIssuedDocuments: (params = {}) => api.get('/sst/documents/issued', { params }),
   issueDocument: (data) => api.post('/sst/documents/issue', data),
   invalidateDocument: (id, data) => api.post(`/sst/documents/issued/${id}/invalidate`, data),
