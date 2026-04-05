@@ -8,7 +8,8 @@
     "dev": "nodemon server.js",
     "test": "node --test src/tests/*.test.js",
     "risk:migrate:legacy": "node src/scripts/migrateRiskSurveyLegacy.js",
-    "admin:create": "node src/scripts/createAdmin.js"
+    "admin:create": "node src/scripts/createAdmin.js",
+    "pdf:samples": "node src/scripts/generateSamplePdfs.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

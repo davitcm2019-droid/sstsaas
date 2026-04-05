@@ -48,6 +48,7 @@ const {
   hashDocumentPayload
 } = require('../sst/documentEngine');
 const { buildIssuedDocumentPdfFilename, renderIssuedDocumentPdfBuffer } = require('../sst/pdfEngine');
+const { resolveIssuedDocumentPdfData } = require('../sst/pdfDataResolver');
 
 const router = express.Router();
 
@@ -1833,7 +1834,8 @@ router.get('/documents/issued/:id/pdf', requirePermission('sst:read'), async (re
     const version = await SstIssuedTechnicalDocumentVersion.findOne({ documentId }).sort({ version: -1 }).lean();
     if (!version) return sendError(res, { message: 'Nenhuma versao emitida encontrada para este documento' }, 404);
 
-    const pdfBuffer = await renderIssuedDocumentPdfBuffer({ document, version });
+    const pdfData = await resolveIssuedDocumentPdfData({ document, version });
+    const pdfBuffer = await renderIssuedDocumentPdfBuffer({ document, version, pdfData });
     const filename = buildIssuedDocumentPdfFilename(document, version);
 
     res.setHeader('Content-Type', 'application/pdf');
