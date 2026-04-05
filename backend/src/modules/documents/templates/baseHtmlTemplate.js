@@ -1,5 +1,50 @@
 const { escapeHtml, renderList, renderTable } = require('./templateUtils');
 
+const renderMasterRiskTable = (documentModel) =>
+  renderTable({
+    columns: [
+      { key: 'ordem', label: '#' },
+      { key: 'setor', label: 'Setor' },
+      { key: 'cargo', label: 'Cargo' },
+      { key: 'perigo', label: 'Perigo' },
+      { key: 'fator', label: 'Fator' },
+      { key: 'agente', label: 'Agente' },
+      { key: 'fonte', label: 'Fonte' },
+      { key: 'dano', label: 'Dano' },
+      { key: 'probabilidade', label: 'P' },
+      { key: 'severidade', label: 'S' },
+      { key: 'nivel', label: 'Nivel' },
+      { key: 'controles', label: 'Controles existentes' },
+      { key: 'acoes', label: 'Plano de acao' }
+    ],
+    rows: documentModel.quadroRiscos || []
+  });
+
+const renderIssueFrame = (documentModel) => `
+  <div class="issue-frame">
+    <div class="card">
+      <span class="eyebrow">Controle de emissao</span>
+      <p><strong>Documento:</strong> ${escapeHtml(documentModel.emissao?.tipo || 'Nao informado')}</p>
+      <p><strong>Empresa:</strong> ${escapeHtml(documentModel.emissao?.empresa || 'Nao informado')}</p>
+      <p><strong>Vigencia:</strong> ${escapeHtml(documentModel.emissao?.vigencia || 'Nao informado')}</p>
+      <p><strong>Escopo:</strong> ${escapeHtml(documentModel.emissao?.escopo || 'n/a')}</p>
+    </div>
+    <div class="card">
+      <span class="eyebrow">Rastreabilidade</span>
+      <p><strong>Versao:</strong> v${escapeHtml(String(documentModel.emissao?.versao || 1))}</p>
+      <p><strong>Emitido em:</strong> ${escapeHtml(documentModel.emissao?.emitidoEm || 'Nao informado')}</p>
+      <p><strong>Hash:</strong> ${escapeHtml(documentModel.emissao?.hash || 'n/a')}</p>
+      <p><strong>RT:</strong> ${escapeHtml(documentModel.emissao?.responsavelTecnico || 'Nao informado')} / ${escapeHtml(documentModel.emissao?.registroResponsavel || 'Nao informado')}</p>
+    </div>
+    <div class="card">
+      <span class="eyebrow">Base consolidada</span>
+      <p><strong>Estabelecimentos:</strong> ${escapeHtml(String(documentModel.emissao?.estabelecimentos || 0))}</p>
+      <p><strong>Riscos:</strong> ${escapeHtml(String(documentModel.emissao?.riscos || 0))}</p>
+      <p><strong>Acoes:</strong> ${escapeHtml(String(documentModel.emissao?.acoes || 0))}</p>
+    </div>
+  </div>
+`;
+
 const renderSectionContent = (section, documentModel) => {
   switch (section.chave) {
     case 'identificacao_empresa':
@@ -34,18 +79,20 @@ const renderSectionContent = (section, documentModel) => {
     case 'avaliacao_riscos':
     case 'reconhecimento_analise_riscos':
     case 'analise_riscos_ambiente_trabalho':
-      return renderTable({
-        columns: [
-          { key: 'sector', label: 'Setor' },
-          { key: 'role', label: 'Cargo' },
-          { key: 'hazard', label: 'Perigo' },
-          { key: 'agent', label: 'Agente' },
-          { key: 'source', label: 'Fonte' },
-          { key: 'damage', label: 'Dano' },
-          { key: 'level', label: 'Nivel' }
-        ],
-        rows: documentModel.inventarioRiscos || []
-      });
+      return documentModel.documento?.tipo === 'pgr'
+        ? `<div class="pgr-risk-table-wrap">${renderMasterRiskTable(documentModel)}</div>`
+        : renderTable({
+            columns: [
+              { key: 'sector', label: 'Setor' },
+              { key: 'role', label: 'Cargo' },
+              { key: 'hazard', label: 'Perigo' },
+              { key: 'agent', label: 'Agente' },
+              { key: 'source', label: 'Fonte' },
+              { key: 'damage', label: 'Dano' },
+              { key: 'level', label: 'Nivel' }
+            ],
+            rows: documentModel.inventarioRiscos || []
+          });
     case 'metas_prioridades_controle':
       return renderTable({
         columns: [
@@ -160,6 +207,7 @@ const renderDocumentHtml = (documentModel, templateConfig = {}) => {
         .cover-subtitle { margin-top: 8px; max-width: 420px; color: var(--muted); font-size: 14px; }
         .meta-grid, .grid.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
         .summary-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0 22px; }
+        .issue-frame { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
         .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; break-inside: avoid; }
         .metric strong { display: block; margin-top: 6px; font-size: 22px; color: var(--accent); }
         .eyebrow { display: inline-block; margin-bottom: 8px; color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -178,6 +226,9 @@ const renderDocumentHtml = (documentModel, templateConfig = {}) => {
         ul { margin: 8px 0 0 18px; padding: 0; }
         .annex, .technical-closing { page-break-inside: avoid; }
         .page-break { page-break-before: always; }
+        .pgr-risk-table-wrap { overflow: hidden; border-radius: 14px; border: 1px solid var(--border); }
+        .pgr-risk-table-wrap table { margin-top: 0; font-size: 9px; }
+        .pgr-risk-table-wrap td, .pgr-risk-table-wrap th { padding: 6px; }
       </style>
     </head>
     <body>
@@ -216,7 +267,24 @@ const renderDocumentHtml = (documentModel, templateConfig = {}) => {
             <div class="card metric"><span class="eyebrow">Riscos</span><strong>${escapeHtml(String(documentModel.inventarioRiscos?.length || 0))}</strong></div>
             <div class="card metric"><span class="eyebrow">Plano de acao</span><strong>${escapeHtml(String(documentModel.planoAcao?.length || 0))}</strong></div>
           </div>
+          ${renderIssueFrame(documentModel)}
         </section>
+        ${
+          documentModel.documento?.tipo === 'pgr'
+            ? `<section class="section">
+                <h2 class="section-title">Quadro Mestre de Riscos do PGR</h2>
+                <p>Estrutura consolidada para emissao formal, com risco, severidade, controles existentes e plano de acao associado.</p>
+                <div class="summary-cards">
+                  <div class="card metric"><span class="eyebrow">Criticos</span><strong>${escapeHtml(String(documentModel.indicadoresRisco?.criticos || 0))}</strong></div>
+                  <div class="card metric"><span class="eyebrow">Altos</span><strong>${escapeHtml(String(documentModel.indicadoresRisco?.altos || 0))}</strong></div>
+                  <div class="card metric"><span class="eyebrow">Moderados/Toleraveis</span><strong>${escapeHtml(String((documentModel.indicadoresRisco?.moderados || 0) + (documentModel.indicadoresRisco?.toleraveis || 0)))}</strong></div>
+                </div>
+                <div class="pgr-risk-table-wrap">
+                  ${renderMasterRiskTable(documentModel)}
+                </div>
+              </section>`
+            : ''
+        }
         <section class="section page-break">
           <h2 class="section-title">Estrutura Operacional</h2>
           ${renderGroupedScopes(documentModel)}

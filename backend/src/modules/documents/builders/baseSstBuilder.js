@@ -22,6 +22,104 @@ const formatDate = (value, fallback = 'Nao informado') => {
 
 const uniq = (rows = []) => [...new Set(rows.filter(Boolean))];
 
+const summarizeControls = (controls = []) => {
+  const normalized = Array.isArray(controls)
+    ? controls.map((item) => safeText(item?.description, '')).filter(Boolean)
+    : [];
+  return normalized.length ? normalized.join(' | ') : 'Sem controles registrados';
+};
+
+const summarizeActions = (actions = []) => {
+  const normalized = Array.isArray(actions)
+    ? actions
+        .map((item) => {
+          const title = safeText(item?.title, '');
+          const responsible = safeText(item?.responsible, '');
+          const status = safeText(item?.status, '');
+          return [title, responsible ? `Resp. ${responsible}` : '', status ? `Status ${status}` : '']
+            .filter(Boolean)
+            .join(' / ');
+        })
+        .filter(Boolean)
+    : [];
+  return normalized.length ? normalized.join(' | ') : 'Sem plano de acao';
+};
+
+const buildRiskIndicators = (riskInventory = []) => ({
+  total: riskInventory.length,
+  criticos: riskInventory.filter((item) => String(item.level || '').toLowerCase() === 'critico').length,
+  altos: riskInventory.filter((item) => String(item.level || '').toLowerCase() === 'alto').length,
+  moderados: riskInventory.filter((item) => String(item.level || '').toLowerCase() === 'moderado').length,
+  toleraveis: riskInventory.filter((item) => String(item.level || '').toLowerCase() === 'toleravel').length
+});
+
+const buildMasterRiskTable = (riskInventory = []) =>
+  riskInventory.map((risk, index) => ({
+    ordem: index + 1,
+    setor: safeText(risk.sector),
+    cargo: safeText(risk.role),
+    perigo: safeText(risk.hazard),
+    fator: safeText(risk.factor),
+    agente: safeText(risk.agent),
+    fonte: safeText(risk.source),
+    dano: safeText(risk.damage),
+    probabilidade: Number(risk.probability || 0) || 0,
+    severidade: Number(risk.severity || 0) || 0,
+    nivel: safeText(risk.level),
+    controles: summarizeControls(risk.controls),
+    acoes: summarizeActions(risk.actionPlanItems)
+  }));
+
+const buildPgrRiskSheets = (assessmentScopes = []) =>
+  assessmentScopes.flatMap((scope) =>
+    (Array.isArray(scope.risks) ? scope.risks : []).map((risk, index) => ({
+      ordem: index + 1,
+      avaliacaoId: scope.assessmentId,
+      avaliacao: safeText(scope.title),
+      estabelecimento: safeText(scope.establishment),
+      setor: safeText(scope.sector),
+      cargo: safeText(scope.role),
+      perigo: safeText(risk.hazard),
+      fator: safeText(risk.factor),
+      agente: safeText(risk.agent, ''),
+      fonte: safeText(risk.source, ''),
+      dano: safeText(risk.damage),
+      nivel: safeText(risk.level),
+      probabilidade: Number(risk.probability || 0) || 0,
+      severidade: Number(risk.severity || 0) || 0,
+      descricao: [
+        scope.context?.processoPrincipal ? `Processo principal: ${scope.context.processoPrincipal}.` : '',
+        scope.context?.localAreaPosto ? `Local/area/posto: ${scope.context.localAreaPosto}.` : '',
+        scope.context?.condicaoOperacional ? `Condicao operacional: ${scope.context.condicaoOperacional}.` : '',
+        risk.source ? `Fonte geradora: ${risk.source}.` : '',
+        risk.exposure ? `Exposicao: ${risk.exposure}.` : ''
+      ]
+        .filter(Boolean)
+        .join(' '),
+      sugestoesIniciais: summarizeControls(risk.controls),
+      planoAcao: summarizeActions(risk.actionPlanItems),
+      danosSaude: safeText(risk.damage),
+      metodologia: safeText(scope.context?.metodologia, ''),
+      instrumentos: safeText(scope.context?.instrumentosUtilizados, ''),
+      criterios: safeText(scope.context?.criteriosAvaliacao, '')
+    }))
+  );
+
+const buildIssueFrame = ({ profile, documentView, establishments, riskInventory = [], actionPlan = [] }) => ({
+  tipo: profile.formalTitle,
+  emitidoEm: formatDate(documentView.documentMeta?.issuedAt),
+  versao: documentView.documentMeta?.version || 1,
+  hash: safeText(documentView.documentMeta?.hash, 'n/a'),
+  empresa: safeText(documentView.companyProfile?.nome),
+  vigencia: safeText(documentView.documentMeta?.coverageLabel, 'Sem abrangencia informada'),
+  responsavelTecnico: safeText(documentView.technicalTeam?.[0]?.nome),
+  registroResponsavel: safeText(documentView.technicalTeam?.[0]?.registro),
+  escopo: `${safeText(documentView.documentMeta?.scopeType, 'n/a')} / ${safeText(documentView.documentMeta?.scopeRefId, 'n/a')}`,
+  estabelecimentos: establishments.length,
+  riscos: riskInventory.length,
+  acoes: actionPlan.length
+});
+
 const groupAssessmentScopes = (assessmentScopes = []) => {
   const establishmentMap = new Map();
 
@@ -130,6 +228,9 @@ const createSstDocumentBuilder = (profile) => ({
   build: async ({ document, version, pdfData = {} }) => {
     const documentView = composeDocumentPayload({ document, version, pdfData });
     const establishments = groupAssessmentScopes(documentView.assessmentScope);
+    const riskInventory = documentView.riskInventory || [];
+    const actionPlan = documentView.actionPlan || [];
+    const pgrRiskSheets = buildPgrRiskSheets(documentView.assessmentScope || []);
 
     return {
       empresa: documentView.companyProfile,
@@ -155,10 +256,20 @@ const createSstDocumentBuilder = (profile) => ({
         executivo: documentView.summary?.overview || 'Sem resumo executivo.',
         prontidao: documentView.readiness
       },
+      emissao: buildIssueFrame({
+        profile,
+        documentView,
+        establishments,
+        riskInventory,
+        actionPlan
+      }),
+      indicadoresRisco: buildRiskIndicators(riskInventory),
+      quadroRiscos: buildMasterRiskTable(riskInventory),
+      fichasRiscosPgr: pgrRiskSheets,
       estabelecimentos: establishments,
       setores: establishments.flatMap((item) => item.setores),
-      inventarioRiscos: documentView.riskInventory || [],
-      planoAcao: documentView.actionPlan || [],
+      inventarioRiscos: riskInventory,
+      planoAcao: actionPlan,
       metodologia: documentView.methodology || {},
       equipeTecnica: documentView.technicalTeam || [],
       responsavelTecnico: documentView.technicalTeam?.[0] || {},

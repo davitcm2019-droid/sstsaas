@@ -128,8 +128,14 @@ test('DocumentGenerationService gera HTML estruturado a partir do modulo documen
   });
 
   assert.match(result.html, /Programa de Gerenciamento de Riscos - Empresa X/);
-  assert.match(result.html, /Sumario Executivo/);
-  assert.match(result.html, /Estrutura Operacional/);
+  assert.match(result.html, /SUMARIO/);
+  assert.match(result.html, /CONTROLE DE EMISSAO/);
+  assert.match(result.html, /COMPOSICAO DO QUADRO DE FUNCIONARIOS/);
+  assert.match(result.html, /INVENTARIO DE RISCOS/);
+  assert.match(result.html, /Sugestao\(oes\) iniciais/);
+  assert.match(result.html, /Riscos \(Possiveis danos a saude\)/);
+  assert.match(result.html, /Plano de acao/);
+  assert.match(result.html, /IDENTIFICACAO DA EMPRESA/);
   assert.match(result.html, /Ruido/);
   assert.match(result.html, /Instalar enclausuramento/);
 });
