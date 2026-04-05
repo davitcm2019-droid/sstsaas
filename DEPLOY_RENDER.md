@@ -82,6 +82,22 @@ npm run admin:create -- --nome "Admin" --email admin@local.test --senha "SenhaFo
 - Preview environments foram desabilitados porque o backend depende de `MONGO_URI` manual e o projeto nao precisa de ambiente efemero neste momento.
 - Se voce renomear os servicos no Render, atualize tambem `CORS_ORIGIN` e `VITE_API_URL` no `render.yaml`.
 
+## Geracao de documentos PDF
+
+O backend usa Puppeteer para renderizar HTML em PDF. Em producao, o pacote `@sparticuz/chromium` fornece o binario do Chromium compativel com o ambiente do Render.
+
+### Variaveis relevantes
+
+- `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true` — ja configurada no `render.yaml`. Evita baixar o Chromium bundled do Puppeteer (o `@sparticuz/chromium` fornece o binario).
+- `PUPPETEER_EXECUTABLE_PATH` — **opcional**. Se nao definida, o backend resolve automaticamente via `@sparticuz/chromium`. Defina apenas se voce quiser apontar para um binario customizado.
+- `DOCUMENT_STORAGE_PROVIDER` — `local` (padrao) ou `s3`. Para S3, configure tambem `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` e `S3_BUCKET`.
+
+### Se o PDF nao for gerado
+
+1. Verifique os logs do backend no Render — erros de Puppeteer serao logados com stacktrace.
+2. Se aparecer `Error: Failed to launch the browser process`, o Chromium nao esta acessivel. Confirme que `@sparticuz/chromium` esta nas dependencias e que `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true`.
+3. Para testar localmente, execute `npm run pdf:samples` no backend — isso gera PDFs de exemplo em `backend/tmp/pdfs/`.
+
 ## Troubleshooting
 
 - `Missing required environment variable: MONGO_URI`

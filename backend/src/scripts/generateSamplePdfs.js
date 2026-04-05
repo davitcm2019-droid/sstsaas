@@ -6,17 +6,23 @@ const { resolveIssuedDocumentPdfData } = require('../sst/pdfDataResolver');
 
 const OUTPUT_DIR = path.join(__dirname, '..', '..', 'tmp', 'pdfs');
 
+const DOCUMENT_CONFIGS = {
+  pgr: { title: 'Programa de Gerenciamento de Riscos - Exemplo', formalTitle: 'Programa de Gerenciamento de Riscos' },
+  ltcat: { title: 'LTCAT - Exemplo', formalTitle: 'Laudo Tecnico das Condicoes Ambientais de Trabalho' },
+  inventario: { title: 'Inventario de Riscos - Exemplo', formalTitle: 'Inventario de Riscos Ocupacionais' },
+  ordem_servico: { title: 'Ordem de Servico - Exemplo', formalTitle: 'Ordem de Servico de Seguranca e Saude no Trabalho' },
+  laudo_insalubridade: { title: 'Laudo de Insalubridade - Exemplo', formalTitle: 'Laudo Tecnico de Insalubridade' },
+  laudo_periculosidade: { title: 'Laudo de Periculosidade - Exemplo', formalTitle: 'Laudo Tecnico de Periculosidade' },
+  laudo_tecnico: { title: 'Laudo Tecnico - Exemplo', formalTitle: 'Laudo Tecnico SST' }
+};
+
 const createFixture = (documentType) => {
-  const titleMap = {
-    pgr: 'Programa de Gerenciamento de Riscos - Exemplo',
-    ltcat: 'LTCAT - Exemplo',
-    inventario: 'Inventario de Riscos - Exemplo'
-  };
+  const cfg = DOCUMENT_CONFIGS[documentType] || { title: 'Documento Tecnico - Exemplo', formalTitle: 'Documento Tecnico' };
 
   return {
     document: {
       id: `${documentType}-doc`,
-      title: titleMap[documentType] || 'Documento Tecnico - Exemplo',
+      title: cfg.title,
       documentType,
       scopeType: 'assessment',
       scopeRefId: `${documentType}-assessment`,
@@ -25,13 +31,13 @@ const createFixture = (documentType) => {
     },
     version: {
       version: 1,
-      hash: `${documentType}-hash`,
+      hash: `${documentType}-hash-${Date.now().toString(36)}`,
       issuedAt: new Date().toISOString(),
       issuedBy: { nome: 'Sistema SST', email: 'sistema@sst.local' },
-      documentModelTitle: titleMap[documentType] || 'Documento Tecnico',
+      documentModelTitle: cfg.formalTitle,
       sourceAssessmentIds: [`${documentType}-assessment`],
       content: {
-        model: { title: titleMap[documentType] || 'Documento Tecnico', layers: { fixed: 'Texto fixo padrao do modelo.' } },
+        model: { title: cfg.formalTitle, layers: { fixed: 'Texto fixo padrao do modelo.' } },
         editable: {
           resumo: 'Resumo tecnico gerado automaticamente para demonstracao local.',
           notas: 'Notas adicionais para demonstracao do PDF.',
@@ -43,8 +49,10 @@ const createFixture = (documentType) => {
               assessment: {
                 id: `${documentType}-assessment`,
                 title: `Avaliacao ${documentType.toUpperCase()}`,
+                abrangenciaInicio: '2026-01-10',
+                abrangenciaFim: '2026-12-10',
                 version: 1,
-                responsibleTechnical: { nome: 'RT Exemplo', registro: 'CREA 12345' }
+                responsibleTechnical: { nome: 'RT Exemplo', registro: 'CREA 12345', email: 'rt@exemplo.com' }
               },
               establishment: { nome: 'Unidade Exemplo' },
               sector: { nome: 'Setor Operacional' },
@@ -59,11 +67,12 @@ const createFixture = (documentType) => {
                   agent: 'Ruido continuo',
                   level: 'alto',
                   source: 'Maquina de corte',
+                  exposure: 'Jornada completa',
                   damage: 'Perda auditiva',
                   probability: 4,
                   severity: 4,
                   controls: [{ description: 'Protetor auditivo' }],
-                  actionPlanItems: [{ title: 'Instalar enclausuramento' }]
+                  actionPlanItems: [{ title: 'Instalar enclausuramento', responsible: 'Manutencao', status: 'pendente' }]
                 },
                 {
                   hazard: 'Postura inadequada',
@@ -71,6 +80,7 @@ const createFixture = (documentType) => {
                   agent: 'Movimentos repetitivos',
                   level: 'moderado',
                   source: 'Bancada de montagem',
+                  exposure: 'Intermitente',
                   damage: 'Dor lombar',
                   probability: 3,
                   severity: 3,
@@ -79,8 +89,9 @@ const createFixture = (documentType) => {
                 }
               ],
               conclusion: {
-                result: 'Conclusao tecnica de exemplo',
-                basis: 'Base tecnica sintetica da avaliacao.',
+                result: 'Conclusao tecnica de exemplo para demonstracao',
+                basis: 'Base tecnica sintetica da avaliacao publicada.',
+                normativeFrame: 'NR-15, Anexo 1',
                 signedAt: new Date().toISOString(),
                 signedBy: { nome: 'RT Exemplo' }
               }
@@ -110,7 +121,8 @@ const createDeps = (documentType) => ({
       estado: 'SP',
       cep: '01000-000',
       telefone: '(11) 99999-9999',
-      email: 'contato@empresa-exemplo.com'
+      email: 'contato@empresa-exemplo.com',
+      responsavel: 'Gestor Exemplo'
     })
   },
   assessmentRepo: {
@@ -119,12 +131,19 @@ const createDeps = (documentType) => ({
         lean: async () => [
           {
             _id: `${documentType}-assessment`,
+            abrangenciaInicio: '2026-01-10',
+            abrangenciaFim: '2026-12-10',
             context: {
               processoPrincipal: 'Operacao industrial',
               localAreaPosto: 'Area principal',
               jornadaTurno: '44h semanais',
               quantidadeExpostos: 12,
-              condicaoOperacional: 'Rotina de trabalho em producao'
+              condicaoOperacional: 'Rotina de trabalho em producao',
+              metodologia: 'NHO 01 — Avaliacao da exposicao ocupacional ao ruido',
+              instrumentosUtilizados: 'Dosimetro modelo DOS-500',
+              criteriosAvaliacao: 'Probabilidade x Severidade',
+              matrizRisco: 'Matriz 5x5',
+              atividadesBase: ['Operacao de maquina', 'Montagem', 'Inspecao visual']
             }
           }
         ]
@@ -136,23 +155,36 @@ const createDeps = (documentType) => ({
 const main = async () => {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
-  for (const documentType of ['pgr', 'ltcat', 'inventario']) {
+  const types = Object.keys(DOCUMENT_CONFIGS);
+  const results = [];
+
+  for (const documentType of types) {
     const fixture = createFixture(documentType);
-    const pdfData = await resolveIssuedDocumentPdfData({
-      document: fixture.document,
-      version: fixture.version,
-      deps: createDeps(documentType)
-    });
-    const buffer = await renderIssuedDocumentPdfBuffer({
-      document: fixture.document,
-      version: fixture.version,
-      pdfData
-    });
-    const filename = buildIssuedDocumentPdfFilename(fixture.document, fixture.version);
-    fs.writeFileSync(path.join(OUTPUT_DIR, filename), buffer);
+
+    try {
+      const pdfData = await resolveIssuedDocumentPdfData({
+        document: fixture.document,
+        version: fixture.version,
+        deps: createDeps(documentType)
+      });
+      const buffer = await renderIssuedDocumentPdfBuffer({
+        document: fixture.document,
+        version: fixture.version,
+        pdfData
+      });
+      const filename = buildIssuedDocumentPdfFilename(fixture.document, fixture.version);
+      fs.writeFileSync(path.join(OUTPUT_DIR, filename), buffer);
+      results.push({ documentType, filename, size: buffer.length, status: 'ok' });
+    } catch (error) {
+      results.push({ documentType, status: 'error', message: error.message });
+    }
   }
 
-  console.log(`PDFs de exemplo gerados em ${OUTPUT_DIR}`);
+  console.log(`\nPDFs gerados em ${OUTPUT_DIR}\n`);
+  console.table(results);
+
+  const { shutdown } = require('../modules/documents/renderers/browserPool');
+  await shutdown();
 };
 
 main().catch((error) => {

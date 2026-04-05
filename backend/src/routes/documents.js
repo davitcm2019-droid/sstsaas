@@ -1,3 +1,8 @@
+/**
+ * @deprecated Este arquivo faz parte do sistema legado de documentos (ciclos de levantamento).
+ * O novo sistema de geracao documental SST esta em /modules/documents/ e exposto em /api/sst/documents/.
+ * Manter este arquivo para compatibilidade retroativa ate migracao completa.
+ */
 const express = require('express');
 const mongoose = require('mongoose');
 const { Document } = require('../models/legacyEntities');

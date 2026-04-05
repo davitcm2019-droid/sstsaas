@@ -4,7 +4,9 @@ const { createSearchRegex } = require('../utils/regex');
 const empresaSchema = new mongoose.Schema(
   {
     nome: { type: String, required: true },
+    nomeFantasia: { type: String, default: '' },
     cnpj: { type: String, required: true, unique: true },
+    inscricaoEstadual: { type: String, default: '' },
     cnae: { type: String, required: true },
     ramo: { type: String, default: '' },
     endereco: { type: String, default: '' },
@@ -31,7 +33,9 @@ const mapDocToEmpresa = (doc) => {
   return {
     id: doc._id?.toString(),
     nome: doc.nome,
+    nomeFantasia: doc.nomeFantasia || '',
     cnpj: doc.cnpj,
+    inscricaoEstadual: doc.inscricaoEstadual || '',
     cnae: doc.cnae,
     ramo: doc.ramo,
     endereco: doc.endereco,

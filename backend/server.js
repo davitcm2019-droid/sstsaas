@@ -42,8 +42,10 @@ const eventosRoutes = require('./src/routes/eventos');
 const treinamentosRoutes = require('./src/routes/treinamentos');
 const acoesRoutes = require('./src/routes/acoes');
 const riskSurveyRoutes = require('./src/routes/riskSurvey');
-const sstRoutes = require('./src/routes/sst');
+// riskSurveyRoutes nao e montado como rota — o require acima registra modelos Mongoose necessarios.
+// Para montar as rotas do legado de levantamento, descomente: app.use('/api/risk-survey', riskSurveyRoutes);
 void riskSurveyRoutes;
+const sstRoutes = require('./src/routes/sst');
 
 // Health check (público)
 app.get('/api/health', (req, res) => {

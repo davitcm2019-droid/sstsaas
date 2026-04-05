@@ -42,6 +42,21 @@ const DEFAULT_TOC = [
   '18 - ENCERRAMENTO'
 ];
 
+const renderTableOfContents = (documentModel) => {
+  const sections = (documentModel?.secoes || []).filter((s) => s.titulo);
+  const entries = sections.length ? sections.map((s) => s.titulo) : DEFAULT_TOC;
+  return entries
+    .map(
+      (entry) => `
+      <div class="toc-row">
+        <span class="toc-label">${escapeHtml(entry)}</span>
+        <span class="toc-dots"></span>
+      </div>
+    `
+    )
+    .join('');
+};
+
 const getSectionParagraphs = (documentModel, key) =>
   documentModel.secoes?.find((section) => section.chave === key)?.paragrafos || [];
 
@@ -60,17 +75,6 @@ const renderStaticRows = (rows = []) =>
       `
     )
     .join('');
-
-const renderTableOfContents = () =>
-  DEFAULT_TOC.map(
-    (entry, index) => `
-      <div class="toc-row">
-        <span class="toc-label">${escapeHtml(entry)}</span>
-        <span class="toc-dots"></span>
-        <span class="toc-page">${escapeHtml(String(index + 4))}</span>
-      </div>
-    `
-  ).join('');
 
 const buildWorkforceSummary = (documentModel) => {
   const scopes = Array.isArray(documentModel.raw?.assessmentScope) ? documentModel.raw.assessmentScope : [];

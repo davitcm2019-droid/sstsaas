@@ -1,6 +1,11 @@
-const { createTechnicalTemplate } = require('./createTechnicalTemplate');
+const { createReportHtmlTemplate } = require('./createReportHtmlTemplate');
 
-module.exports = createTechnicalTemplate({
+module.exports = createReportHtmlTemplate({
   type: 'laudo_insalubridade',
-  title: 'Template base Laudo de Insalubridade'
+  codeLabel: 'LAUDO DE INSALUBRIDADE',
+  defaultTitle: 'Laudo Tecnico de Insalubridade',
+  templateTitle: 'Template formal Laudo de Insalubridade',
+  normativeRef: 'NR-15 — Atividades e Operacoes Insalubres',
+  accentColor: '#9333ea',
+  accentSoftColor: '#f3e8ff'
 });
