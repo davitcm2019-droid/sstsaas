@@ -48,6 +48,7 @@ const SstAssessments = () => {
   const canWrite = hasPermission('sst:write');
   const canApprove = hasPermission('sst:approve');
   const canSign = hasPermission('sst:sign');
+  const isAdmin = user?.perfil === 'admin';
 
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -438,7 +439,7 @@ const SstAssessments = () => {
                   {canSign ? <button type="button" className="btn-secondary" onClick={openConclusion}><FileCheck2 className="h-4 w-4" />Conclusao tecnica</button> : null}
                   {canSign && detail.conclusion && detail.conclusion.status !== 'signed' ? <button type="button" className="btn-secondary" onClick={() => runAction(sstService.signAssessmentConclusion)}><ShieldCheck className="h-4 w-4" />Assinar conclusao</button> : null}
                   {canApprove && detail.assessment.status !== 'published' && detail.assessment.status !== 'superseded' ? <button type="button" className="btn-primary" onClick={() => runAction(sstService.publishAssessment)}><ShieldCheck className="h-4 w-4" />Publicar avaliacao</button> : null}
-                  {canWrite && detail.assessment.status !== 'published' && detail.assessment.status !== 'superseded' ? <button type="button" className="btn-secondary text-red-600" onClick={() => handleDeleteAssessment(detail.assessment.id)}><AlertTriangle className="h-4 w-4" />Remover avaliacao</button> : null}
+                  {(canWrite && detail.assessment.status !== 'published' && detail.assessment.status !== 'superseded') || isAdmin ? <button type="button" className="btn-secondary text-red-600" onClick={() => handleDeleteAssessment(detail.assessment.id)}><AlertTriangle className="h-4 w-4" />Remover avaliacao</button> : null}
                 </div>
               </div>
 

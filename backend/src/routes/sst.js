@@ -1076,10 +1076,11 @@ router.put('/assessments/:id', requirePermission('sst:write'), async (req, res) 
 router.delete('/assessments/:id', requirePermission('sst:write'), async (req, res) => {
   try {
     const actor = toActor(req.user);
+    const isAdmin = req.user.perfil === 'admin';
     const current = await SstRiskAssessment.findById(req.params.id);
     if (!current) return sendError(res, { message: 'Avaliacao nao encontrada' }, 404);
-    if (current.status === 'published' || current.status === 'superseded') {
-      return sendError(res, { message: 'Avaliacoes publicadas ou substituidas nao podem ser excluidas' }, 409);
+    if ((current.status === 'published' || current.status === 'superseded') && !isAdmin) {
+      return sendError(res, { message: 'Avaliacoes publicadas ou substituidas requerem privilegios de administrador para serem excluidas' }, 403);
     }
 
     const before = current.toObject();
