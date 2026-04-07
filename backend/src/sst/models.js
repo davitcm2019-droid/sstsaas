@@ -36,13 +36,21 @@ const controlSchema = new Schema(
   { _id: true }
 );
 
+const ACTION_PRIORITY = ['baixa', 'media', 'alta', 'critica'];
+const ACTION_TYPES = ['preventiva', 'corretiva', 'melhoria', 'emergencia'];
+
 const actionPlanItemSchema = new Schema(
   {
     title: { type: String, required: true },
+    description: { type: String, default: '' },
     responsible: { type: String, default: '' },
     dueDate: { type: Date, default: null },
     status: { type: String, enum: ACTION_STATUS, default: 'pendente' },
-    acceptanceCriteria: { type: String, default: '' }
+    priority: { type: String, enum: ACTION_PRIORITY, default: 'media' },
+    tipo: { type: String, enum: ACTION_TYPES, default: 'corretiva' },
+    cost: { type: Number, default: 0 },
+    acceptanceCriteria: { type: String, default: '' },
+    observations: { type: String, default: '' }
   },
   { _id: true }
 );
@@ -343,6 +351,8 @@ module.exports = {
   CONTROL_TYPES,
   EFFECTIVENESS_TYPES,
   ACTION_STATUS,
+  ACTION_PRIORITY,
+  ACTION_TYPES,
   DOCUMENT_TYPES,
   DOCUMENT_STATUS,
   DOCUMENT_SCOPE_TYPES,

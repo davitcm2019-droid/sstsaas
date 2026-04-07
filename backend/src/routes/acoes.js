@@ -1,3 +1,8 @@
+/**
+ * @deprecated O modulo de acoes generico esta sendo substituido pelo plano de acao
+ * consolidado do SST em /api/sst/action-plan.
+ * Manter este arquivo para compatibilidade retroativa ate migracao completa.
+ */
 const express = require('express');
 const { Acao } = require('../models/legacyEntities');
 const { requirePermission } = require('../middleware/rbac');

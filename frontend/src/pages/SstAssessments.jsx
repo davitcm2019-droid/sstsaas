@@ -84,7 +84,8 @@ const SstAssessments = () => {
   const [assessmentSaving, setAssessmentSaving] = useState(false);
 
   const [riskModalOpen, setRiskModalOpen] = useState(false);
-  const [riskForm, setRiskForm] = useState({ factor: '', hazard: '', agent: '', source: '', exposure: '', damage: '', probability: 1, severity: 1, controls: '', actionPlanItems: '', highRiskJustification: '' });
+  const [riskForm, setRiskForm] = useState({ factor: '', hazard: '', agent: '', source: '', exposure: '', damage: '', probability: 1, severity: 1, controls: '', actionPlanItems: [], highRiskJustification: '' });
+  const EMPTY_ACTION_ITEM = { title: '', responsible: '', dueDate: '', priority: 'media' };
   const [riskError, setRiskError] = useState('');
   const [riskSaving, setRiskSaving] = useState(false);
   const [editingRiskId, setEditingRiskId] = useState(null);
@@ -285,10 +286,10 @@ const SstAssessments = () => {
             probability: risk.probability || 1,
             severity: risk.severity || 1,
             controls: (risk.controls || []).map((item) => item.description).join('\n'),
-            actionPlanItems: (risk.actionPlanItems || []).map((item) => item.title).join('\n'),
+            actionPlanItems: (risk.actionPlanItems || []).map((item) => ({ title: item.title || '', responsible: item.responsible || '', dueDate: item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '', priority: item.priority || 'media' })),
             highRiskJustification: risk.highRiskJustification || ''
           }
-        : { factor: '', hazard: '', agent: '', source: '', exposure: '', damage: '', probability: 1, severity: 1, controls: '', actionPlanItems: '', highRiskJustification: '' }
+        : { factor: '', hazard: '', agent: '', source: '', exposure: '', damage: '', probability: 1, severity: 1, controls: '', actionPlanItems: [], highRiskJustification: '' }
     );
     setRiskError('');
     setRiskModalOpen(true);
@@ -310,7 +311,7 @@ const SstAssessments = () => {
         probability: Number(riskForm.probability) || 1,
         severity: Number(riskForm.severity) || 1,
         controls: splitLines(riskForm.controls).map((description, index) => ({ type: index === 0 ? 'engenharia' : 'administrativo', description, hierarchyLevel: index + 1 })),
-        actionPlanItems: splitLines(riskForm.actionPlanItems).map((title) => ({ title, status: 'pendente' })),
+        actionPlanItems: (riskForm.actionPlanItems || []).filter((a) => a.title?.trim()).map((a) => ({ title: a.title.trim(), responsible: a.responsible?.trim() || '', dueDate: a.dueDate || null, priority: a.priority || 'media', status: 'pendente' })),
         highRiskJustification: riskForm.highRiskJustification
       };
       if (editingRiskId) {
@@ -491,7 +492,21 @@ const SstAssessments = () => {
           <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Probabilidade</label><input className="input-field" type="number" min="1" max="5" value={riskForm.probability} onChange={(event) => setRiskForm((prev) => ({ ...prev, probability: Number(event.target.value) || 1 }))} /></div>
           <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Severidade</label><input className="input-field" type="number" min="1" max="5" value={riskForm.severity} onChange={(event) => setRiskForm((prev) => ({ ...prev, severity: Number(event.target.value) || 1 }))} /></div>
           <div className="md:col-span-2"><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Controles</label><textarea className="input-field min-h-[90px]" value={riskForm.controls} onChange={(event) => setRiskForm((prev) => ({ ...prev, controls: event.target.value }))} placeholder="Um controle por linha" /></div>
-          <div className="md:col-span-2"><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Plano de acao</label><textarea className="input-field min-h-[90px]" value={riskForm.actionPlanItems} onChange={(event) => setRiskForm((prev) => ({ ...prev, actionPlanItems: event.target.value }))} placeholder="Uma acao por linha" /></div>
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Plano de acao</label>
+            {(riskForm.actionPlanItems || []).map((actionItem, actionIndex) => (
+              <div key={actionIndex} className="mb-2 grid grid-cols-[1fr_0.7fr_0.6fr_0.5fr_auto] gap-2 items-end">
+                <input className="input-field" placeholder="Titulo da acao" value={actionItem.title} onChange={(e) => { const next = [...riskForm.actionPlanItems]; next[actionIndex] = { ...next[actionIndex], title: e.target.value }; setRiskForm((prev) => ({ ...prev, actionPlanItems: next })); }} />
+                <input className="input-field" placeholder="Responsavel" value={actionItem.responsible} onChange={(e) => { const next = [...riskForm.actionPlanItems]; next[actionIndex] = { ...next[actionIndex], responsible: e.target.value }; setRiskForm((prev) => ({ ...prev, actionPlanItems: next })); }} />
+                <input type="date" className="input-field" value={actionItem.dueDate} onChange={(e) => { const next = [...riskForm.actionPlanItems]; next[actionIndex] = { ...next[actionIndex], dueDate: e.target.value }; setRiskForm((prev) => ({ ...prev, actionPlanItems: next })); }} />
+                <select className="input-field" value={actionItem.priority} onChange={(e) => { const next = [...riskForm.actionPlanItems]; next[actionIndex] = { ...next[actionIndex], priority: e.target.value }; setRiskForm((prev) => ({ ...prev, actionPlanItems: next })); }}>
+                  <option value="baixa">Baixa</option><option value="media">Media</option><option value="alta">Alta</option><option value="critica">Critica</option>
+                </select>
+                <button type="button" className="btn-secondary p-2 text-red-600" onClick={() => setRiskForm((prev) => ({ ...prev, actionPlanItems: prev.actionPlanItems.filter((_, i) => i !== actionIndex) }))}>&times;</button>
+              </div>
+            ))}
+            <button type="button" className="btn-secondary text-sm mt-1" onClick={() => setRiskForm((prev) => ({ ...prev, actionPlanItems: [...(prev.actionPlanItems || []), { ...EMPTY_ACTION_ITEM }] }))}>+ Adicionar acao</button>
+          </div>
           <div className="md:col-span-2"><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Justificativa para risco alto/critico</label><textarea className="input-field min-h-[90px]" value={riskForm.highRiskJustification} onChange={(event) => setRiskForm((prev) => ({ ...prev, highRiskJustification: event.target.value }))} /></div>
         </div>
       </FormModal>

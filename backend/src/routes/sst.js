@@ -8,6 +8,8 @@ const {
   ACTIVITY_STATUS,
   CONTROL_TYPES,
   ACTION_STATUS,
+  ACTION_PRIORITY,
+  ACTION_TYPES,
   DOCUMENT_TYPES,
   DOCUMENT_STATUS,
   DOCUMENT_SCOPE_TYPES,
@@ -2101,6 +2103,278 @@ router.get('/audit', requirePermission('sst:read'), async (req, res) => {
   } catch (error) {
     return sendError(res, { message: 'Erro ao listar auditoria tecnica', meta: { details: error.message } }, error.status || 500);
   }
+});
+
+// ─────────────────────────────────────────────
+// CONSOLIDATED ACTION PLAN
+// ─────────────────────────────────────────────
+
+const mapActionPlanItem = (item, risk, assessment, sector, role) => ({
+  id: item._id?.toString(),
+  riskId: risk._id?.toString(),
+  assessmentId: assessment._id?.toString(),
+  title: item.title || '',
+  description: item.description || '',
+  responsible: item.responsible || '',
+  dueDate: item.dueDate || null,
+  status: item.status || 'pendente',
+  priority: item.priority || 'media',
+  tipo: item.tipo || 'corretiva',
+  cost: item.cost || 0,
+  acceptanceCriteria: item.acceptanceCriteria || '',
+  observations: item.observations || '',
+  context: {
+    assessmentTitle: assessment.title || '',
+    assessmentStatus: assessment.status || '',
+    sector: sector?.nome || '',
+    role: role?.nome || '',
+    hazard: risk.hazard || '',
+    factor: risk.factor || '',
+    riskLevel: risk.level || 'toleravel',
+    probability: risk.probability || 1,
+    severity: risk.severity || 1
+  }
+});
+
+router.get('/action-plan', requirePermission('sst:read'), async (req, res) => {
+  try {
+    const empresaId = String(req.query.empresaId || '').trim();
+    if (!empresaId) {
+      return sendError(res, { message: 'empresaId e obrigatorio' }, 400);
+    }
+
+    const statusFilter = String(req.query.status || '').trim();
+    const priorityFilter = String(req.query.priority || '').trim();
+
+    const riskQuery = { empresaId };
+    const risks = await SstAssessmentRisk.find(riskQuery).lean();
+
+    if (!risks.length) {
+      return sendSuccess(res, { data: [], meta: { total: 0 } });
+    }
+
+    const assessmentIds = [...new Set(risks.map((r) => r.assessmentId?.toString()).filter(Boolean))];
+    const sectorIds = [...new Set(risks.map((r) => r.sectorId?.toString()).filter(Boolean))];
+    const roleIds = [...new Set(risks.map((r) => r.roleId?.toString()).filter(Boolean))];
+
+    const [assessments, sectors, roles] = await Promise.all([
+      SstRiskAssessment.find({ _id: { $in: assessmentIds } }).lean(),
+      SstSector.find({ _id: { $in: sectorIds } }).lean(),
+      SstRole.find({ _id: { $in: roleIds } }).lean()
+    ]);
+
+    const assessmentMap = new Map(assessments.map((a) => [a._id.toString(), a]));
+    const sectorMap = new Map(sectors.map((s) => [s._id.toString(), s]));
+    const roleMap = new Map(roles.map((r) => [r._id.toString(), r]));
+
+    const items = [];
+    for (const risk of risks) {
+      const assessment = assessmentMap.get(risk.assessmentId?.toString()) || {};
+      const sector = sectorMap.get(risk.sectorId?.toString());
+      const role = roleMap.get(risk.roleId?.toString());
+      for (const item of (risk.actionPlanItems || [])) {
+        if (statusFilter && item.status !== statusFilter) continue;
+        if (priorityFilter && (item.priority || 'media') !== priorityFilter) continue;
+        items.push(mapActionPlanItem(item, risk, assessment, sector, role));
+      }
+    }
+
+    items.sort((a, b) => {
+      const priorityOrder = { critica: 0, alta: 1, media: 2, baixa: 3 };
+      const pa = priorityOrder[a.priority] ?? 2;
+      const pb = priorityOrder[b.priority] ?? 2;
+      if (pa !== pb) return pa - pb;
+      if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate);
+      if (a.dueDate) return -1;
+      if (b.dueDate) return 1;
+      return 0;
+    });
+
+    return sendSuccess(res, { data: items, meta: { total: items.length } });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao listar plano de acao consolidado', meta: { details: error.message } }, error.status || 500);
+  }
+});
+
+router.get('/action-plan/summary', requirePermission('sst:read'), async (req, res) => {
+  try {
+    const empresaId = String(req.query.empresaId || '').trim();
+    if (!empresaId) {
+      return sendError(res, { message: 'empresaId e obrigatorio' }, 400);
+    }
+
+    const risks = await SstAssessmentRisk.find({ empresaId }).lean();
+    const now = new Date();
+    let total = 0;
+    let pendentes = 0;
+    let emAndamento = 0;
+    let concluidas = 0;
+    let vencidas = 0;
+    let custoTotal = 0;
+
+    for (const risk of risks) {
+      for (const item of (risk.actionPlanItems || [])) {
+        total++;
+        if (item.status === 'pendente') pendentes++;
+        else if (item.status === 'em_andamento') emAndamento++;
+        else if (item.status === 'concluida') concluidas++;
+        if (item.dueDate && new Date(item.dueDate) < now && item.status !== 'concluida' && item.status !== 'cancelada') {
+          vencidas++;
+        }
+        custoTotal += item.cost || 0;
+      }
+    }
+
+    return sendSuccess(res, {
+      data: { total, pendentes, emAndamento, concluidas, vencidas, custoTotal },
+      meta: {}
+    });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao calcular resumo do plano de acao', meta: { details: error.message } }, error.status || 500);
+  }
+});
+
+router.get('/action-plan/risks-lookup', requirePermission('sst:read'), async (req, res) => {
+  try {
+    const empresaId = String(req.query.empresaId || '').trim();
+    if (!empresaId) {
+      return sendError(res, { message: 'empresaId e obrigatorio' }, 400);
+    }
+
+    const risks = await SstAssessmentRisk.find({ empresaId }).lean();
+    
+    if (!risks.length) {
+      return sendSuccess(res, { data: [], meta: { total: 0 } });
+    }
+
+    const assessmentIds = [...new Set(risks.map((r) => r.assessmentId?.toString()).filter(Boolean))];
+    const sectorIds = [...new Set(risks.map((r) => r.sectorId?.toString()).filter(Boolean))];
+    const roleIds = [...new Set(risks.map((r) => r.roleId?.toString()).filter(Boolean))];
+
+    const [assessments, sectors, roles] = await Promise.all([
+      SstRiskAssessment.find({ _id: { $in: assessmentIds } }).lean(),
+      SstSector.find({ _id: { $in: sectorIds } }).lean(),
+      SstRole.find({ _id: { $in: roleIds } }).lean()
+    ]);
+
+    const assessmentMap = new Map(assessments.map((a) => [a._id.toString(), a]));
+    const sectorMap = new Map(sectors.map((s) => [s._id.toString(), s]));
+    const roleMap = new Map(roles.map((r) => [r._id.toString(), r]));
+
+    const items = risks.map((risk) => {
+      const assessment = assessmentMap.get(risk.assessmentId?.toString()) || {};
+      const sector = sectorMap.get(risk.sectorId?.toString());
+      const role = roleMap.get(risk.roleId?.toString());
+      
+      return {
+        id: risk._id?.toString(),
+        hazard: risk.hazard || '',
+        riskLevel: risk.level || 'toleravel',
+        assessmentTitle: assessment.title || '',
+        sector: sector?.nome || '',
+        role: role?.nome || ''
+      };
+    });
+
+    return sendSuccess(res, { data: items, meta: { total: items.length } });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao buscar lookup de riscos para plano de acao', meta: { details: error.message } }, error.status || 500);
+  }
+});
+
+router.post('/action-plan/:riskId', requirePermission('sst:write'), async (req, res) => {
+  try {
+    const riskId = requireObjectId(req.params.riskId, 'riskId invalido');
+    
+    const risk = await SstAssessmentRisk.findById(riskId);
+    if (!risk) return sendError(res, { message: 'Risco nao encontrado' }, 404);
+
+    const body = req.body || {};
+    
+    const newItem = {
+      title: String(body.title || '').trim(),
+      description: String(body.description || '').trim(),
+      responsible: String(body.responsible || '').trim(),
+      dueDate: body.dueDate || null,
+      status: body.status || 'pendente',
+      priority: body.priority || 'media',
+      tipo: body.tipo || 'corretiva',
+      cost: Number(body.cost) || 0,
+      acceptanceCriteria: String(body.acceptanceCriteria || '').trim(),
+      observations: String(body.observations || '').trim()
+    };
+    
+    if (!newItem.title) {
+       return sendError(res, { message: 'O titulo da acao e obrigatorio' }, 400);
+    }
+
+    risk.actionPlanItems.push(newItem);
+    risk.updatedBy = toActor(req.user);
+    await risk.save();
+    
+    const addedItem = risk.actionPlanItems[risk.actionPlanItems.length - 1];
+
+    const assessment = await SstRiskAssessment.findById(risk.assessmentId).lean();
+    const sector = await SstSector.findById(risk.sectorId).lean();
+    const role = await SstRole.findById(risk.roleId).lean();
+
+    return sendSuccess(res, {
+      data: mapActionPlanItem(addedItem, risk, assessment || {}, sector, role),
+      message: 'Item do plano de acao criado com sucesso',
+      status: 201
+    });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao criar item do plano de acao', meta: { details: error.message } }, error.status || 500);
+  }
+});
+
+router.put('/action-plan/:riskId/:itemId', requirePermission('sst:write'), async (req, res) => {
+  try {
+    const riskId = requireObjectId(req.params.riskId, 'riskId invalido');
+    const itemId = requireObjectId(req.params.itemId, 'itemId invalido');
+
+    const risk = await SstAssessmentRisk.findById(riskId);
+    if (!risk) return sendError(res, { message: 'Risco nao encontrado' }, 404);
+
+    const item = risk.actionPlanItems.id(itemId);
+    if (!item) return sendError(res, { message: 'Item do plano de acao nao encontrado' }, 404);
+
+    const body = req.body || {};
+    if (body.title !== undefined) item.title = String(body.title).trim();
+    if (body.description !== undefined) item.description = String(body.description).trim();
+    if (body.responsible !== undefined) item.responsible = String(body.responsible).trim();
+    if (body.dueDate !== undefined) item.dueDate = body.dueDate || null;
+    if (body.status !== undefined && ACTION_STATUS.includes(body.status)) item.status = body.status;
+    if (body.priority !== undefined && ACTION_PRIORITY.includes(body.priority)) item.priority = body.priority;
+    if (body.tipo !== undefined && ACTION_TYPES.includes(body.tipo)) item.tipo = body.tipo;
+    if (body.cost !== undefined) item.cost = Number(body.cost) || 0;
+    if (body.acceptanceCriteria !== undefined) item.acceptanceCriteria = String(body.acceptanceCriteria).trim();
+    if (body.observations !== undefined) item.observations = String(body.observations).trim();
+
+    risk.updatedBy = toActor(req.user);
+    await risk.save();
+
+    const assessment = await SstRiskAssessment.findById(risk.assessmentId).lean();
+    const sector = await SstSector.findById(risk.sectorId).lean();
+    const role = await SstRole.findById(risk.roleId).lean();
+
+    return sendSuccess(res, {
+      data: mapActionPlanItem(item, risk, assessment || {}, sector, role),
+      message: 'Item do plano de acao atualizado com sucesso'
+    });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao atualizar item do plano de acao', meta: { details: error.message } }, error.status || 500);
+  }
+});
+
+router.get('/action-plan/metadata', requirePermission('sst:read'), async (_req, res) => {
+  return sendSuccess(res, {
+    data: {
+      statusTypes: ACTION_STATUS,
+      priorityTypes: ACTION_PRIORITY,
+      tipoTypes: ACTION_TYPES
+    }
+  });
 });
 
 module.exports = router;

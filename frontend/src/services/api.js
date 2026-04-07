@@ -305,7 +305,14 @@ export const sstService = {
   createCatalogItem: (data) => api.post('/sst/catalogs', data),
   updateCatalogItem: (id, data) => api.put(`/sst/catalogs/${id}`, data),
 
-  listAudit: (params = {}) => api.get('/sst/audit', { params })
+  listAudit: (params = {}) => api.get('/sst/audit', { params }),
+
+  getActionPlan: (params = {}) => api.get('/sst/action-plan', { params }),
+  getActionPlanSummary: (params = {}) => api.get('/sst/action-plan/summary', { params }),
+  getActionPlanMetadata: () => api.get('/sst/action-plan/metadata'),
+  getActionPlanRisksLookup: (params = {}) => api.get('/sst/action-plan/risks-lookup', { params }),
+  createActionPlanItem: (riskId, data) => api.post(`/sst/action-plan/${riskId}`, data),
+  updateActionPlanItem: (riskId, itemId, data) => api.put(`/sst/action-plan/${riskId}/${itemId}`, data),
 };
 
 // Serviços de Incidentes
