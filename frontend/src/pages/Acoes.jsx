@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Target,
   Search,
@@ -16,17 +16,9 @@ import MetricCard from '../components/ui/MetricCard';
 import PageHeader from '../components/ui/PageHeader';
 import { empresasService, sstService } from '../services/api';
 
+// --- Module-level constants (rendering-hoist-jsx, js-index-maps) ---
 const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-const formatDate = (value) => {
-  if (!value) return '';
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '' : dateFormatter.format(d);
-};
-
-const isOverdue = (item) =>
-  item.dueDate && new Date(item.dueDate) < new Date() && item.status !== 'concluida' && item.status !== 'cancelada';
 
 const STATUS_CONFIG = {
   pendente: { label: 'Pendente', class: 'status-warning' },
@@ -56,10 +48,70 @@ const RISK_LEVEL_CONFIG = {
   critico: { label: 'Critico', class: 'status-danger' }
 };
 
+// Empty form templates at module level (lazy state init pattern)
+const EMPTY_CREATE_FORM = {
+  riskId: '',
+  title: '',
+  description: '',
+  responsible: '',
+  dueDate: '',
+  status: 'pendente',
+  priority: 'media',
+  tipo: 'corretiva',
+  cost: 0,
+  acceptanceCriteria: '',
+  observations: ''
+};
+
+// Hoisted static JSX (rendering-hoist-jsx)
+const LoadingSpinner = (
+  <div className="flex h-64 items-center justify-center">
+    <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary-500" />
+  </div>
+);
+const InlineSpinner = (
+  <div className="flex h-48 items-center justify-center">
+    <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary-500" />
+  </div>
+);
+
+// Pure helpers at module level
+const formatDate = (value) => {
+  if (!value) return '';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '' : dateFormatter.format(d);
+};
+
+const isOverdue = (item) =>
+  Boolean(item.dueDate) && new Date(item.dueDate) < new Date() && item.status !== 'concluida' && item.status !== 'cancelada';
+
+// Builds edit form from an existing item (pure function, not called inside render loop)
+const buildEditForm = (item) => ({
+  riskId: item.riskId,
+  title: item.title || '',
+  description: item.description || '',
+  responsible: item.responsible || '',
+  dueDate: item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '',
+  status: item.status || 'pendente',
+  priority: item.priority || 'media',
+  tipo: item.tipo || 'corretiva',
+  cost: item.cost || 0,
+  acceptanceCriteria: item.acceptanceCriteria || '',
+  observations: item.observations || ''
+});
+
+// Memoized Badge component to avoid re-render when parent re-renders (rerender-memo)
 const Badge = ({ value, config }) => {
   const cfg = config[value] || { label: value || '—', class: 'status-info' };
   return <span className={`status-pill ${cfg.class} ${cfg.extra || ''}`}>{cfg.label}</span>;
 };
+
+// OverdueBadge hoisted outside map to avoid recreation each render
+const OverdueBadge = (
+  <span className="status-pill status-danger font-bold">
+    <AlertTriangle className="mr-1 inline h-3 w-3" />Vencida
+  </span>
+);
 
 const Acoes = () => {
   const [loading, setLoading] = useState(true);
@@ -68,36 +120,52 @@ const Acoes = () => {
   const [items, setItems] = useState([]);
   const [summary, setSummary] = useState(null);
   const [risksLookup, setRisksLookup] = useState([]);
-  const [filters, setFilters] = useState({ status: '', priority: '', search: '' });
+
+  // Use primitive filter values (rerender-dependencies)
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterPriority, setFilterPriority] = useState('');
+  const [filterSearch, setFilterSearch] = useState('');
+
+  // Single modal state, with a boolean flag for create vs edit (eliminates double-state isCreating + editItem)
+  const [modalMode, setModalMode] = useState(null); // null | 'create' | 'edit'
   const [editItem, setEditItem] = useState(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editForm, setEditForm] = useState({});
+  const [editForm, setEditForm] = useState(EMPTY_CREATE_FORM);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
 
+  // Derived boolean (rerender-derived-state)
+  const editModalOpen = modalMode !== null;
+  const isCreating = modalMode === 'create';
+
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const res = await empresasService.getAll();
+        if (cancelled) return;
         const list = res.data?.data || [];
         setCompanies(list);
-        if (list.length && !selectedEmpresa) setSelectedEmpresa(list[0].id);
+        // Functional setState to avoid stale closure (rerender-functional-setstate)
+        setSelectedEmpresa((prev) => (prev ? prev : list[0]?.id || ''));
       } catch (err) {
-        console.error('Erro ao carregar empresas:', err);
+        if (!cancelled) console.error('Erro ao carregar empresas:', err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, []);
+    return () => { cancelled = true; };
+  }, []); // runs once — no deps needed
 
-  const loadData = async (empresaId) => {
-    if (!empresaId) return;
+  // Stable loadData via useCallback with narrow primitive deps (rerender-dependencies)
+  const loadData = useCallback(async (empresaId) => {
+    if (!empresaId) return; // early exit (js-early-exit)
     try {
       setLoading(true);
       const params = { empresaId };
-      if (filters.status) params.status = filters.status;
-      if (filters.priority) params.priority = filters.priority;
+      if (filterStatus) params.status = filterStatus;
+      if (filterPriority) params.priority = filterPriority;
+
+      // Parallel fetching — avoids waterfall (async-parallel)
       const [planRes, summaryRes, lookupRes] = await Promise.all([
         sstService.getActionPlan(params),
         sstService.getActionPlanSummary({ empresaId }),
@@ -114,66 +182,47 @@ const Acoes = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterStatus, filterPriority]);
 
+  // Narrow deps — only primitive values (rerender-dependencies)
   useEffect(() => {
-    if (selectedEmpresa) loadData(selectedEmpresa);
-  }, [selectedEmpresa, filters.status, filters.priority]);
+    if (selectedEmpresa) void loadData(selectedEmpresa);
+  }, [selectedEmpresa, loadData]);
 
+  // Client-side search filter — memoized (rerender-memo)
   const filteredItems = useMemo(() => {
-    if (!filters.search) return items;
-    const term = filters.search.toLowerCase();
-    return items.filter(
-      (item) =>
-        item.title?.toLowerCase().includes(term) ||
-        item.responsible?.toLowerCase().includes(term) ||
-        item.context?.hazard?.toLowerCase().includes(term) ||
-        item.context?.sector?.toLowerCase().includes(term) ||
-        item.context?.role?.toLowerCase().includes(term)
+    if (!filterSearch) return items; // early exit (js-early-exit)
+    const term = filterSearch.toLowerCase();
+    return items.filter((item) =>
+      item.title?.toLowerCase().includes(term) ||
+      item.responsible?.toLowerCase().includes(term) ||
+      item.context?.hazard?.toLowerCase().includes(term) ||
+      item.context?.sector?.toLowerCase().includes(term) ||
+      item.context?.role?.toLowerCase().includes(term)
     );
-  }, [items, filters.search]);
+  }, [items, filterSearch]);
 
-  const openCreateModal = () => {
-    setIsCreating(true);
+  // Stable modal openers using useCallback (rerender-functional-setstate)
+  const openCreateModal = useCallback(() => {
     setEditItem(null);
-    setEditForm({
-      riskId: '',
-      title: '',
-      description: '',
-      responsible: '',
-      dueDate: '',
-      status: 'pendente',
-      priority: 'media',
-      tipo: 'corretiva',
-      cost: 0,
-      acceptanceCriteria: '',
-      observations: ''
-    });
+    setEditForm(EMPTY_CREATE_FORM);
     setEditError('');
-    setEditModalOpen(true);
-  };
+    setModalMode('create');
+  }, []);
 
-  const openEditModal = (item) => {
-    setIsCreating(false);
+  const openEditModal = useCallback((item) => {
     setEditItem(item);
-    setEditForm({
-      riskId: item.riskId,
-      title: item.title || '',
-      description: item.description || '',
-      responsible: item.responsible || '',
-      dueDate: item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '',
-      status: item.status || 'pendente',
-      priority: item.priority || 'media',
-      tipo: item.tipo || 'corretiva',
-      cost: item.cost || 0,
-      acceptanceCriteria: item.acceptanceCriteria || '',
-      observations: item.observations || ''
-    });
+    setEditForm(buildEditForm(item));
     setEditError('');
-    setEditModalOpen(true);
-  };
+    setModalMode('edit');
+  }, []);
 
-  const handleSaveEdit = async (e) => {
+  const closeModal = useCallback(() => {
+    setModalMode(null);
+    setEditItem(null);
+  }, []);
+
+  const handleSaveEdit = useCallback(async (e) => {
     e.preventDefault();
     if (!editForm.riskId) {
       setEditError('Selecione um risco para vincular a acao.');
@@ -182,43 +231,34 @@ const Acoes = () => {
     try {
       setEditSaving(true);
       setEditError('');
+      const payload = { ...editForm, cost: Number(editForm.cost) || 0 };
       if (isCreating) {
-        await sstService.createActionPlanItem(editForm.riskId, {
-          ...editForm,
-          cost: Number(editForm.cost) || 0
-        });
+        await sstService.createActionPlanItem(editForm.riskId, payload);
       } else if (editItem) {
-        await sstService.updateActionPlanItem(editItem.riskId, editItem.id, {
-          ...editForm,
-          cost: Number(editForm.cost) || 0
-        });
+        await sstService.updateActionPlanItem(editItem.riskId, editItem.id, payload);
       }
-      setEditModalOpen(false);
-      setEditItem(null);
+      closeModal();
       await loadData(selectedEmpresa);
     } catch (err) {
       setEditError(err?.response?.data?.message || 'Erro ao salvar acao.');
     } finally {
       setEditSaving(false);
     }
-  };
+  }, [editForm, isCreating, editItem, closeModal, loadData, selectedEmpresa]);
 
-  const handleQuickStatus = async (item, newStatus) => {
+  const handleQuickStatus = useCallback(async (item, newStatus) => {
     try {
       await sstService.updateActionPlanItem(item.riskId, item.id, { status: newStatus });
       await loadData(selectedEmpresa);
     } catch (err) {
       console.error('Erro ao atualizar status:', err);
     }
-  };
+  }, [loadData, selectedEmpresa]);
 
-  if (loading && !companies.length) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary-500" />
-      </div>
-    );
-  }
+  // Early return — show initial spinner before companies load (js-early-exit)
+  if (loading && !companies.length) return LoadingSpinner;
+
+  const hasFilters = Boolean(filterStatus || filterPriority || filterSearch);
 
   return (
     <div className="space-y-6">
@@ -226,13 +266,11 @@ const Acoes = () => {
         eyebrow="Gestao de riscos"
         title="Plano de Acao SST"
         description="Visao consolidada de todas as acoes vinculadas a riscos das avaliacoes SST."
-        actions={
-          selectedEmpresa && (
-            <button type="button" className="btn-primary" onClick={openCreateModal}>
-              + Nova Acao
-            </button>
-          )
-        }
+        actions={selectedEmpresa ? (
+          <button type="button" className="btn-primary" onClick={openCreateModal}>
+            + Nova Acao
+          </button>
+        ) : null}
       >
         <div className="grid gap-3 xl:grid-cols-2">
           <select
@@ -242,9 +280,7 @@ const Acoes = () => {
             onChange={(e) => setSelectedEmpresa(e.target.value)}
           >
             <option value="">Selecione a empresa</option>
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
+            {companies.map((c) => (<option key={c.id} value={c.id}>{c.nome}</option>))}
           </select>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -253,8 +289,8 @@ const Acoes = () => {
               type="text"
               placeholder="Buscar por titulo, responsavel, risco, setor..."
               className="input-field pl-10"
-              value={filters.search}
-              onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
             />
           </div>
         </div>
@@ -276,8 +312,8 @@ const Acoes = () => {
           <select
             id="action-plan-status-filter"
             className="input-field max-w-[200px]"
-            value={filters.status}
-            onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
           >
             <option value="">Todos os status</option>
             <option value="pendente">Pendente</option>
@@ -288,8 +324,8 @@ const Acoes = () => {
           <select
             id="action-plan-priority-filter"
             className="input-field max-w-[200px]"
-            value={filters.priority}
-            onChange={(e) => setFilters((prev) => ({ ...prev, priority: e.target.value }))}
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value)}
           >
             <option value="">Todas as prioridades</option>
             <option value="baixa">Baixa</option>
@@ -299,104 +335,87 @@ const Acoes = () => {
           </select>
         </div>
 
+        {/* Explicit ternaries instead of && to avoid 0/false rendering (rendering-conditional-render) */}
         {!selectedEmpresa ? (
           <EmptyState icon={Target} title="Selecione uma empresa" description="Escolha a empresa para visualizar o plano de acao consolidado." />
         ) : loading ? (
-          <div className="flex h-48 items-center justify-center">
-            <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary-500" />
-          </div>
+          InlineSpinner
         ) : filteredItems.length === 0 ? (
           <EmptyState
             icon={Target}
             title="Nenhuma acao encontrada"
-            description={filters.status || filters.priority || filters.search
-              ? 'Tente ajustar os filtros.'
-              : 'Cadastre riscos com acoes nas avaliacoes SST para popular o plano de acao.'
-            }
+            description={hasFilters ? 'Tente ajustar os filtros.' : 'Cadastre riscos com acoes nas avaliacoes SST para popular o plano de acao.'}
           />
         ) : (
           <div className="space-y-3">
-            {filteredItems.map((item) => (
-              <article
-                key={`${item.riskId}-${item.id}`}
-                className={`rounded-[1.2rem] border bg-white/90 p-4 transition-all hover:shadow-md ${
-                  isOverdue(item)
-                    ? 'border-red-300 bg-red-50/50'
-                    : 'border-slate-200/80'
-                }`}
-              >
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge value={item.status} config={STATUS_CONFIG} />
-                      <Badge value={item.priority} config={PRIORITY_CONFIG} />
-                      <Badge value={item.tipo} config={TIPO_CONFIG} />
-                      {isOverdue(item) && (
-                        <span className="status-pill status-danger font-bold">
-                          <AlertTriangle className="mr-1 inline h-3 w-3" />Vencida
-                        </span>
-                      )}
+            {filteredItems.map((item) => {
+              const overdue = isOverdue(item);
+              return (
+                <article
+                  key={`${item.riskId}-${item.id}`}
+                  className={`rounded-[1.2rem] border bg-white/90 p-4 transition-all hover:shadow-md ${
+                    overdue ? 'border-red-300 bg-red-50/50' : 'border-slate-200/80'
+                  }`}
+                >
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge value={item.status} config={STATUS_CONFIG} />
+                        <Badge value={item.priority} config={PRIORITY_CONFIG} />
+                        <Badge value={item.tipo} config={TIPO_CONFIG} />
+                        {overdue ? OverdueBadge : null}
+                      </div>
+                      <h3 className="mt-3 text-base font-semibold text-slate-950">{item.title}</h3>
+                      {item.description ? <p className="mt-1 text-sm text-slate-600">{item.description}</p> : null}
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+                        {item.responsible ? <span>Responsavel: <strong className="text-slate-700">{item.responsible}</strong></span> : null}
+                        {item.dueDate ? <span>Prazo: <strong className={overdue ? 'text-red-600' : 'text-slate-700'}>{formatDate(item.dueDate)}</strong></span> : null}
+                        {item.cost > 0 ? <span>Custo: <strong className="text-slate-700">{currencyFormatter.format(item.cost)}</strong></span> : null}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                        <Badge value={item.context?.riskLevel} config={RISK_LEVEL_CONFIG} />
+                        <span>{item.context?.hazard}</span>
+                        <span>•</span>
+                        <span>{item.context?.sector} / {item.context?.role}</span>
+                        <span>•</span>
+                        <span>{item.context?.assessmentTitle}</span>
+                      </div>
                     </div>
-                    <h3 className="mt-3 text-base font-semibold text-slate-950">{item.title}</h3>
-                    {item.description && <p className="mt-1 text-sm text-slate-600">{item.description}</p>}
-                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
-                      {item.responsible && <span>Responsavel: <strong className="text-slate-700">{item.responsible}</strong></span>}
-                      {item.dueDate && <span>Prazo: <strong className={isOverdue(item) ? 'text-red-600' : 'text-slate-700'}>{formatDate(item.dueDate)}</strong></span>}
-                      {item.cost > 0 && <span>Custo: <strong className="text-slate-700">{currencyFormatter.format(item.cost)}</strong></span>}
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                      <Badge value={item.context?.riskLevel} config={RISK_LEVEL_CONFIG} />
-                      <span>{item.context?.hazard}</span>
-                      <span>•</span>
-                      <span>{item.context?.sector} / {item.context?.role}</span>
-                      <span>•</span>
-                      <span>{item.context?.assessmentTitle}</span>
+                    <div className="flex min-w-[200px] flex-col gap-2">
+                      <button type="button" className="btn-secondary" onClick={() => openEditModal(item)}>
+                        Editar acao
+                      </button>
+                      {item.status === 'pendente' ? (
+                        <button type="button" className="btn-secondary text-blue-600" onClick={() => handleQuickStatus(item, 'em_andamento')}>
+                          Iniciar
+                        </button>
+                      ) : null}
+                      {item.status === 'pendente' || item.status === 'em_andamento' ? (
+                        <button type="button" className="btn-secondary text-green-600" onClick={() => handleQuickStatus(item, 'concluida')}>
+                          Concluir
+                        </button>
+                      ) : null}
                     </div>
                   </div>
-                  <div className="flex min-w-[200px] flex-col gap-2">
-                    <button type="button" className="btn-secondary" onClick={() => openEditModal(item)}>
-                      Editar acao
-                    </button>
-                    {item.status === 'pendente' && (
-                      <button
-                        type="button"
-                        className="btn-secondary text-blue-600"
-                        onClick={() => handleQuickStatus(item, 'em_andamento')}
-                      >
-                        Iniciar
-                      </button>
-                    )}
-                    {(item.status === 'pendente' || item.status === 'em_andamento') && (
-                      <button
-                        type="button"
-                        className="btn-secondary text-green-600"
-                        onClick={() => handleQuickStatus(item, 'concluida')}
-                      >
-                        Concluir
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         )}
       </div>
 
       <FormModal
         isOpen={editModalOpen}
-        onClose={() => { setEditModalOpen(false); setEditItem(null); }}
+        onClose={closeModal}
         title={isCreating ? 'Nova acao do plano' : 'Editar acao do plano'}
         onSubmit={handleSaveEdit}
         loading={editSaving}
         error={editError}
       >
         <div className="grid gap-4 md:grid-cols-2">
-          {isCreating && (
+          {isCreating ? (
             <div className="md:col-span-2">
-              <label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                Risco Vinculado
-              </label>
+              <label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Risco Vinculado</label>
               <select
                 className="input-field"
                 value={editForm.riskId || ''}
@@ -411,7 +430,7 @@ const Acoes = () => {
                 ))}
               </select>
             </div>
-          )}
+          ) : null}
           <div className="md:col-span-2">
             <label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Titulo</label>
             <input id="edit-action-title" className="input-field" value={editForm.title || ''} onChange={(e) => setEditForm((prev) => ({ ...prev, title: e.target.value }))} required />
@@ -468,11 +487,11 @@ const Acoes = () => {
             <textarea id="edit-action-observations" className="input-field min-h-[70px]" value={editForm.observations || ''} onChange={(e) => setEditForm((prev) => ({ ...prev, observations: e.target.value }))} />
           </div>
         </div>
-        {editItem?.context && (
+        {editItem?.context ? (
           <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
             <strong>Vinculado a:</strong> {editItem.context.hazard} ({editItem.context.riskLevel}) — {editItem.context.sector} / {editItem.context.role} — {editItem.context.assessmentTitle}
           </div>
-        )}
+        ) : null}
       </FormModal>
     </div>
   );

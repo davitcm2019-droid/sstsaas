@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRightCircle, ClipboardCheck, FileCheck2, FilePlus2, Pencil, Plus, ShieldCheck, Sparkles } from 'lucide-react';
 
 import FormModal from '../components/FormModal';
@@ -8,20 +8,46 @@ import PageHeader from '../components/ui/PageHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { empresasService, sstService } from '../services/api';
 
+// --- Constants hoisted to module level to avoid re-creation ---
 const STATUS_LABELS = { draft: 'Rascunho', in_review: 'Em revisao', published: 'Publicada', superseded: 'Substituida' };
 const STATUS_CLASSES = { draft: 'status-warning', in_review: 'status-info', published: 'status-success', superseded: 'status-danger' };
+const RISK_LEVEL_CLASSES = { critico: 'status-danger', alto: 'status-warning', moderado: 'status-info', toleravel: 'status-success' };
 
+const EMPTY_ACTION_ITEM = { title: '', responsible: '', dueDate: '', priority: 'media' };
+
+const EMPTY_ASSESSMENT_FORM = {
+  roleId: '',
+  title: '',
+  abrangenciaInicio: '',
+  abrangenciaFim: '',
+  context: {
+    processoPrincipal: '',
+    localAreaPosto: '',
+    jornadaTurno: '',
+    quantidadeExpostos: 1,
+    condicaoOperacional: '',
+    metodologia: '',
+    instrumentosUtilizados: '',
+    criteriosAvaliacao: '',
+    matrizRisco: ''
+  },
+  responsibleTechnical: { nome: '', email: '', registro: '' }
+};
+
+// --- Pure helpers hoisted at module level ---
 const splitLines = (value) => String(value || '').split('\n').map((item) => item.trim()).filter(Boolean);
+
 const formatDate = (value) => {
   if (!value) return 'Sem data';
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? 'Data invalida' : parsed.toLocaleDateString('pt-BR');
 };
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const formatDateOnly = (value) => {
   const normalized = String(value || '').trim();
   if (!normalized) return 'Sem data';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+  if (ISO_DATE_RE.test(normalized)) {
     const [year, month, day] = normalized.split('-');
     return `${day}/${month}/${year}`;
   }
@@ -29,10 +55,10 @@ const formatDateOnly = (value) => {
 };
 
 const formatCoverageRange = (start, end) => {
-  const normalizedStart = String(start || '').trim();
-  const normalizedEnd = String(end || '').trim();
-  if (!normalizedStart || !normalizedEnd) return 'Abrangencia nao informada';
-  return `${formatDateOnly(normalizedStart)} a ${formatDateOnly(normalizedEnd)}`;
+  const s = String(start || '').trim();
+  const e = String(end || '').trim();
+  if (!s || !e) return 'Abrangencia nao informada';
+  return `${formatDateOnly(s)} a ${formatDateOnly(e)}`;
 };
 
 const mapReadinessLabel = (entry) => {
@@ -43,11 +69,38 @@ const mapReadinessLabel = (entry) => {
   return 'Emitivel';
 };
 
+// Hoisted static loading spinner
+const LoadingSpinner = <div className="flex h-64 items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary-500" /></div>;
+const InlineSpinner = <div className="flex h-64 items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary-500" /></div>;
+
+// Build riskForm from a risk object (computed once per open, keeps form stable)
+const hydrateRiskForm = (risk) => ({
+  factor: risk.factor || '',
+  hazard: risk.hazard || '',
+  agent: risk.agent || '',
+  source: risk.source || '',
+  exposure: risk.exposure || '',
+  damage: risk.damage || '',
+  probability: risk.probability || 1,
+  severity: risk.severity || 1,
+  controls: (risk.controls || []).map((c) => c.description).join('\n'),
+  actionPlanItems: (risk.actionPlanItems || []).map((item) => ({
+    title: item.title || '',
+    responsible: item.responsible || '',
+    dueDate: item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '',
+    priority: item.priority || 'media'
+  })),
+  highRiskJustification: risk.highRiskJustification || ''
+});
+
+const EMPTY_RISK_FORM = { factor: '', hazard: '', agent: '', source: '', exposure: '', damage: '', probability: 1, severity: 1, controls: '', actionPlanItems: [], highRiskJustification: '' };
+
 const SstAssessments = () => {
   const { hasPermission, user } = useAuth();
   const canWrite = hasPermission('sst:write');
   const canApprove = hasPermission('sst:approve');
   const canSign = hasPermission('sst:sign');
+  // Derived boolean — avoids re-render when other user fields change (rerender-derived-state)
   const isAdmin = user?.perfil === 'admin';
 
   const [loading, setLoading] = useState(true);
@@ -57,36 +110,22 @@ const SstAssessments = () => {
   const [sectors, setSectors] = useState([]);
   const [roles, setRoles] = useState([]);
   const [items, setItems] = useState([]);
-  const [filters, setFilters] = useState({ empresaId: '', sectorId: '', roleId: '', status: '' });
+  // Use primitive filter values as separate state to narrow effect deps (rerender-dependencies)
+  const [filterEmpresaId, setFilterEmpresaId] = useState('');
+  const [filterSectorId, setFilterSectorId] = useState('');
+  const [filterRoleId, setFilterRoleId] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
   const [selectedId, setSelectedId] = useState('');
   const [detail, setDetail] = useState(null);
 
   const [assessmentModalOpen, setAssessmentModalOpen] = useState(false);
   const [editingAssessmentId, setEditingAssessmentId] = useState(null);
-  const [assessmentForm, setAssessmentForm] = useState({
-    roleId: '',
-    title: '',
-    abrangenciaInicio: '',
-    abrangenciaFim: '',
-    context: {
-      processoPrincipal: '',
-      localAreaPosto: '',
-      jornadaTurno: '',
-      quantidadeExpostos: 1,
-      condicaoOperacional: '',
-      metodologia: '',
-      instrumentosUtilizados: '',
-      criteriosAvaliacao: '',
-      matrizRisco: ''
-    },
-    responsibleTechnical: { nome: '', email: '', registro: '' }
-  });
+  const [assessmentForm, setAssessmentForm] = useState(EMPTY_ASSESSMENT_FORM);
   const [assessmentError, setAssessmentError] = useState('');
   const [assessmentSaving, setAssessmentSaving] = useState(false);
 
   const [riskModalOpen, setRiskModalOpen] = useState(false);
-  const [riskForm, setRiskForm] = useState({ factor: '', hazard: '', agent: '', source: '', exposure: '', damage: '', probability: 1, severity: 1, controls: '', actionPlanItems: [], highRiskJustification: '' });
-  const EMPTY_ACTION_ITEM = { title: '', responsible: '', dueDate: '', priority: 'media' };
+  const [riskForm, setRiskForm] = useState(EMPTY_RISK_FORM);
   const [riskError, setRiskError] = useState('');
   const [riskSaving, setRiskSaving] = useState(false);
   const [editingRiskId, setEditingRiskId] = useState(null);
@@ -97,27 +136,33 @@ const SstAssessments = () => {
   const [conclusionSaving, setConclusionSaving] = useState(false);
   const [documentReadiness, setDocumentReadiness] = useState({ pgr: null, ltcat: null });
 
-  const resetAssessmentForm = () =>
+  // Memoize metrics to avoid recalculating on every render (rerender-derived-state)
+  const metrics = useMemo(() => ({
+    total: items.length,
+    draft: items.filter((item) => item.status === 'draft').length,
+    review: items.filter((item) => item.status === 'in_review').length,
+    published: items.filter((item) => item.status === 'published').length,
+    revisionRequired: items.filter((item) => item.revisionRequired).length
+  }), [items]);
+
+  // Narrow deps to primitive values (rerender-dependencies)
+  const filteredRoles = useMemo(
+    () => roles.filter((item) =>
+      (!filterSectorId || String(item.sectorId) === filterSectorId) &&
+      (!filterEmpresaId || String(item.empresaId) === filterEmpresaId)
+    ),
+    [roles, filterSectorId, filterEmpresaId]
+  );
+
+  // Stable callbacks using useCallback (rerender-functional-setstate)
+  const resetAssessmentForm = useCallback(() => {
     setAssessmentForm({
-      roleId: '',
-      title: '',
-      abrangenciaInicio: '',
-      abrangenciaFim: '',
-      context: {
-        processoPrincipal: '',
-        localAreaPosto: '',
-        jornadaTurno: '',
-        quantidadeExpostos: 1,
-        condicaoOperacional: '',
-        metodologia: '',
-        instrumentosUtilizados: '',
-        criteriosAvaliacao: '',
-        matrizRisco: ''
-      },
+      ...EMPTY_ASSESSMENT_FORM,
       responsibleTechnical: { nome: user?.nome || '', email: user?.email || '', registro: '' }
     });
+  }, [user?.nome, user?.email]);
 
-  const hydrateAssessmentForm = (assessment) =>
+  const hydrateAssessmentForm = useCallback((assessment) => {
     setAssessmentForm({
       roleId: assessment?.roleId || '',
       title: assessment?.title || '',
@@ -140,42 +185,14 @@ const SstAssessments = () => {
         registro: assessment?.responsibleTechnical?.registro || ''
       }
     });
+  }, [user?.nome, user?.email]);
 
-  const metrics = useMemo(() => ({
-    total: items.length,
-    draft: items.filter((item) => item.status === 'draft').length,
-    review: items.filter((item) => item.status === 'in_review').length,
-    published: items.filter((item) => item.status === 'published').length,
-    revisionRequired: items.filter((item) => item.revisionRequired).length
-  }), [items]);
-
-  const filteredRoles = useMemo(
-    () => roles.filter((item) => (!filters.sectorId || String(item.sectorId) === String(filters.sectorId)) && (!filters.empresaId || String(item.empresaId) === String(filters.empresaId))),
-    [roles, filters]
-  );
-
-  const loadBase = async () => {
-    const [companiesResponse, sectorsResponse, rolesResponse, assessmentsResponse] = await Promise.all([
-      empresasService.getAll(),
-      sstService.listSectors(filters.empresaId ? { empresaId: filters.empresaId } : {}),
-      sstService.listRoles({ ...(filters.empresaId ? { empresaId: filters.empresaId } : {}), ...(filters.sectorId ? { sectorId: filters.sectorId } : {}) }),
-      sstService.listAssessments({
-        ...(filters.empresaId ? { empresaId: filters.empresaId } : {}),
-        ...(filters.sectorId ? { sectorId: filters.sectorId } : {}),
-        ...(filters.roleId ? { roleId: filters.roleId } : {}),
-        ...(filters.status ? { status: filters.status } : {})
-      })
-    ]);
-    const nextItems = assessmentsResponse.data.data || [];
-    setCompanies(companiesResponse.data.data || []);
-    setSectors(sectorsResponse.data.data || []);
-    setRoles(rolesResponse.data.data || []);
-    setItems(nextItems);
-    setSelectedId((prev) => (nextItems.some((item) => String(item.id) === String(prev)) ? prev : nextItems[0]?.id || ''));
-  };
-
-  const loadDetail = async (assessmentId) => {
-    if (!assessmentId) return setDetail(null);
+  const loadDetail = useCallback(async (assessmentId) => {
+    // Early return pattern (js-early-exit)
+    if (!assessmentId) {
+      setDetail(null);
+      return;
+    }
     try {
       setDetailLoading(true);
       const response = await sstService.getAssessment(assessmentId);
@@ -185,38 +202,70 @@ const SstAssessments = () => {
     } finally {
       setDetailLoading(false);
     }
-  };
+  }, []);
+
+  const loadBase = useCallback(async () => {
+    // Parallel fetching (async-parallel)
+    const [companiesResponse, sectorsResponse, rolesResponse, assessmentsResponse] = await Promise.all([
+      empresasService.getAll(),
+      sstService.listSectors(filterEmpresaId ? { empresaId: filterEmpresaId } : {}),
+      sstService.listRoles({
+        ...(filterEmpresaId ? { empresaId: filterEmpresaId } : {}),
+        ...(filterSectorId ? { sectorId: filterSectorId } : {})
+      }),
+      sstService.listAssessments({
+        ...(filterEmpresaId ? { empresaId: filterEmpresaId } : {}),
+        ...(filterSectorId ? { sectorId: filterSectorId } : {}),
+        ...(filterRoleId ? { roleId: filterRoleId } : {}),
+        ...(filterStatus ? { status: filterStatus } : {})
+      })
+    ]);
+    const nextItems = assessmentsResponse.data.data || [];
+    setCompanies(companiesResponse.data.data || []);
+    setSectors(sectorsResponse.data.data || []);
+    setRoles(rolesResponse.data.data || []);
+    setItems(nextItems);
+    // Use functional setState to read latest selectedId (rerender-functional-setstate)
+    setSelectedId((prev) => (nextItems.some((item) => String(item.id) === String(prev)) ? prev : nextItems[0]?.id || ''));
+  }, [filterEmpresaId, filterSectorId, filterRoleId, filterStatus]);
+
+  // Stable refreshSelected built from stable callbacks
+  const refreshSelected = useCallback(async (id) => {
+    await loadBase();
+    if (id) await loadDetail(id);
+  }, [loadBase, loadDetail]);
 
   useEffect(() => {
-    void (async () => {
+    let cancelled = false;
+    (async () => {
       try {
         setLoading(true);
         setError('');
         await loadBase();
       } catch (requestError) {
-        setError(requestError?.response?.data?.message || 'Erro ao carregar avaliacoes.');
+        if (!cancelled) setError(requestError?.response?.data?.message || 'Erro ao carregar avaliacoes.');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, [filters.empresaId, filters.sectorId, filters.roleId, filters.status]);
+    return () => { cancelled = true; };
+  }, [loadBase]); // now driven by stable loadBase (which itself depends on primitive filter values)
 
   useEffect(() => {
     void loadDetail(selectedId);
-  }, [selectedId]);
+  }, [selectedId, loadDetail]);
 
+  // Narrow dependency to primitive ID and status (rerender-dependencies)
+  const assessmentId = detail?.assessment?.id;
+  const assessmentStatus = detail?.assessment?.status;
   useEffect(() => {
-    const assessmentId = detail?.assessment?.id;
-    if (!assessmentId || detail?.assessment?.status !== 'published') {
+    if (!assessmentId || assessmentStatus !== 'published') {
       setDocumentReadiness({ pgr: null, ltcat: null });
       return;
     }
 
     let active = true;
-    setDocumentReadiness({
-      pgr: { loading: true },
-      ltcat: { loading: true }
-    });
+    setDocumentReadiness({ pgr: { loading: true }, ltcat: { loading: true } });
 
     void Promise.all([
       sstService.getDocumentReadiness({ documentType: 'pgr', scopeType: 'assessment', scopeRefId: assessmentId }),
@@ -224,31 +273,19 @@ const SstAssessments = () => {
     ])
       .then(([pgrResponse, ltcatResponse]) => {
         if (!active) return;
-        setDocumentReadiness({
-          pgr: pgrResponse.data?.data || null,
-          ltcat: ltcatResponse.data?.data || null
-        });
+        setDocumentReadiness({ pgr: pgrResponse.data?.data || null, ltcat: ltcatResponse.data?.data || null });
       })
       .catch((requestError) => {
         if (!active) return;
         const message = requestError?.response?.data?.message || 'Erro ao validar prontidao documental.';
-        setDocumentReadiness({
-          pgr: { error: message, blocking: true, missingFields: [message] },
-          ltcat: { error: message, blocking: true, missingFields: [message] }
-        });
+        const errEntry = { error: message, blocking: true, missingFields: [message] };
+        setDocumentReadiness({ pgr: errEntry, ltcat: errEntry });
       });
 
-    return () => {
-      active = false;
-    };
-  }, [detail?.assessment?.id, detail?.assessment?.status]);
+    return () => { active = false; };
+  }, [assessmentId, assessmentStatus]);
 
-  const refreshSelected = async (id = selectedId) => {
-    await loadBase();
-    if (id) await loadDetail(id);
-  };
-
-  const handleSaveAssessment = async (event) => {
+  const handleSaveAssessment = useCallback(async (event) => {
     event.preventDefault();
     try {
       setAssessmentSaving(true);
@@ -271,34 +308,18 @@ const SstAssessments = () => {
     } finally {
       setAssessmentSaving(false);
     }
-  };
+  }, [editingAssessmentId, assessmentForm, loadBase, loadDetail]);
 
-  const openRiskModal = (risk = null) => {
+  const openRiskModal = useCallback((risk = null) => {
     setEditingRiskId(risk?.id || null);
-    setRiskForm(
-      risk
-        ? {
-            factor: risk.factor || '',
-            hazard: risk.hazard || '',
-            agent: risk.agent || '',
-            source: risk.source || '',
-            exposure: risk.exposure || '',
-            damage: risk.damage || '',
-            probability: risk.probability || 1,
-            severity: risk.severity || 1,
-            controls: (risk.controls || []).map((item) => item.description).join('\n'),
-            actionPlanItems: (risk.actionPlanItems || []).map((item) => ({ title: item.title || '', responsible: item.responsible || '', dueDate: item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '', priority: item.priority || 'media' })),
-            highRiskJustification: risk.highRiskJustification || ''
-          }
-        : { factor: '', hazard: '', agent: '', source: '', exposure: '', damage: '', probability: 1, severity: 1, controls: '', actionPlanItems: [], highRiskJustification: '' }
-    );
+    setRiskForm(risk ? hydrateRiskForm(risk) : EMPTY_RISK_FORM);
     setRiskError('');
     setRiskModalOpen(true);
-  };
+  }, []);
 
-  const handleSaveRisk = async (event) => {
+  const handleSaveRisk = useCallback(async (event) => {
     event.preventDefault();
-    if (!detail?.assessment?.id) return;
+    if (!assessmentId) return;
     try {
       setRiskSaving(true);
       setRiskError('');
@@ -311,48 +332,54 @@ const SstAssessments = () => {
         damage: riskForm.damage,
         probability: Number(riskForm.probability) || 1,
         severity: Number(riskForm.severity) || 1,
-        controls: splitLines(riskForm.controls).map((description, index) => ({ type: index === 0 ? 'engenharia' : 'administrativo', description, hierarchyLevel: index + 1 })),
-        actionPlanItems: (riskForm.actionPlanItems || []).filter((a) => a.title?.trim()).map((a) => ({ title: a.title.trim(), responsible: a.responsible?.trim() || '', dueDate: a.dueDate || null, priority: a.priority || 'media', status: 'pendente' })),
+        controls: splitLines(riskForm.controls).map((description, index) => ({
+          type: index === 0 ? 'engenharia' : 'administrativo',
+          description,
+          hierarchyLevel: index + 1
+        })),
+        actionPlanItems: (riskForm.actionPlanItems || [])
+          .filter((a) => a.title?.trim())
+          .map((a) => ({ title: a.title.trim(), responsible: a.responsible?.trim() || '', dueDate: a.dueDate || null, priority: a.priority || 'media', status: 'pendente' })),
         highRiskJustification: riskForm.highRiskJustification
       };
       if (editingRiskId) {
         await sstService.updateAssessmentRisk(editingRiskId, payload);
       } else {
-        await sstService.createAssessmentRisk(detail.assessment.id, payload);
+        await sstService.createAssessmentRisk(assessmentId, payload);
       }
       setRiskModalOpen(false);
-      await refreshSelected(detail.assessment.id);
+      await refreshSelected(assessmentId);
     } catch (requestError) {
       setRiskError(requestError?.response?.data?.message || 'Erro ao salvar risco.');
     } finally {
       setRiskSaving(false);
     }
-  };
+  }, [assessmentId, riskForm, editingRiskId, refreshSelected]);
 
-  const handleDeleteRisk = async (riskId) => {
+  const handleDeleteRisk = useCallback(async (riskId) => {
     if (!window.confirm('Remover este risco da avaliacao?')) return;
     try {
       setError('');
       await sstService.deleteAssessmentRisk(riskId);
-      await refreshSelected(detail.assessment.id);
+      await refreshSelected(assessmentId);
     } catch (requestError) {
       setError(requestError?.response?.data?.message || 'Erro ao remover risco.');
     }
-  };
+  }, [assessmentId, refreshSelected]);
 
-  const handleDeleteAssessment = async (assessmentId) => {
+  const handleDeleteAssessment = useCallback(async (id) => {
     if (!window.confirm('Remover esta avaliacao e TODOS os seus riscos vinculados? Esta acao nao pode ser desfeita.')) return;
     try {
       setError('');
-      await sstService.deleteAssessment(assessmentId);
+      await sstService.deleteAssessment(id);
       setSelectedId('');
       await refreshSelected(null);
     } catch (requestError) {
       setError(requestError?.response?.data?.message || 'Erro ao remover avaliacao.');
     }
-  };
+  }, [refreshSelected]);
 
-  const openConclusion = () => {
+  const openConclusion = useCallback(() => {
     setConclusionForm({
       result: detail?.conclusion?.result || '',
       basis: detail?.conclusion?.basis || '',
@@ -360,45 +387,90 @@ const SstAssessments = () => {
     });
     setConclusionError('');
     setConclusionModalOpen(true);
-  };
+  }, [detail?.conclusion]);
 
-  const handleSaveConclusion = async (event) => {
+  const handleSaveConclusion = useCallback(async (event) => {
     event.preventDefault();
-    if (!detail?.assessment?.id) return;
+    if (!assessmentId) return;
     try {
       setConclusionSaving(true);
       setConclusionError('');
-      await sstService.upsertAssessmentConclusion(detail.assessment.id, conclusionForm);
+      await sstService.upsertAssessmentConclusion(assessmentId, conclusionForm);
       setConclusionModalOpen(false);
-      await refreshSelected(detail.assessment.id);
+      await refreshSelected(assessmentId);
     } catch (requestError) {
       setConclusionError(requestError?.response?.data?.message || 'Erro ao salvar conclusao tecnica.');
     } finally {
       setConclusionSaving(false);
     }
-  };
+  }, [assessmentId, conclusionForm, refreshSelected]);
 
-  const runAction = async (action) => {
-    if (!detail?.assessment?.id) return;
+  const runAction = useCallback(async (action) => {
+    if (!assessmentId) return;
     try {
       setError('');
-      await action(detail.assessment.id);
-      await refreshSelected(detail.assessment.id);
+      await action(assessmentId);
+      await refreshSelected(assessmentId);
     } catch (requestError) {
       setError(requestError?.response?.data?.message || 'Erro ao executar acao na avaliacao.');
     }
-  };
+  }, [assessmentId, refreshSelected]);
 
-  if (loading) return <div className="flex h-64 items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary-500" /></div>;
+  // Stable action plan item mutation handler (rerender-functional-setstate)
+  const updateActionItem = useCallback((index, field, value) => {
+    setRiskForm((prev) => {
+      const next = [...prev.actionPlanItems];
+      next[index] = { ...next[index], [field]: value };
+      return { ...prev, actionPlanItems: next };
+    });
+  }, []);
+
+  const removeActionItem = useCallback((index) => {
+    setRiskForm((prev) => ({ ...prev, actionPlanItems: prev.actionPlanItems.filter((_, i) => i !== index) }));
+  }, []);
+
+  const addActionItem = useCallback(() => {
+    setRiskForm((prev) => ({ ...prev, actionPlanItems: [...prev.actionPlanItems, { ...EMPTY_ACTION_ITEM }] }));
+  }, []);
+
+  // Early return rendering (rerender-memo + js-early-exit)
+  if (loading) return LoadingSpinner;
+
+  const isDraftOrReview = detail?.assessment?.status !== 'published' && detail?.assessment?.status !== 'superseded';
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Levantamento de riscos" title="Avaliacoes" description="Fluxo autoritativo do SST: cargo -> avaliacao -> riscos da avaliacao." actions={canWrite ? <button type="button" className="btn-primary" onClick={() => { setEditingAssessmentId(null); resetAssessmentForm(); setAssessmentError(''); setAssessmentModalOpen(true); }}><Plus className="h-4 w-4" />Nova avaliacao</button> : null}>
+      <PageHeader
+        eyebrow="Levantamento de riscos"
+        title="Avaliacoes"
+        description="Fluxo autoritativo do SST: cargo -> avaliacao -> riscos da avaliacao."
+        actions={canWrite ? (
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => { setEditingAssessmentId(null); resetAssessmentForm(); setAssessmentError(''); setAssessmentModalOpen(true); }}
+          >
+            <Plus className="h-4 w-4" />Nova avaliacao
+          </button>
+        ) : null}
+      >
         <div className="grid gap-3 xl:grid-cols-4">
-          <select className="input-field" value={filters.empresaId} onChange={(event) => setFilters((prev) => ({ ...prev, empresaId: event.target.value, sectorId: '', roleId: '' }))}><option value="">Todas as empresas</option>{companies.map((company) => <option key={company.id} value={company.id}>{company.nome}</option>)}</select>
-          <select className="input-field" value={filters.sectorId} onChange={(event) => setFilters((prev) => ({ ...prev, sectorId: event.target.value, roleId: '' }))}><option value="">Todos os setores</option>{sectors.map((sector) => <option key={sector.id} value={sector.id}>{sector.nome}</option>)}</select>
-          <select className="input-field" value={filters.roleId} onChange={(event) => setFilters((prev) => ({ ...prev, roleId: event.target.value }))}><option value="">Todos os cargos</option>{filteredRoles.map((role) => <option key={role.id} value={role.id}>{role.nome}</option>)}</select>
-          <select className="input-field" value={filters.status} onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}><option value="">Todos os status</option>{Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+          <select className="input-field" value={filterEmpresaId} onChange={(event) => { setFilterEmpresaId(event.target.value); setFilterSectorId(''); setFilterRoleId(''); }}>
+            <option value="">Todas as empresas</option>
+            {companies.map((company) => <option key={company.id} value={company.id}>{company.nome}</option>)}
+          </select>
+          <select className="input-field" value={filterSectorId} onChange={(event) => { setFilterSectorId(event.target.value); setFilterRoleId(''); }}>
+            <option value="">Todos os setores</option>
+            {sectors.map((sector) => <option key={sector.id} value={sector.id}>{sector.nome}</option>)}
+          </select>
+          <select className="input-field" value={filterRoleId} onChange={(event) => setFilterRoleId(event.target.value)}>
+            <option value="">Todos os cargos</option>
+            {filteredRoles.map((role) => <option key={role.id} value={role.id}>{role.nome}</option>)}
+          </select>
+          <select className="input-field" value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
+            <option value="">Todos os status</option>
+            {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
         </div>
       </PageHeader>
 
@@ -413,11 +485,39 @@ const SstAssessments = () => {
 
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.35fr]">
         <div className="panel-surface p-6">
-          {items.length === 0 ? <EmptyState icon={ClipboardCheck} title="Nenhuma avaliacao cadastrada" description="Crie a primeira avaliacao a partir de um cargo." /> : <div className="space-y-3">{items.map((item) => <button key={item.id} type="button" onClick={() => setSelectedId(item.id)} className={`w-full rounded-[1.35rem] border p-4 text-left transition-all ${String(selectedId) === String(item.id) ? 'border-lime-300 bg-lime-50/50 shadow-[0_20px_40px_rgba(132,204,22,0.12)]' : 'border-slate-200/80 bg-white/90 shadow-[0_18px_40px_rgba(15,23,42,0.05)]'}`}><div className="flex flex-wrap items-center gap-2"><span className={`status-pill ${STATUS_CLASSES[item.status] || 'status-info'}`}>{STATUS_LABELS[item.status] || item.status}</span><span className="status-pill status-info">v{item.version}</span>{item.revisionRequired ? <span className="status-pill status-warning">Revisao pendente</span> : null}</div><h3 className="mt-3 text-base font-semibold text-slate-950">{item.title}</h3><p className="mt-2 text-sm text-slate-600">{formatCoverageRange(item.abrangenciaInicio, item.abrangenciaFim)}</p><p className="mt-1 text-sm text-slate-500">Riscos: {item.riskCount || 0} • Conclusao: {item.conclusionStatus || 'pendente'}</p></button>)}</div>}
+          {items.length === 0 ? (
+            <EmptyState icon={ClipboardCheck} title="Nenhuma avaliacao cadastrada" description="Crie a primeira avaliacao a partir de um cargo." />
+          ) : (
+            <div className="space-y-3">
+              {items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSelectedId(item.id)}
+                  className={`w-full rounded-[1.35rem] border p-4 text-left transition-all ${
+                    String(selectedId) === String(item.id)
+                      ? 'border-lime-300 bg-lime-50/50 shadow-[0_20px_40px_rgba(132,204,22,0.12)]'
+                      : 'border-slate-200/80 bg-white/90 shadow-[0_18px_40px_rgba(15,23,42,0.05)]'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`status-pill ${STATUS_CLASSES[item.status] || 'status-info'}`}>{STATUS_LABELS[item.status] || item.status}</span>
+                    <span className="status-pill status-info">v{item.version}</span>
+                    {item.revisionRequired ? <span className="status-pill status-warning">Revisao pendente</span> : null}
+                  </div>
+                  <h3 className="mt-3 text-base font-semibold text-slate-950">{item.title}</h3>
+                  <p className="mt-2 text-sm text-slate-600">{formatCoverageRange(item.abrangenciaInicio, item.abrangenciaFim)}</p>
+                  <p className="mt-1 text-sm text-slate-500">Riscos: {item.riskCount || 0} • Conclusao: {item.conclusionStatus || 'pendente'}</p>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="panel-surface p-6">
-          {detailLoading ? <div className="flex h-64 items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary-500" /></div> : !detail ? <EmptyState icon={AlertTriangle} title="Selecione uma avaliacao" description="O detalhe tecnico mostrara contexto, riscos, conclusao e publicacao." /> : (
+          {detailLoading ? InlineSpinner : !detail ? (
+            <EmptyState icon={AlertTriangle} title="Selecione uma avaliacao" description="O detalhe tecnico mostrara contexto, riscos, conclusao e publicacao." />
+          ) : (
             <div className="space-y-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
@@ -433,13 +533,13 @@ const SstAssessments = () => {
                   <p className="mt-1 text-xs text-slate-500">Metodologia: {detail.assessment.context?.metodologia || 'Nao informada'} • Instrumentos: {detail.assessment.context?.instrumentosUtilizados || 'Nao informados'}</p>
                 </div>
                 <div className="flex min-w-[230px] flex-col gap-2">
-                  {canWrite && detail.assessment.status !== 'published' && detail.assessment.status !== 'superseded' ? <button type="button" className="btn-secondary" onClick={() => { setEditingAssessmentId(detail.assessment.id); hydrateAssessmentForm(detail.assessment); setAssessmentError(''); setAssessmentModalOpen(true); }}><Pencil className="h-4 w-4" />Editar avaliacao</button> : null}
+                  {canWrite && isDraftOrReview ? <button type="button" className="btn-secondary" onClick={() => { setEditingAssessmentId(detail.assessment.id); hydrateAssessmentForm(detail.assessment); setAssessmentError(''); setAssessmentModalOpen(true); }}><Pencil className="h-4 w-4" />Editar avaliacao</button> : null}
                   {canWrite && detail.assessment.status === 'draft' ? <button type="button" className="btn-secondary" onClick={() => runAction(sstService.startReview)}><ArrowRightCircle className="h-4 w-4" />Enviar para revisao</button> : null}
-                  {canWrite && (detail.assessment.status === 'published' || detail.assessment.status === 'superseded') ? <button type="button" className="btn-secondary" onClick={() => runAction((id) => sstService.createRevision(id, { reviewReason: 'revisao_periodica' }))}><FilePlus2 className="h-4 w-4" />Criar revisao</button> : null}
+                  {canWrite && !isDraftOrReview ? <button type="button" className="btn-secondary" onClick={() => runAction((id) => sstService.createRevision(id, { reviewReason: 'revisao_periodica' }))}><FilePlus2 className="h-4 w-4" />Criar revisao</button> : null}
                   {canSign ? <button type="button" className="btn-secondary" onClick={openConclusion}><FileCheck2 className="h-4 w-4" />Conclusao tecnica</button> : null}
                   {canSign && detail.conclusion && detail.conclusion.status !== 'signed' ? <button type="button" className="btn-secondary" onClick={() => runAction(sstService.signAssessmentConclusion)}><ShieldCheck className="h-4 w-4" />Assinar conclusao</button> : null}
-                  {canApprove && detail.assessment.status !== 'published' && detail.assessment.status !== 'superseded' ? <button type="button" className="btn-primary" onClick={() => runAction(sstService.publishAssessment)}><ShieldCheck className="h-4 w-4" />Publicar avaliacao</button> : null}
-                  {(canWrite && detail.assessment.status !== 'published' && detail.assessment.status !== 'superseded') || isAdmin ? <button type="button" className="btn-secondary text-red-600" onClick={() => handleDeleteAssessment(detail.assessment.id)}><AlertTriangle className="h-4 w-4" />Remover avaliacao</button> : null}
+                  {canApprove && isDraftOrReview ? <button type="button" className="btn-primary" onClick={() => runAction(sstService.publishAssessment)}><ShieldCheck className="h-4 w-4" />Publicar avaliacao</button> : null}
+                  {(canWrite && isDraftOrReview) || isAdmin ? <button type="button" className="btn-secondary text-red-600" onClick={() => handleDeleteAssessment(detail.assessment.id)}><AlertTriangle className="h-4 w-4" />Remover avaliacao</button> : null}
                 </div>
               </div>
 
@@ -459,10 +559,39 @@ const SstAssessments = () => {
 
               <div className="rounded-[1.45rem] border border-slate-200/80 bg-slate-50/60 p-4">
                 <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div><p className="text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Riscos da avaliacao</p><h3 className="mt-1 text-xl font-semibold text-slate-950">Perigos, agentes, danos e acoes</h3></div>
-                  {canWrite && detail.assessment.status !== 'published' && detail.assessment.status !== 'superseded' ? <button type="button" className="btn-primary" onClick={() => openRiskModal()}><Plus className="h-4 w-4" />Novo risco</button> : null}
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Riscos da avaliacao</p>
+                    <h3 className="mt-1 text-xl font-semibold text-slate-950">Perigos, agentes, danos e acoes</h3>
+                  </div>
+                  {canWrite && isDraftOrReview ? <button type="button" className="btn-primary" onClick={() => openRiskModal()}><Plus className="h-4 w-4" />Novo risco</button> : null}
                 </div>
-                {!detail.risks?.length ? <EmptyState icon={AlertTriangle} title="Nenhum risco registrado" description="Cadastre os riscos identificados para esta avaliacao." /> : <div className="space-y-3">{detail.risks.map((risk) => <article key={risk.id} className="rounded-[1.2rem] border border-slate-200/80 bg-white/90 p-4"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className={`status-pill ${risk.level === 'critico' ? 'status-danger' : risk.level === 'alto' ? 'status-warning' : risk.level === 'moderado' ? 'status-info' : 'status-success'}`}>{risk.level}</span></div><h4 className="mt-3 text-base font-semibold text-slate-950">{risk.hazard}</h4><p className="mt-2 text-sm text-slate-600">{risk.factor} • {risk.agent || 'Sem agente detalhado'}</p><p className="mt-2 text-sm text-slate-500">Fonte: {risk.source || 'Nao informada'} • Dano: {risk.damage}</p><p className="mt-2 text-xs text-slate-500">Controles: {(risk.controls || []).map((item) => item.description).join(', ') || 'Nenhum'} • Acoes: {(risk.actionPlanItems || []).length}</p></div>{canWrite && detail.assessment.status !== 'published' && detail.assessment.status !== 'superseded' ? <div className="flex min-w-[180px] flex-col gap-2"><button type="button" className="btn-secondary" onClick={() => openRiskModal(risk)}>Editar risco</button><button type="button" className="btn-secondary text-red-600" onClick={() => handleDeleteRisk(risk.id)}>Remover risco</button></div> : null}</div></article>)}</div>}
+                {!detail.risks?.length ? (
+                  <EmptyState icon={AlertTriangle} title="Nenhum risco registrado" description="Cadastre os riscos identificados para esta avaliacao." />
+                ) : (
+                  <div className="space-y-3">
+                    {detail.risks.map((risk) => (
+                      <article key={risk.id} className="rounded-[1.2rem] border border-slate-200/80 bg-white/90 p-4">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`status-pill ${RISK_LEVEL_CLASSES[risk.level] || 'status-success'}`}>{risk.level}</span>
+                            </div>
+                            <h4 className="mt-3 text-base font-semibold text-slate-950">{risk.hazard}</h4>
+                            <p className="mt-2 text-sm text-slate-600">{risk.factor} • {risk.agent || 'Sem agente detalhado'}</p>
+                            <p className="mt-2 text-sm text-slate-500">Fonte: {risk.source || 'Nao informada'} • Dano: {risk.damage}</p>
+                            <p className="mt-2 text-xs text-slate-500">Controles: {(risk.controls || []).map((c) => c.description).join(', ') || 'Nenhum'} • Acoes: {(risk.actionPlanItems || []).length}</p>
+                          </div>
+                          {canWrite && isDraftOrReview ? (
+                            <div className="flex min-w-[180px] flex-col gap-2">
+                              <button type="button" className="btn-secondary" onClick={() => openRiskModal(risk)}>Editar risco</button>
+                              <button type="button" className="btn-secondary text-red-600" onClick={() => handleDeleteRisk(risk.id)}>Remover risco</button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-[1.35rem] border border-slate-200/80 bg-white/80 p-4">
@@ -476,7 +605,14 @@ const SstAssessments = () => {
         </div>
       </section>
 
-      <FormModal isOpen={assessmentModalOpen} onClose={() => { setAssessmentModalOpen(false); setEditingAssessmentId(null); }} title={editingAssessmentId ? 'Editar avaliacao' : 'Nova avaliacao'} onSubmit={handleSaveAssessment} loading={assessmentSaving} error={assessmentError}>
+      <FormModal
+        isOpen={assessmentModalOpen}
+        onClose={() => { setAssessmentModalOpen(false); setEditingAssessmentId(null); }}
+        title={editingAssessmentId ? 'Editar avaliacao' : 'Nova avaliacao'}
+        onSubmit={handleSaveAssessment}
+        loading={assessmentSaving}
+        error={assessmentError}
+      >
         <div className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2"><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Cargo</label><select className="input-field" value={assessmentForm.roleId} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, roleId: event.target.value }))} required disabled={Boolean(editingAssessmentId)}><option value="">Selecione o cargo</option>{filteredRoles.map((role) => <option key={role.id} value={role.id}>{role.nome}</option>)}</select></div>
           <div className="md:col-span-2"><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Titulo</label><input className="input-field" value={assessmentForm.title} onChange={(event) => setAssessmentForm((prev) => ({ ...prev, title: event.target.value }))} /></div>
@@ -508,18 +644,18 @@ const SstAssessments = () => {
           <div className="md:col-span-2"><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Controles</label><textarea className="input-field min-h-[90px]" value={riskForm.controls} onChange={(event) => setRiskForm((prev) => ({ ...prev, controls: event.target.value }))} placeholder="Um controle por linha" /></div>
           <div className="md:col-span-2">
             <label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Plano de acao</label>
-            {(riskForm.actionPlanItems || []).map((actionItem, actionIndex) => (
+            {riskForm.actionPlanItems.map((actionItem, actionIndex) => (
               <div key={actionIndex} className="mb-2 grid grid-cols-[1fr_0.7fr_0.6fr_0.5fr_auto] gap-2 items-end">
-                <input className="input-field" placeholder="Titulo da acao" value={actionItem.title} onChange={(e) => { const next = [...riskForm.actionPlanItems]; next[actionIndex] = { ...next[actionIndex], title: e.target.value }; setRiskForm((prev) => ({ ...prev, actionPlanItems: next })); }} />
-                <input className="input-field" placeholder="Responsavel" value={actionItem.responsible} onChange={(e) => { const next = [...riskForm.actionPlanItems]; next[actionIndex] = { ...next[actionIndex], responsible: e.target.value }; setRiskForm((prev) => ({ ...prev, actionPlanItems: next })); }} />
-                <input type="date" className="input-field" value={actionItem.dueDate} onChange={(e) => { const next = [...riskForm.actionPlanItems]; next[actionIndex] = { ...next[actionIndex], dueDate: e.target.value }; setRiskForm((prev) => ({ ...prev, actionPlanItems: next })); }} />
-                <select className="input-field" value={actionItem.priority} onChange={(e) => { const next = [...riskForm.actionPlanItems]; next[actionIndex] = { ...next[actionIndex], priority: e.target.value }; setRiskForm((prev) => ({ ...prev, actionPlanItems: next })); }}>
+                <input className="input-field" placeholder="Titulo da acao" value={actionItem.title} onChange={(e) => updateActionItem(actionIndex, 'title', e.target.value)} />
+                <input className="input-field" placeholder="Responsavel" value={actionItem.responsible} onChange={(e) => updateActionItem(actionIndex, 'responsible', e.target.value)} />
+                <input type="date" className="input-field" value={actionItem.dueDate} onChange={(e) => updateActionItem(actionIndex, 'dueDate', e.target.value)} />
+                <select className="input-field" value={actionItem.priority} onChange={(e) => updateActionItem(actionIndex, 'priority', e.target.value)}>
                   <option value="baixa">Baixa</option><option value="media">Media</option><option value="alta">Alta</option><option value="critica">Critica</option>
                 </select>
-                <button type="button" className="btn-secondary p-2 text-red-600" onClick={() => setRiskForm((prev) => ({ ...prev, actionPlanItems: prev.actionPlanItems.filter((_, i) => i !== actionIndex) }))}>&times;</button>
+                <button type="button" className="btn-secondary p-2 text-red-600" onClick={() => removeActionItem(actionIndex)}>&times;</button>
               </div>
             ))}
-            <button type="button" className="btn-secondary text-sm mt-1" onClick={() => setRiskForm((prev) => ({ ...prev, actionPlanItems: [...(prev.actionPlanItems || []), { ...EMPTY_ACTION_ITEM }] }))}>+ Adicionar acao</button>
+            <button type="button" className="btn-secondary text-sm mt-1" onClick={addActionItem}>+ Adicionar acao</button>
           </div>
           <div className="md:col-span-2"><label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Justificativa para risco alto/critico</label><textarea className="input-field min-h-[90px]" value={riskForm.highRiskJustification} onChange={(event) => setRiskForm((prev) => ({ ...prev, highRiskJustification: event.target.value }))} /></div>
         </div>
