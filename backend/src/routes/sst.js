@@ -1073,6 +1073,37 @@ router.put('/assessments/:id', requirePermission('sst:write'), async (req, res) 
   }
 });
 
+router.delete('/assessments/:id', requirePermission('sst:write'), async (req, res) => {
+  try {
+    const actor = toActor(req.user);
+    const current = await SstRiskAssessment.findById(req.params.id);
+    if (!current) return sendError(res, { message: 'Avaliacao nao encontrada' }, 404);
+    if (current.status === 'published' || current.status === 'superseded') {
+      return sendError(res, { message: 'Avaliacoes publicadas ou substituidas nao podem ser excluidas' }, 409);
+    }
+
+    const before = current.toObject();
+    
+    await SstAssessmentRisk.deleteMany({ assessmentId: current._id });
+    await SstAssessmentConclusion.deleteMany({ assessmentId: current._id });
+    await SstAssessmentRevision.deleteMany({ assessmentId: current._id });
+    await SstRiskAssessment.deleteOne({ _id: current._id });
+
+    await recordAudit({
+      entityType: 'assessment',
+      entityId: current._id,
+      action: 'delete',
+      summary: `Avaliacao ${current.title} removida com todas as suas dependencias`,
+      before,
+      actor
+    });
+
+    return sendSuccess(res, { message: 'Avaliacao removida com sucesso' });
+  } catch (error) {
+    return sendError(res, { message: 'Erro ao remover avaliacao', meta: { details: error.message } }, error.status || 500);
+  }
+});
+
 router.post('/assessments/:id/review', requirePermission('sst:approve'), async (req, res) => {
   try {
     const actor = toActor(req.user);

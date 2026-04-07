@@ -339,6 +339,18 @@ const SstAssessments = () => {
     }
   };
 
+  const handleDeleteAssessment = async (assessmentId) => {
+    if (!window.confirm('Remover esta avaliacao e TODOS os seus riscos vinculados? Esta acao nao pode ser desfeita.')) return;
+    try {
+      setError('');
+      await sstService.deleteAssessment(assessmentId);
+      setSelectedId('');
+      await refreshSelected(null);
+    } catch (requestError) {
+      setError(requestError?.response?.data?.message || 'Erro ao remover avaliacao.');
+    }
+  };
+
   const openConclusion = () => {
     setConclusionForm({
       result: detail?.conclusion?.result || '',
@@ -426,6 +438,7 @@ const SstAssessments = () => {
                   {canSign ? <button type="button" className="btn-secondary" onClick={openConclusion}><FileCheck2 className="h-4 w-4" />Conclusao tecnica</button> : null}
                   {canSign && detail.conclusion && detail.conclusion.status !== 'signed' ? <button type="button" className="btn-secondary" onClick={() => runAction(sstService.signAssessmentConclusion)}><ShieldCheck className="h-4 w-4" />Assinar conclusao</button> : null}
                   {canApprove && detail.assessment.status !== 'published' && detail.assessment.status !== 'superseded' ? <button type="button" className="btn-primary" onClick={() => runAction(sstService.publishAssessment)}><ShieldCheck className="h-4 w-4" />Publicar avaliacao</button> : null}
+                  {canWrite && detail.assessment.status !== 'published' && detail.assessment.status !== 'superseded' ? <button type="button" className="btn-secondary text-red-600" onClick={() => handleDeleteAssessment(detail.assessment.id)}><AlertTriangle className="h-4 w-4" />Remover avaliacao</button> : null}
                 </div>
               </div>
 

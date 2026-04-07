@@ -275,6 +275,7 @@ export const sstService = {
   startReview: (id) => api.post(`/sst/assessments/${id}/review`),
   createRevision: (id, data = {}) => api.post(`/sst/assessments/${id}/revision`, data),
   publishAssessment: (id) => api.post(`/sst/assessments/${id}/publish`),
+  deleteAssessment: (id) => api.delete(`/sst/assessments/${id}`),
 
   listAssessmentRisks: (assessmentId) => api.get(`/sst/assessments/${assessmentId}/risks`),
   createAssessmentRisk: (assessmentId, data) => api.post(`/sst/assessments/${assessmentId}/risks`, data),
