@@ -202,6 +202,13 @@ const Acoes = () => {
     );
   }, [items, filterSearch]);
 
+  // M-4 (js-index-maps): Map indexado para lookup O(1) ao editar um item e precisar
+  // localizar o risco vinculado sem iterar o array inteiro.
+  const risksLookupMap = useMemo(
+    () => new Map(risksLookup.map((r) => [String(r.id), r])),
+    [risksLookup]
+  );
+
   // Stable modal openers using useCallback (rerender-functional-setstate)
   const openCreateModal = useCallback(() => {
     setEditItem(null);
@@ -228,6 +235,11 @@ const Acoes = () => {
       setEditError('Selecione um risco para vincular a acao.');
       return;
     }
+    // M-4 (js-index-maps): validacao O(1) via Map — garante que o risco ainda existe no lookup
+    if (isCreating && !risksLookupMap.has(String(editForm.riskId))) {
+      setEditError('Risco selecionado nao encontrado. Recarregue a pagina.');
+      return;
+    }
     try {
       setEditSaving(true);
       setEditError('');
@@ -244,7 +256,7 @@ const Acoes = () => {
     } finally {
       setEditSaving(false);
     }
-  }, [editForm, isCreating, editItem, closeModal, loadData, selectedEmpresa]);
+  }, [editForm, isCreating, editItem, risksLookupMap, closeModal, loadData, selectedEmpresa]);
 
   const handleQuickStatus = useCallback(async (item, newStatus) => {
     try {

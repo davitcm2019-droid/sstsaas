@@ -136,21 +136,28 @@ const SstAssessments = () => {
   const [conclusionSaving, setConclusionSaving] = useState(false);
   const [documentReadiness, setDocumentReadiness] = useState({ pgr: null, ltcat: null });
 
-  // Memoize metrics to avoid recalculating on every render (rerender-derived-state)
-  const metrics = useMemo(() => ({
-    total: items.length,
-    draft: items.filter((item) => item.status === 'draft').length,
-    review: items.filter((item) => item.status === 'in_review').length,
-    published: items.filter((item) => item.status === 'published').length,
-    revisionRequired: items.filter((item) => item.revisionRequired).length
-  }), [items]);
+  // M-2 (js-combine-iterations): uma única iteração em vez de 4 .filter() separados.
+  const metrics = useMemo(() => {
+    const r = { total: items.length, draft: 0, review: 0, published: 0, revisionRequired: 0 };
+    for (const item of items) {
+      if (item.status === 'draft') r.draft++;
+      else if (item.status === 'in_review') r.review++;
+      else if (item.status === 'published') r.published++;
+      if (item.revisionRequired) r.revisionRequired++;
+    }
+    return r;
+  }, [items]);
 
+  // L-2 (js-length-check-first): guard de length antes do filter evita processamento vazio.
   // Narrow deps to primitive values (rerender-dependencies)
   const filteredRoles = useMemo(
-    () => roles.filter((item) =>
-      (!filterSectorId || String(item.sectorId) === filterSectorId) &&
-      (!filterEmpresaId || String(item.empresaId) === filterEmpresaId)
-    ),
+    () => {
+      if (!roles.length) return [];
+      return roles.filter((item) =>
+        (!filterSectorId || String(item.sectorId) === filterSectorId) &&
+        (!filterEmpresaId || String(item.empresaId) === filterEmpresaId)
+      );
+    },
     [roles, filterSectorId, filterEmpresaId]
   );
 
@@ -229,10 +236,12 @@ const SstAssessments = () => {
     setSelectedId((prev) => (nextItems.some((item) => String(item.id) === String(prev)) ? prev : nextItems[0]?.id || ''));
   }, [filterEmpresaId, filterSectorId, filterRoleId, filterStatus]);
 
-  // Stable refreshSelected built from stable callbacks
+  // H-4 (async-parallel): loadBase e loadDetail não dependem entre si — rodam em paralelo.
   const refreshSelected = useCallback(async (id) => {
-    await loadBase();
-    if (id) await loadDetail(id);
+    await Promise.all([
+      loadBase(),
+      id ? loadDetail(id) : Promise.resolve()
+    ]);
   }, [loadBase, loadDetail]);
 
   useEffect(() => {

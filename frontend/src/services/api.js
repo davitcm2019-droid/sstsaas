@@ -2,6 +2,11 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:5000/api';
 
+// H-1 (js-cache-storage): cache do token em memória para não ler localStorage em cada request.
+// Chamar setTokenCache() no login/logout do AuthContext para manter em sincronia.
+let _cachedToken = localStorage.getItem('token');
+export const setTokenCache = (token) => { _cachedToken = token; };
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -12,15 +17,11 @@ const api = axios.create({
 // Interceptor para adicionar token de autenticação
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    // H-1: usa o cache em memória em vez de ler o localStorage a cada requisição
+    if (_cachedToken) config.headers.Authorization = `Bearer ${_cachedToken}`;
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Interceptor para tratamento de erros
@@ -44,6 +45,7 @@ api.interceptors.response.use(
 
     if (status === 401 || code === 'AUTH_INVALID_TOKEN') {
       if (!isAuthRequest) {
+        _cachedToken = null; // H-1: limpa o cache em memória também
         localStorage.removeItem('token');
         window.location.href = '/login';
       }

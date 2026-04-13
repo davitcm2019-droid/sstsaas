@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -74,6 +74,36 @@ const navigationConfig = [
   }
 ];
 
+// M-1 (rerender-memo): componente memoizado para evitar re-render da navegação
+// a cada estatío do Layout (sidebar aberta/fechada, userMenu, search).
+const SidebarNav = memo(({ groups, collapsed, onNavigate, isActive }) => (
+  <>
+    {groups.map((group) => (
+      <section key={group.group} className="app-sidebar__section">
+        {!collapsed ? <p className="app-sidebar__label">{group.group}</p> : null}
+        <nav className="app-sidebar__nav">
+          {group.items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.href}
+                type="button"
+                onClick={() => onNavigate(item.href)}
+                className={`app-nav-link ${isActive(item.href) ? 'app-nav-link--active' : ''}`}
+                title={collapsed ? item.name : undefined}
+              >
+                <Icon className="h-5 w-5 shrink-0" />
+                {!collapsed ? <span>{item.name}</span> : null}
+              </button>
+            );
+          })}
+        </nav>
+      </section>
+    ))}
+  </>
+));
+SidebarNav.displayName = 'SidebarNav';
+
 const routeDescriptions = {
   '/dashboard': 'Leitura executiva e operacional da carteira SST.',
   '/agenda': 'Janela de compromissos, vencimentos e renovacoes.',
@@ -126,9 +156,10 @@ const Layout = ({ children }) => {
     [navigationGroups]
   );
 
+  // L-1 (js-tosorted-immutable): toSorted() é imutável nativamente (ES2023), dispensando o spread.
   const currentItem = useMemo(() => {
-    return [...navigationItems]
-      .sort((a, b) => b.href.length - a.href.length)
+    return navigationItems
+      .toSorted((a, b) => b.href.length - a.href.length)
       .find((item) => location.pathname === item.href || location.pathname.startsWith(`${item.href}/`));
   }, [location.pathname, navigationItems]);
 
@@ -142,41 +173,19 @@ const Layout = ({ children }) => {
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`);
 
-  const handleNavigate = (href) => {
+  // A-2 (advanced-event-handler-refs): useCallback estabiliza a referência do handler
+  // para que o SidebarNav memoizado não re-renderize por referencia nova de callback.
+  const handleNavigate = useCallback((href) => {
     setSidebarOpen(false);
     setSearchQuery('');
     navigate(href);
-  };
+  }, [navigate]);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  const renderNavigation = () => {
-    return navigationGroups.map((group) => (
-      <section key={group.group} className="app-sidebar__section">
-        {!sidebarCollapsed ? <p className="app-sidebar__label">{group.group}</p> : null}
-        <nav className="app-sidebar__nav">
-          {group.items.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.href}
-                type="button"
-                onClick={() => handleNavigate(item.href)}
-                className={`app-nav-link ${isActive(item.href) ? 'app-nav-link--active' : ''}`}
-                title={sidebarCollapsed ? item.name : undefined}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                {!sidebarCollapsed ? <span>{item.name}</span> : null}
-              </button>
-            );
-          })}
-        </nav>
-      </section>
-    ));
-  };
 
   return (
     <div className="app-shell">
@@ -218,7 +227,14 @@ const Layout = ({ children }) => {
           </div>
         ) : null}
 
-        <div className="app-sidebar__body">{renderNavigation()}</div>
+        <div className="app-sidebar__body">
+          <SidebarNav
+            groups={navigationGroups}
+            collapsed={sidebarCollapsed}
+            onNavigate={handleNavigate}
+            isActive={isActive}
+          />
+        </div>
 
         <div className="app-sidebar__footer">
           <div className="app-user-chip">
@@ -264,7 +280,8 @@ const Layout = ({ children }) => {
                 K
               </span>
 
-              {searchQuery && (
+              {/* C-3 (rendering-conditional-render): ternário explícito em vez de && */}
+              {searchQuery ? (
                 <div className="app-search__results">
                   {searchResults.length > 0 ? (
                     searchResults.map((item) => (
@@ -277,7 +294,7 @@ const Layout = ({ children }) => {
                     <div className="app-search__empty">Nenhum modulo encontrado.</div>
                   )}
                 </div>
-              )}
+              ) : null}
             </div>
 
             <div className="app-chip">

@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { hasPermission as roleHasPermission } from '../auth/permissions';
-import { authService } from '../services/api';
+import { authService, setTokenCache } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -18,31 +18,41 @@ const getApiMessage = (error, fallback) => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  // M-3 (rerender-lazy-state-init): lazy initializer — lê o localStorage apenas uma vez.
+  const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
+  // A-1 (advanced-use-latest): ref para acessar o perfil mais recente em hasPermission
+  // sem adicionar user como dependência do useCallback.
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; });
+
+  // C-2 (async-parallel / waterfall): deps vazio — executa apenas no mount.
+  // Não usa token como dep para evitar re-disparar após login/logout.
   useEffect(() => {
-    const initAuth = async () => {
-      if (token) {
-        try {
-          const response = await authService.getMe();
-          if (response.data.success) {
-            setUser(response.data.data);
-          } else {
-            localStorage.removeItem('token');
-            setToken(null);
-          }
-        } catch (error) {
-          console.error('Erro ao verificar autenticacao:', error);
+    const storedToken = localStorage.getItem('token');
+    if (!storedToken) { setLoading(false); return; } // js-early-exit
+
+    (async () => {
+      try {
+        const response = await authService.getMe();
+        if (response.data.success) {
+          setUser(response.data.data);
+        } else {
           localStorage.removeItem('token');
+          setTokenCache(null); // H-1: sincroniza o cache do interceptor
           setToken(null);
         }
+      } catch (error) {
+        console.error('Erro ao verificar autenticacao:', error);
+        localStorage.removeItem('token');
+        setTokenCache(null); // H-1
+        setToken(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    };
-
-    void initAuth();
-  }, [token]);
+    })();
+  }, []); // ← mount only — não re-dispara em login/logout
 
   const login = async (email, senha) => {
     try {
@@ -54,6 +64,7 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         setToken(newToken);
         localStorage.setItem('token', newToken);
+        setTokenCache(newToken); // H-1: mantém o cache do interceptor sincronizado
         return { success: true };
       }
 
@@ -79,6 +90,7 @@ export const AuthProvider = ({ children }) => {
         setUser(newUser);
         setToken(newToken);
         localStorage.setItem('token', newToken);
+        setTokenCache(newToken); // H-1
         return { success: true };
       }
 
@@ -103,15 +115,32 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setToken(null);
       localStorage.removeItem('token');
+      setTokenCache(null); // H-1: limpa o cache do interceptor
     }
   };
 
-  const hasPermission = (permission) => roleHasPermission(user?.perfil, permission);
-  const hasRole = (role) => user?.perfil === role;
-  const isAdmin = () => hasRole('administrador');
-  const isTecnico = () => hasRole('tecnico_seguranca');
-  const isAuditor = () => hasRole('auditor');
-  const isVisualizador = () => hasRole('visualizador');
+  // H-2 (rerender-dependencies): useCallback com dep primitiva user?.perfil
+  // em vez do objeto user inteiro — evita recriar a função a cada render do contexto.
+  // A-1 (advanced-use-latest): usa userRef para garantir acesso ao valor mais recente
+  // sem inflar as dependências do useCallback.
+  const hasPermission = useCallback(
+    (permission) => roleHasPermission(userRef.current?.perfil, permission),
+    [] // estável — userRef é uma ref, não causa re-memoização
+  );
+
+  const hasRole = useCallback(
+    (role) => userRef.current?.perfil === role,
+    []
+  );
+
+  // H-3 (rerender-derived-state): booleans derivados em vez de funções.
+  // Evita consumidores que acidentalmente fazem `if (isAdmin)` (sempre true, é função)
+  // vs `if (isAdmin())` (correto). Atualiza apenas quando o perfil muda.
+  const perfil = user?.perfil;
+  const isAdmin = perfil === 'administrador';
+  const isTecnico = perfil === 'tecnico_seguranca';
+  const isAuditor = perfil === 'auditor';
+  const isVisualizador = perfil === 'visualizador';
 
   const value = {
     user,
